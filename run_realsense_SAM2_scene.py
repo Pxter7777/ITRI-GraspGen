@@ -130,7 +130,7 @@ if __name__=="__main__":
     # ---------- RealSense Init ----------
     pipeline = rs.pipeline()
     config = rs.config()
-    W, H, FPS = 848, 480, 15
+    W, H, FPS = 848, 480, 6
     config.enable_stream(rs.stream.infrared, 1, W, H, rs.format.y8, FPS)
     config.enable_stream(rs.stream.infrared, 2, W, H, rs.format.y8, FPS)
     config.enable_stream(rs.stream.color, W, H, rs.format.bgr8, FPS)
