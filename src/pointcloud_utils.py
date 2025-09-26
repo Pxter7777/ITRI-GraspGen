@@ -60,12 +60,12 @@ def save_scene_and_obj(args, K_ir1, baseline, disp, ext_ir1_to_color, K_color, c
             point = points_post_filter[i]
             color = color_np_org[v, u]
             
-            scene_points.append(point)
-            scene_colors.append(color)
-            
             if mask[v, u]:
                 object_points.append(point)
                 object_colors.append(color)
+            else:
+                scene_points.append(point)
+                scene_colors.append(color)
 
     if not object_points:
         logging.warning("The selected mask contains no points from the point cloud. Nothing to save.")
@@ -76,11 +76,11 @@ def save_scene_and_obj(args, K_ir1, baseline, disp, ext_ir1_to_color, K_color, c
     
     current_time_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    save_json_scene(args.out_dir, object_points, object_colors, scene_points, scene_colors, current_time_str)
-    save_e57_scene(args.out_dir, scene_points, scene_colors, current_time_str)
+    save_json_object_and_scene(args.out_dir, object_points, object_colors, scene_points, scene_colors, current_time_str)
+    save_e57_object_and_scene(args.out_dir, object_points, object_colors, scene_points, scene_colors, current_time_str)
     save_obj_mesh(args.out_dir, object_points, object_colors, combined_vis, current_time_str)
 
-def save_json_scene(out_dir, object_points, object_colors, scene_points, scene_colors, timestamp):
+def save_json_object_and_scene(out_dir, object_points, object_colors, scene_points, scene_colors, timestamp):
     """Saves the scene and object data to a JSON file."""
     scene_data = {
         "object_info": {
@@ -104,26 +104,43 @@ def save_json_scene(out_dir, object_points, object_colors, scene_points, scene_c
         json.dump(scene_data, f, indent=4)
     logging.info(f"Scene saved to {json_filepath}")
 
-def save_e57_scene(out_dir, scene_points, scene_colors, timestamp):
+def save_e57_object_and_scene(out_dir, object_points, object_colors, scene_points, scene_colors, timestamp):
     """Saves the scene points and colors to a .e57 file."""
-    e57_filename = f"scene_{timestamp}.e57"
-    e57_filepath = os.path.join(out_dir, e57_filename)
+    e57_object_filename = f"object_{timestamp}.e57"
+    e57_object_filepath = os.path.join(out_dir, e57_object_filename)
 
-    points = np.array(scene_points)
-    colors = np.array(scene_colors)
+    object_points = np.array(object_points)
+    object_colors = np.array(object_colors)
 
-    # pye57 expects structured array with fields "x", "y", "z", "red", "green", "blue"
-    data = dict()
-    data['cartesianX'] = points[:, 0]
-    data['cartesianY'] = points[:, 1]
-    data['cartesianZ'] = points[:, 2]
-    data['colorRed'] = colors[:, 2] # Assuming scene_colors is BGR
-    data['colorGreen'] = colors[:, 1]
-    data['colorBlue'] = colors[:, 0]
-    with pye57.E57(e57_filepath, mode="w") as e57_write:
-        e57_write.write_scan_raw(data)
+    object_data = dict()
+    object_data['cartesianX'] = object_points[:, 0]
+    object_data['cartesianY'] = object_points[:, 1]
+    object_data['cartesianZ'] = object_points[:, 2]
+    object_data['colorRed'] = object_colors[:, 2] # Assuming scene_colors is BGR
+    object_data['colorGreen'] = object_colors[:, 1]
+    object_data['colorBlue'] = object_colors[:, 0]
+
+    with pye57.E57(e57_object_filepath, mode="w") as e57_write:
+        e57_write.write_scan_raw(object_data)
+
+    e57_scene_filename = f"scene_{timestamp}.e57"
+    e57_scene_filepath = os.path.join(out_dir, e57_scene_filename)
+
+    scene_points = np.array(scene_points)
+    scene_colors = np.array(scene_colors)
+
+    scene_data = dict()
+    scene_data['cartesianX'] = scene_points[:, 0]
+    scene_data['cartesianY'] = scene_points[:, 1]
+    scene_data['cartesianZ'] = scene_points[:, 2]
+    scene_data['colorRed'] = scene_colors[:, 2] # Assuming scene_colors is BGR
+    scene_data['colorGreen'] = scene_colors[:, 1]
+    scene_data['colorBlue'] = scene_colors[:, 0]
+
+    with pye57.E57(e57_scene_filepath, mode="w") as e57_write:
+        e57_write.write_scan_raw(scene_data)
     
-    logging.info(f"Scene saved to {e57_filepath}")
+    logging.info(f"Scene saved to e57")
 
 def save_obj_mesh(out_dir, object_points, object_colors, combined_vis, timestamp):
     """Saves the segmented object as a mesh in an .obj file."""
