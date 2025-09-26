@@ -69,7 +69,9 @@ def save_scene_and_obj(args, K_ir1, baseline, disp, ext_ir1_to_color, K_color, c
     if not object_points:
         logging.warning("The selected mask contains no points from the point cloud. Nothing to save.")
         return
-
+    # Apply transformation for MeshCat coordinate system (Y-up)
+    scene_points = [[z, -x, -y] for x, y, z in scene_points];
+    object_points = [[z, -x, -y] for x, y, z in object_points];
     # --- Save Scene JSON ---
     scene_data = {
         "object_info": {
