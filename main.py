@@ -20,6 +20,7 @@ def main():
     parser.add_argument('--hiera', default=0, type=int, help='hierarchical inference')
     parser.add_argument('--valid_iters', type=int, default=32, help='number of flow-field updates during forward pass')
     parser.add_argument('--out_dir', default='./output/', type=str, help='the directory to save results')
+    parser.add_argument('--erosion_iterations', type=int, default=6, help='Number of erosion iterations for the SAM mask.')
     args = parser.parse_args()
     
     set_logging_format()
@@ -71,7 +72,7 @@ def main():
                 visualization.draw_box(display_frame, (box[0], box[1]), (box[2], box[3]))
                 
                 color_np_rgb = cv2.cvtColor(color_np, cv2.COLOR_BGR2RGB)
-                mask = sam_utils.run_sam2(sam_predictor, color_np_rgb, box)
+                mask = sam_utils.run_sam2(sam_predictor, color_np_rgb, box, iterations=args.erosion_iterations)
                 display_frame = visualization.overlay_mask_on_frame(display_frame, mask)
 
             # ---------- FoundationStereo Inference ----------
