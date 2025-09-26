@@ -82,14 +82,24 @@ def save_scene_and_obj(args, K_ir1, baseline, disp, ext_ir1_to_color, K_color, c
 
 def save_json_object_and_scene(out_dir, object_points, object_colors, scene_points, scene_colors, timestamp):
     """Saves the scene and object data to a JSON file."""
+    object_colors_arr = np.array(object_colors)
+    if object_colors_arr.size > 0:
+        # BGR to RGB
+        object_colors_arr = object_colors_arr[:, ::-1]
+
+    scene_colors_arr = np.array(scene_colors)
+    if scene_colors_arr.size > 0:
+        # BGR to RGB
+        scene_colors_arr = scene_colors_arr[:, ::-1]
+
     scene_data = {
         "object_info": {
             "pc": np.array(object_points).tolist(),
-            "pc_color": np.array(object_colors).tolist()
+            "pc_color": object_colors_arr.tolist()
         },
         "scene_info": {
             "pc_color": [np.array(scene_points).tolist()],
-            "img_color": [np.array(scene_colors).tolist()]
+            "img_color": [scene_colors_arr.tolist()]
         },
         "grasp_info": {
             "grasp_poses": [],
@@ -148,7 +158,10 @@ def save_obj_mesh(out_dir, object_points, object_colors, combined_vis, timestamp
         segmented_points_np = np.array(object_points)
         segmented_colors_np = np.array(object_colors)
 
-        segmented_colors_rgb = cv2.cvtColor(segmented_colors_np.reshape(1, -1, 3), cv2.COLOR_BGR2RGB).reshape(-1, 3)
+        if segmented_colors_np.size > 0:
+            segmented_colors_rgb = segmented_colors_np[:, ::-1]  # BGR to RGB
+        else:
+            segmented_colors_rgb = segmented_colors_np
         segmented_pcd = o3d.geometry.PointCloud()
         segmented_pcd.points = o3d.utility.Vector3dVector(segmented_points_np)
         segmented_pcd.colors = o3d.utility.Vector3dVector(segmented_colors_rgb / 255.0)
