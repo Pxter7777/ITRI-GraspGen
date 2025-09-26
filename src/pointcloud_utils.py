@@ -5,6 +5,7 @@ import datetime
 import os
 import logging
 import cv2
+import pye57
 from .realsense_utils import extrinsics_Rt
 
 def depth2xyzmap(depth, K):
@@ -72,7 +73,15 @@ def save_scene_and_obj(args, K_ir1, baseline, disp, ext_ir1_to_color, K_color, c
     # Apply transformation for MeshCat coordinate system (Y-up)
     scene_points = [[z, -x, -y] for x, y, z in scene_points];
     object_points = [[z, -x, -y] for x, y, z in object_points];
-    # --- Save Scene JSON ---
+    
+    current_time_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    save_json_scene(args.out_dir, object_points, object_colors, scene_points, scene_colors, current_time_str)
+    save_e57_scene(args.out_dir, scene_points, scene_colors, current_time_str)
+    save_obj_mesh(args.out_dir, object_points, object_colors, combined_vis, current_time_str)
+
+def save_json_scene(out_dir, object_points, object_colors, scene_points, scene_colors, timestamp):
+    """Saves the scene and object data to a JSON file."""
     scene_data = {
         "object_info": {
             "pc": np.array(object_points).tolist(),
@@ -88,15 +97,36 @@ def save_scene_and_obj(args, K_ir1, baseline, disp, ext_ir1_to_color, K_color, c
         }
     }
     
-    current_time_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    json_filename = f"scene_{current_time_str}.json"
-    json_filepath = os.path.join(args.out_dir, json_filename)
+    json_filename = f"scene_{timestamp}.json"
+    json_filepath = os.path.join(out_dir, json_filename)
     
     with open(json_filepath, 'w') as f:
         json.dump(scene_data, f, indent=4)
     logging.info(f"Scene saved to {json_filepath}")
 
-    # --- Save Segmented Object Mesh ---
+def save_e57_scene(out_dir, scene_points, scene_colors, timestamp):
+    """Saves the scene points and colors to a .e57 file."""
+    e57_filename = f"scene_{timestamp}.e57"
+    e57_filepath = os.path.join(out_dir, e57_filename)
+
+    points = np.array(scene_points)
+    colors = np.array(scene_colors)
+
+    # pye57 expects structured array with fields "x", "y", "z", "red", "green", "blue"
+    data = dict()
+    data['cartesianX'] = points[:, 0]
+    data['cartesianY'] = points[:, 1]
+    data['cartesianZ'] = points[:, 2]
+    data['colorRed'] = colors[:, 2] # Assuming scene_colors is BGR
+    data['colorGreen'] = colors[:, 1]
+    data['colorBlue'] = colors[:, 0]
+    with pye57.E57(e57_filepath, mode="w") as e57_write:
+        e57_write.write_scan_raw(data)
+    
+    logging.info(f"Scene saved to {e57_filepath}")
+
+def save_obj_mesh(out_dir, object_points, object_colors, combined_vis, timestamp):
+    """Saves the segmented object as a mesh in an .obj file."""
     try:
         segmented_points_np = np.array(object_points)
         segmented_colors_np = np.array(object_colors)
@@ -126,14 +156,14 @@ def save_scene_and_obj(args, K_ir1, baseline, disp, ext_ir1_to_color, K_color, c
         ]
         mesh.vertex_colors = o3d.utility.Vector3dVector(mesh_colors)
         
-        mesh_filename = f"segmented_mesh_{current_time_str}.obj"
-        mesh_filepath = os.path.join(args.out_dir, mesh_filename)
+        mesh_filename = f"segmented_mesh_{timestamp}.obj"
+        mesh_filepath = os.path.join(out_dir, mesh_filename)
         
         o3d.io.write_triangle_mesh(mesh_filepath, mesh, write_vertex_colors=True)
         logging.info(f"Reconstructed mesh saved to {mesh_filepath}")
         
-        vis_filename = f"segmented_vis_{current_time_str}.png"
-        vis_filepath = os.path.join(args.out_dir, vis_filename)
+        vis_filename = f"segmented_vis_{timestamp}.png"
+        vis_filepath = os.path.join(out_dir, vis_filename)
         cv2.imwrite(vis_filepath, combined_vis)
         logging.info(f"Combined visualization saved to {vis_filepath}")
         
