@@ -16,6 +16,8 @@ import subprocess
 import time
 import webbrowser
 import atexit
+import tkinter as tk
+from threading import Thread
 
 import numpy as np
 import torch
@@ -192,10 +194,22 @@ def generate_and_visualize_grasps(vis, obj_pc, grasp_sampler, gripper_name, args
         print(f"[{method}] No grasps found! Skipping to next scene...")
 
 
+def create_control_panel():
+    """Creates and runs the tkinter control panel."""
+    root = tk.Tk()
+    root.title("Control Panel")
+    button = tk.Button(root, text="Print Hello", command=lambda: print("Hello World"))
+    button.pack(padx=20, pady=20)
+    root.mainloop()
+
+
 def main():
     """Main function to run the GraspGen demo."""
     start_meshcat_server()
     open_meshcat_url("http://127.0.0.1:7000/static/")
+
+    gui_thread = Thread(target=create_control_panel, daemon=True)
+    gui_thread.start()
 
     args = parse_args()
     validate_args(args)
