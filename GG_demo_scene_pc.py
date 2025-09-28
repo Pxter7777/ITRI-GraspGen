@@ -23,7 +23,6 @@ import torch
 from grasp_gen.grasp_server import GraspGenSampler, load_grasp_cfg
 from grasp_gen.utils.meshcat_utils import (
     create_visualizer,
-    get_color_from_score,
     visualize_grasp,
     visualize_pointcloud,
 )
@@ -72,8 +71,8 @@ def parse_args():
     return parser.parse_args()
 
 
-if __name__ == "__main__":
-    # Start meshcat-server and open browser
+def start_meshcat_server():
+    """Starts the meshcat-server and registers a cleanup function."""
     print("Starting meshcat-server...")
     meshcat_server_process = subprocess.Popen(
         "meshcat-server", shell=True, preexec_fn=os.setsid
@@ -85,129 +84,134 @@ if __name__ == "__main__":
             print("Terminating meshcat-server...")
             os.killpg(os.getpgid(meshcat_server_process.pid), signal.SIGTERM)
 
-    # Wait for server to start
-    time.sleep(2)
+    time.sleep(2)  # Wait for server to start
+    return meshcat_server_process
 
-    url = "http://127.0.0.1:7000/static/"
+
+def open_meshcat_url(url):
+    """Opens the given URL in a web browser."""
     print(f"\n--- Meshcat Visualizer ---\nURL: {url}\n--------------------------\n")
-
     try:
         system = platform.system()
         if system == "Linux":
             release_info = platform.release().lower()
             if "microsoft" in release_info or "wsl" in release_info:
-                # WSL: Use powershell.exe to open the URL on the Windows host.
                 subprocess.run(
                     ["powershell.exe", "-c", f'Start-Process "{url}"'],
                     stderr=subprocess.DEVNULL,
                 )
             else:
-                # Standard Linux: Use xdg-open.
                 subprocess.run(["xdg-open", url], stderr=subprocess.DEVNULL)
         else:
-            # Other OS (Windows native, macOS): Use the default webbrowser library.
             webbrowser.open(url)
     except Exception:
-        # If automatic opening fails, the user still has the URL printed.
-        pass
+        pass  # If opening fails, the user has the URL printed.
 
-    args = parse_args()
 
+def validate_args(args):
+    """Validates the command-line arguments."""
     if args.sample_data_dir == "":
         raise ValueError("sample_data_dir is required")
     if args.gripper_config == "":
         raise ValueError("gripper_config is required")
-
     if not os.path.exists(args.sample_data_dir):
         raise FileNotFoundError(
             f"sample_data_dir {args.sample_data_dir} does not exist"
         )
-
-    # Handle return_topk logic
     if args.return_topk and args.topk_num_grasps == -1:
         args.topk_num_grasps = 100
 
+
+def process_and_visualize_scene(vis, json_file):
+    """Loads scene data, processes point clouds, and visualizes them."""
+    print(json_file)
+    vis.delete()
+
+    with open(json_file, "rb") as f:
+        data = json.load(f)
+
+    obj_pc = np.array(data["object_info"]["pc"])
+    obj_pc_color = np.array(data["object_info"]["pc_color"])
+
+    full_pc_key = "pc_color" if "pc_color" in data["scene_info"] else "full_pc"
+    xyz_scene = np.array(data["scene_info"][full_pc_key])[0]
+    xyz_scene_color = np.array(data["scene_info"]["img_color"]).reshape(1, -1, 3)[
+        0, :, :
+    ]
+
+    VIZ_BOUNDS = [[-1.5, -1.25, -0.15], [1.5, 1.25, 2.0]]
+    mask_within_bounds = np.all((xyz_scene > VIZ_BOUNDS[0]), 1)
+    mask_within_bounds = np.logical_and(
+        mask_within_bounds, np.all((xyz_scene < VIZ_BOUNDS[1]), 1)
+    )
+    xyz_scene = xyz_scene[mask_within_bounds]
+    xyz_scene_color = xyz_scene_color[mask_within_bounds]
+
+    visualize_pointcloud(vis, "pc_scene", xyz_scene, xyz_scene_color, size=0.0025)
+
+    obj_pc, _ = point_cloud_outlier_removal(torch.from_numpy(obj_pc))
+    obj_pc = obj_pc.cpu().numpy()
+
+    visualize_pointcloud(vis, "pc_obj", obj_pc, obj_pc_color, size=0.005)
+
+    return obj_pc
+
+
+def generate_and_visualize_grasps(vis, obj_pc, grasp_sampler, gripper_name, args):
+    """Generates grasps and visualizes them."""
+    method = "GraspGen"
+    grasps, grasp_conf = GraspGenSampler.run_inference(
+        obj_pc,
+        grasp_sampler,
+        grasp_threshold=args.grasp_threshold,
+        num_grasps=args.num_grasps,
+        topk_num_grasps=args.topk_num_grasps,
+    )
+
+    if len(grasps) > 0:
+        grasp_conf = grasp_conf.cpu().numpy()
+        grasps = grasps.cpu().numpy()
+        grasps[:, 3, 3] = 1
+        print(
+            f"[{method}] Scores with min {grasp_conf.min():.3f} and max {grasp_conf.max():.3f}"
+        )
+
+        map_method2color = {"GraspGen": [0, 185, 0]}
+        for j, grasp in enumerate(grasps):
+            color = map_method2color[method]
+            visualize_grasp(
+                vis,
+                f"{method}/{j:03d}/grasp",
+                grasp,
+                color=color,
+                gripper_name=gripper_name,
+                linewidth=1.5,
+            )
+        input("Press Enter to continue to next scene...")
+    else:
+        print(f"[{method}] No grasps found! Skipping to next scene...")
+
+
+def main():
+    """Main function to run the GraspGen demo."""
+    start_meshcat_server()
+    open_meshcat_url("http://127.0.0.1:7000/static/")
+
+    args = parse_args()
+    validate_args(args)
+
     json_files = glob.glob(os.path.join(args.sample_data_dir, "*.json"))
 
-    # Load gripper config and get gripper name
     grasp_cfg = load_grasp_cfg(args.gripper_config)
     gripper_name = grasp_cfg.data.gripper_name
-
-    # Initialize GraspGenSampler once
     grasp_sampler = GraspGenSampler(grasp_cfg)
 
     vis = create_visualizer()
 
-    map_method2color = {
-        "GraspGen": [0, 185, 0],
-    }
-
     for json_file in json_files:
-        print(json_file)
-        vis.delete()
+        obj_pc = process_and_visualize_scene(vis, json_file)
+        generate_and_visualize_grasps(vis, obj_pc, grasp_sampler, gripper_name, args)
 
-        data = json.load(open(json_file, "rb"))
 
-        obj_pc = np.array(data["object_info"]["pc"])
-        obj_pc_color = np.array(data["object_info"]["pc_color"])
-        grasps = np.array(data["grasp_info"]["grasp_poses"])
-        grasp_conf = np.array(data["grasp_info"]["grasp_conf"])
-
-        full_pc_key = "pc_color" if "pc_color" in data["scene_info"] else "full_pc"
-        xyz_scene = np.array(data["scene_info"][full_pc_key])[0]
-        xyz_scene_color = np.array(data["scene_info"]["img_color"]).reshape(1, -1, 3)[
-            0, :, :
-        ]
-
-        VIZ_BOUNDS = [[-1.5, -1.25, -0.15], [1.5, 1.25, 2.0]]
-        mask_within_bounds = np.all((xyz_scene > VIZ_BOUNDS[0]), 1)
-        mask_within_bounds = np.logical_and(
-            mask_within_bounds, np.all((xyz_scene < VIZ_BOUNDS[1]), 1)
-        )
-        # mask_within_bounds = np.ones(xyz_scene.shape[0]).astype(np.bool_)
-
-        xyz_scene = xyz_scene[mask_within_bounds]
-        xyz_scene_color = xyz_scene_color[mask_within_bounds]
-
-        visualize_pointcloud(vis, "pc_scene", xyz_scene, xyz_scene_color, size=0.0025)
-
-        obj_pc, pc_removed = point_cloud_outlier_removal(torch.from_numpy(obj_pc))
-        obj_pc = obj_pc.cpu().numpy()
-        pc_removed = pc_removed.cpu().numpy()
-
-        visualize_pointcloud(vis, "pc_obj", obj_pc, obj_pc_color, size=0.005)
-
-        method = "GraspGen"
-        grasps, grasp_conf = GraspGenSampler.run_inference(
-            obj_pc,
-            grasp_sampler,
-            grasp_threshold=args.grasp_threshold,
-            num_grasps=args.num_grasps,
-            topk_num_grasps=args.topk_num_grasps,
-        )
-
-        if len(grasps) > 0:
-            grasp_conf = grasp_conf.cpu().numpy()
-            grasps = grasps.cpu().numpy()
-            grasps[:, 3, 3] = 1
-            scores = get_color_from_score(grasp_conf, use_255_scale=True)
-            print(
-                f"[{method}] Scores with min {grasp_conf.min():.3f} and max {grasp_conf.max():.3f}"
-            )
-
-            for j, grasp in enumerate(grasps):
-                color = scores[j]
-                color = map_method2color[method]
-
-                visualize_grasp(
-                    vis,
-                    f"{method}/{j:03d}/grasp",
-                    grasp,
-                    color=color,
-                    gripper_name=gripper_name,
-                    linewidth=1.5,
-                )
-
-            input("Press Enter to continue to next scene...")
-        else:
-            print(f"[{method}] No grasps found! Skipping to next scene...")
+if __name__ == "__main__":
+    main()
