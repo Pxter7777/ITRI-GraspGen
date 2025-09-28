@@ -10,6 +10,12 @@ import argparse
 import glob
 import json
 import os
+import platform
+import signal
+import subprocess
+import time
+import webbrowser
+import atexit
 
 import numpy as np
 import torch
@@ -67,6 +73,44 @@ def parse_args():
 
 
 if __name__ == "__main__":
+    # Start meshcat-server and open browser
+    print("Starting meshcat-server...")
+    meshcat_server_process = subprocess.Popen(
+        "meshcat-server", shell=True, preexec_fn=os.setsid
+    )
+
+    @atexit.register
+    def cleanup_meshcat_server():
+        if meshcat_server_process.poll() is None:
+            print("Terminating meshcat-server...")
+            os.killpg(os.getpgid(meshcat_server_process.pid), signal.SIGTERM)
+
+    # Wait for server to start
+    time.sleep(2)
+
+    url = "http://127.0.0.1:7000/static/"
+    print(f"\n--- Meshcat Visualizer ---\nURL: {url}\n--------------------------\n")
+
+    try:
+        system = platform.system()
+        if system == "Linux":
+            release_info = platform.release().lower()
+            if "microsoft" in release_info or "wsl" in release_info:
+                # WSL: Use powershell.exe to open the URL on the Windows host.
+                subprocess.run(
+                    ["powershell.exe", "-c", f'Start-Process "{url}"'],
+                    stderr=subprocess.DEVNULL,
+                )
+            else:
+                # Standard Linux: Use xdg-open.
+                subprocess.run(["xdg-open", url], stderr=subprocess.DEVNULL)
+        else:
+            # Other OS (Windows native, macOS): Use the default webbrowser library.
+            webbrowser.open(url)
+    except Exception:
+        # If automatic opening fails, the user still has the URL printed.
+        pass
+
     args = parse_args()
 
     if args.sample_data_dir == "":
