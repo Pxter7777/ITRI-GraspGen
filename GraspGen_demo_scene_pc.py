@@ -18,6 +18,7 @@ import webbrowser
 import atexit
 import tkinter as tk
 from threading import Thread
+import datetime
 
 import numpy as np
 import torch
@@ -39,6 +40,68 @@ class AppState:
 
 
 app_state = AppState()
+
+
+class ControlPanel:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Control Panel")
+
+        self.custom_filename_var = tk.BooleanVar()
+        self.filename_entry_var = tk.StringVar()
+
+        hello_button = tk.Button(
+            self.root, text="Print Hello", command=lambda: print("Hello World")
+        )
+        hello_button.pack(padx=20, pady=5)
+
+        save_button = tk.Button(
+            self.root, text="Save Isaac Grasp", command=self.save_isaac_grasps
+        )
+        save_button.pack(padx=20, pady=5)
+
+        self.filename_checkbox = tk.Checkbutton(
+            self.root,
+            text="Custom Savefile Name",
+            var=self.custom_filename_var,
+            command=self.toggle_filename_entry,
+        )
+        self.filename_checkbox.pack(pady=5)
+
+        self.filename_entry = tk.Entry(
+            self.root, textvariable=self.filename_entry_var, state=tk.DISABLED
+        )
+        self.filename_entry.pack(padx=20, pady=5)
+
+    def toggle_filename_entry(self):
+        if self.custom_filename_var.get():
+            self.filename_entry.config(state=tk.NORMAL)
+        else:
+            self.filename_entry.config(state=tk.DISABLED)
+
+    def save_isaac_grasps(self):
+        if app_state.grasps is not None and app_state.grasp_conf is not None:
+            if self.custom_filename_var.get():
+                filename = self.filename_entry_var.get()
+                if not filename.endswith(".yaml"):
+                    filename += ".yaml"
+            else:
+                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"isaac_grasp_{timestamp}.yaml"
+
+            output_path = os.path.join("output", filename)
+            print(f"Saving {len(app_state.grasps)} grasps to {output_path}...")
+            save_to_isaac_grasp_format(
+                grasps=app_state.grasps,
+                confidences=app_state.grasp_conf,
+                output_path=output_path,
+            )
+            print("Save complete.")
+        else:
+            print("No grasps available to save.")
+
+    def run(self):
+        self.root.mainloop()
 
 
 def parse_args():
@@ -206,35 +269,11 @@ def generate_and_visualize_grasps(vis, obj_pc, grasp_sampler, gripper_name, args
         app_state.grasp_conf = None
 
 
-def save_isaac_grasps():
-    """Saves the current grasps to a YAML file in Isaac format."""
-    if app_state.grasps is not None and app_state.grasp_conf is not None:
-        output_path = "./output/test_isaac_grasp.yaml"
-        print(f"Saving {len(app_state.grasps)} grasps to {output_path}...")
-        save_to_isaac_grasp_format(
-            grasps=app_state.grasps,
-            confidences=app_state.grasp_conf,
-            output_path=output_path,
-        )
-        print("Save complete.")
-    else:
-        print("No grasps available to save.")
-
-
 def create_control_panel():
     """Creates and runs the tkinter control panel."""
     root = tk.Tk()
-    root.title("Control Panel")
-
-    hello_button = tk.Button(
-        root, text="Print Hello", command=lambda: print("Hello World")
-    )
-    hello_button.pack(padx=20, pady=10)
-
-    save_button = tk.Button(root, text="Save Isaac Grasp", command=save_isaac_grasps)
-    save_button.pack(padx=20, pady=10)
-
-    root.mainloop()
+    panel = ControlPanel(root)
+    panel.run()
 
 
 def main():
