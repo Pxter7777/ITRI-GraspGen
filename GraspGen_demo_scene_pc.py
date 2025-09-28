@@ -29,6 +29,16 @@ from grasp_gen.utils.meshcat_utils import (
     visualize_pointcloud,
 )
 from grasp_gen.utils.point_cloud_utils import point_cloud_outlier_removal
+from grasp_gen.dataset.eval_utils import save_to_isaac_grasp_format
+
+
+class AppState:
+    def __init__(self):
+        self.grasps = None
+        self.grasp_conf = None
+
+
+app_state = AppState()
 
 
 def parse_args():
@@ -171,15 +181,15 @@ def generate_and_visualize_grasps(vis, obj_pc, grasp_sampler, gripper_name, args
     )
 
     if len(grasps) > 0:
-        grasp_conf = grasp_conf.cpu().numpy()
-        grasps = grasps.cpu().numpy()
-        grasps[:, 3, 3] = 1
+        app_state.grasp_conf = grasp_conf.cpu().numpy()
+        app_state.grasps = grasps.cpu().numpy()
+        app_state.grasps[:, 3, 3] = 1
         print(
-            f"[{method}] Scores with min {grasp_conf.min():.3f} and max {grasp_conf.max():.3f}"
+            f"[{method}] Scores with min {app_state.grasp_conf.min():.3f} and max {app_state.grasp_conf.max():.3f}"
         )
 
         map_method2color = {"GraspGen": [0, 185, 0]}
-        for j, grasp in enumerate(grasps):
+        for j, grasp in enumerate(app_state.grasps):
             color = map_method2color[method]
             visualize_grasp(
                 vis,
@@ -192,14 +202,38 @@ def generate_and_visualize_grasps(vis, obj_pc, grasp_sampler, gripper_name, args
         input("Press Enter to continue to next scene...")
     else:
         print(f"[{method}] No grasps found! Skipping to next scene...")
+        app_state.grasps = None
+        app_state.grasp_conf = None
+
+
+def save_isaac_grasps():
+    """Saves the current grasps to a YAML file in Isaac format."""
+    if app_state.grasps is not None and app_state.grasp_conf is not None:
+        output_path = "./output/test_isaac_grasp.yaml"
+        print(f"Saving {len(app_state.grasps)} grasps to {output_path}...")
+        save_to_isaac_grasp_format(
+            grasps=app_state.grasps,
+            confidences=app_state.grasp_conf,
+            output_path=output_path,
+        )
+        print("Save complete.")
+    else:
+        print("No grasps available to save.")
 
 
 def create_control_panel():
     """Creates and runs the tkinter control panel."""
     root = tk.Tk()
     root.title("Control Panel")
-    button = tk.Button(root, text="Print Hello", command=lambda: print("Hello World"))
-    button.pack(padx=20, pady=20)
+
+    hello_button = tk.Button(
+        root, text="Print Hello", command=lambda: print("Hello World")
+    )
+    hello_button.pack(padx=20, pady=10)
+
+    save_button = tk.Button(root, text="Save Isaac Grasp", command=save_isaac_grasps)
+    save_button.pack(padx=20, pady=10)
+
     root.mainloop()
 
 
