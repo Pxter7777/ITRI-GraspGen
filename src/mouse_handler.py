@@ -6,6 +6,7 @@ box_start_point = (-1, -1)
 box_end_point = (-1, -1)
 box_defined = False
 
+
 def select_box(event, x, y, flags, param):
     """Mouse callback function to select a bounding box."""
     global drawing_box, box_start_point, box_end_point, box_defined
@@ -31,12 +32,14 @@ def select_box(event, x, y, flags, param):
             box_start_point = (-1, -1)
             box_end_point = (-1, -1)
 
+
 def reset_box():
     global box_defined, drawing_box, box_start_point, box_end_point
     box_defined = False
     drawing_box = False
     box_start_point = (-1, -1)
     box_end_point = (-1, -1)
+
 
 def get_box():
     global box_start_point, box_end_point

@@ -7,15 +7,21 @@ import logging
 import sys
 from . import config
 
+
 def load_sam_model():
     try:
-        sam_model = build_sam2(config.SAM2_CFG, config.SAM2_CHECKPOINT).to(config.DEVICE)
+        sam_model = build_sam2(config.SAM2_CFG, config.SAM2_CHECKPOINT).to(
+            config.DEVICE
+        )
         sam_predictor = SAM2ImagePredictor(sam_model)
         return sam_predictor
     except Exception as e:
         logging.error(f"Error loading SAM2 model: {e}")
-        logging.error(f"Please check your checkpoint ('{config.SAM2_CHECKPOINT}') and config ('{config.SAM2_CFG}') paths.")
+        logging.error(
+            f"Please check your checkpoint ('{config.SAM2_CHECKPOINT}') and config ('{config.SAM2_CFG}') paths."
+        )
         sys.exit(1)
+
 
 def run_sam2(predictor, image_rgb, box, iterations=6):
     predictor.set_image(image_rgb)
