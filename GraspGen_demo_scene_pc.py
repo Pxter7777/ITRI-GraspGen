@@ -18,7 +18,6 @@ import webbrowser
 import atexit
 import tkinter as tk
 from threading import Thread
-import datetime
 
 import numpy as np
 import torch
@@ -117,8 +116,10 @@ class ControlPanel:
                 if not filename.endswith(".yaml"):
                     filename += ".yaml"
             else:
-                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = f"isaac_grasp_{timestamp}.yaml"
+                input_filename = self.selected_file.get()
+                base_name = os.path.basename(input_filename)
+                timestamp_from_file = os.path.splitext(base_name)[0]
+                filename = f"isaac_grasp_{timestamp_from_file}.yaml"
 
             output_path = os.path.join("output", filename)
             print(f"Saving {len(app_state.grasps)} grasps to {output_path}...")
@@ -305,14 +306,10 @@ def generate_and_visualize_grasps(vis, obj_pc, grasp_sampler, gripper_name, args
         app_state.grasp_conf = None
 
 
-def create_control_panel(
-    vis, json_files, grasp_sampler, gripper_name, args
-):
+def create_control_panel(vis, json_files, grasp_sampler, gripper_name, args):
     """Creates and runs the tkinter control panel."""
     root = tk.Tk()
-    panel = ControlPanel(
-        root, vis, json_files, grasp_sampler, gripper_name, args
-    )
+    panel = ControlPanel(root, vis, json_files, grasp_sampler, gripper_name, args)
     panel.run()
 
 
@@ -352,7 +349,9 @@ def main():
     # If a filename is provided, load it. Otherwise, the GUI will handle it.
     if args.filename:
         if os.path.exists(args.filename):
-            load_and_process_scene(vis, args.filename, grasp_sampler, gripper_name, args)
+            load_and_process_scene(
+                vis, args.filename, grasp_sampler, gripper_name, args
+            )
         else:
             print(f"File not found: {args.filename}")
 
