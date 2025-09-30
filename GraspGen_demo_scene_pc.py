@@ -43,17 +43,37 @@ app_state = AppState()
 
 
 class ControlPanel:
-    def __init__(self, root):
+    def __init__(
+        self,
+        root,
+        vis,
+        json_files,
+        grasp_sampler,
+        gripper_name,
+        args,
+    ):
         self.root = root
+        self.vis = vis
+        self.json_files = json_files
+        self.grasp_sampler = grasp_sampler
+        self.gripper_name = gripper_name
+        self.args = args
         self.root.title("Control Panel")
 
         self.custom_filename_var = tk.BooleanVar()
         self.filename_entry_var = tk.StringVar()
+        self.selected_file = tk.StringVar()
 
-        hello_button = tk.Button(
-            self.root, text="Print Hello", command=lambda: print("Hello World")
+        # Dropdown for JSON files
+        self.selected_file.set(json_files[0] if json_files else "")
+        self.json_dropdown = tk.OptionMenu(self.root, self.selected_file, *json_files)
+        self.json_dropdown.pack(padx=20, pady=5)
+
+        # Load button
+        self.load_button = tk.Button(
+            self.root, text="Load Scene", command=self.load_scene
         )
-        hello_button.pack(padx=20, pady=5)
+        self.load_button.pack(padx=20, pady=5)
 
         save_button = tk.Button(
             self.root, text="Save Isaac Grasp", command=self.save_isaac_grasps
@@ -72,6 +92,17 @@ class ControlPanel:
             self.root, textvariable=self.filename_entry_var, state=tk.DISABLED
         )
         self.filename_entry.pack(padx=20, pady=5)
+
+    def load_scene(self):
+        selected = self.selected_file.get()
+        if selected:
+            load_and_process_scene(
+                self.vis,
+                selected,
+                self.grasp_sampler,
+                self.gripper_name,
+                self.args,
+            )
 
     def toggle_filename_entry(self):
         if self.custom_filename_var.get():
@@ -142,6 +173,12 @@ def parse_args():
         type=int,
         default=-1,
         help="Number of top grasps to return when return_topk is True",
+    )
+    parser.add_argument(
+        "--filename",
+        type=str,
+        default="",
+        help="Specific JSON file to process. If not specified, a GUI will be presented to choose from sample_data_dir",
     )
     return parser.parse_args()
 
@@ -262,18 +299,27 @@ def generate_and_visualize_grasps(vis, obj_pc, grasp_sampler, gripper_name, args
                 gripper_name=gripper_name,
                 linewidth=1.5,
             )
-        input("Press Enter to continue to next scene...")
     else:
         print(f"[{method}] No grasps found! Skipping to next scene...")
         app_state.grasps = None
         app_state.grasp_conf = None
 
 
-def create_control_panel():
+def create_control_panel(
+    vis, json_files, grasp_sampler, gripper_name, args
+):
     """Creates and runs the tkinter control panel."""
     root = tk.Tk()
-    panel = ControlPanel(root)
+    panel = ControlPanel(
+        root, vis, json_files, grasp_sampler, gripper_name, args
+    )
     panel.run()
+
+
+def load_and_process_scene(vis, json_file, grasp_sampler, gripper_name, args):
+    """Loads a scene, processes it, and visualizes grasps."""
+    obj_pc = process_and_visualize_scene(vis, json_file)
+    generate_and_visualize_grasps(vis, obj_pc, grasp_sampler, gripper_name, args)
 
 
 def main():
@@ -281,13 +327,13 @@ def main():
     start_meshcat_server()
     open_meshcat_url("http://127.0.0.1:7000/static/")
 
-    gui_thread = Thread(target=create_control_panel, daemon=True)
-    gui_thread.start()
-
     args = parse_args()
     validate_args(args)
 
     json_files = glob.glob(os.path.join(args.sample_data_dir, "*.json"))
+    if not json_files:
+        print(f"No JSON files found in {args.sample_data_dir}")
+        return
 
     grasp_cfg = load_grasp_cfg(args.gripper_config)
     gripper_name = grasp_cfg.data.gripper_name
@@ -295,9 +341,27 @@ def main():
 
     vis = create_visualizer()
 
-    for json_file in json_files:
-        obj_pc = process_and_visualize_scene(vis, json_file)
-        generate_and_visualize_grasps(vis, obj_pc, grasp_sampler, gripper_name, args)
+    # Start the GUI in a separate thread.
+    gui_thread = Thread(
+        target=create_control_panel,
+        args=(vis, json_files, grasp_sampler, gripper_name, args),
+        daemon=True,
+    )
+    gui_thread.start()
+
+    # If a filename is provided, load it. Otherwise, the GUI will handle it.
+    if args.filename:
+        if os.path.exists(args.filename):
+            load_and_process_scene(vis, args.filename, grasp_sampler, gripper_name, args)
+        else:
+            print(f"File not found: {args.filename}")
+
+    # Keep the main thread alive to handle signals
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("Exiting...")
 
 
 if __name__ == "__main__":
