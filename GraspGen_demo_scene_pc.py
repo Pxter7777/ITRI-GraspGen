@@ -36,6 +36,10 @@ class AppState:
     def __init__(self):
         self.grasps = None
         self.grasp_conf = None
+        self.selected_grasps = []
+        self.current_grasp_index = 0
+        self.display_selected_grasps = True
+        self.display_non_selected_grasps = True
 
 
 app_state = AppState()
@@ -62,6 +66,8 @@ class ControlPanel:
         self.custom_filename_var = tk.BooleanVar()
         self.filename_entry_var = tk.StringVar()
         self.selected_file = tk.StringVar()
+        self.display_selected_var = tk.BooleanVar(value=True)
+        self.display_non_selected_var = tk.BooleanVar(value=True)
 
         # Dropdown for JSON files
         self.selected_file.set(json_files[0] if json_files else "")
@@ -92,9 +98,42 @@ class ControlPanel:
         )
         self.filename_entry.pack(padx=20, pady=5)
 
+        self.display_selected_checkbox = tk.Checkbutton(
+            self.root,
+            text="Display Selected Grasps",
+            var=self.display_selected_var,
+            command=self.toggle_grasp_display,
+        )
+        self.display_selected_checkbox.pack(pady=5)
+
+        self.display_non_selected_checkbox = tk.Checkbutton(
+            self.root,
+            text="Display Non-Selected Grasps",
+            var=self.display_non_selected_var,
+            command=self.toggle_grasp_display,
+        )
+        self.display_non_selected_checkbox.pack(pady=5)
+
+        # Grasp navigation frame
+        nav_frame = tk.Frame(self.root)
+        nav_frame.pack(pady=5)
+
+        self.prev_button = tk.Button(nav_frame, text="<", command=self.prev_grasp)
+        self.prev_button.pack(side=tk.LEFT, padx=5)
+
+        self.add_grasp_button = tk.Button(
+            nav_frame, text="Add Grasp", command=self.select_grasp
+        )
+        self.add_grasp_button.pack(side=tk.LEFT, padx=5)
+
+        self.next_button = tk.Button(nav_frame, text=">", command=self.next_grasp)
+        self.next_button.pack(side=tk.LEFT, padx=5)
+
     def load_scene(self):
         selected = self.selected_file.get()
         if selected:
+            app_state.selected_grasps = []
+            app_state.current_grasp_index = 0
             load_and_process_scene(
                 self.vis,
                 selected,
@@ -122,10 +161,19 @@ class ControlPanel:
                 filename = f"isaac_grasp_{timestamp_from_file}.yaml"
 
             output_path = os.path.join("output", filename)
-            print(f"Saving {len(app_state.grasps)} grasps to {output_path}...")
+
+            selected_grasps_indices = app_state.selected_grasps
+            if not selected_grasps_indices:
+                print("No selected grasps to save.")
+                return
+
+            selected_grasps = app_state.grasps[selected_grasps_indices]
+            selected_confs = app_state.grasp_conf[selected_grasps_indices]
+
+            print(f"Saving {len(selected_grasps)} grasps to {output_path}...")
             save_to_isaac_grasp_format(
-                grasps=app_state.grasps,
-                confidences=app_state.grasp_conf,
+                grasps=selected_grasps,
+                confidences=selected_confs,
                 output_path=output_path,
             )
             print("Save complete.")
@@ -134,6 +182,37 @@ class ControlPanel:
 
     def run(self):
         self.root.mainloop()
+
+    def next_grasp(self, event=None):
+        if app_state.grasps is not None:
+            app_state.current_grasp_index = (app_state.current_grasp_index + 1) % len(
+                app_state.grasps
+            )
+            self._update_grasps()
+
+    def prev_grasp(self, event=None):
+        if app_state.grasps is not None:
+            app_state.current_grasp_index = (app_state.current_grasp_index - 1) % len(
+                app_state.grasps
+            )
+            self._update_grasps()
+
+    def select_grasp(self, event=None):
+        if app_state.grasps is not None:
+            if app_state.current_grasp_index not in app_state.selected_grasps:
+                app_state.selected_grasps.append(app_state.current_grasp_index)
+            self._update_grasps()
+
+    def toggle_grasp_display(self):
+        app_state.display_selected_grasps = self.display_selected_var.get()
+        app_state.display_non_selected_grasps = self.display_non_selected_var.get()
+        self._update_grasps()
+
+    def _update_grasps(self):
+        update_grasp_visualization(
+            self.vis,
+            self.gripper_name,
+        )
 
 
 def parse_args():
@@ -270,6 +349,35 @@ def process_and_visualize_scene(vis, json_file):
     return obj_pc
 
 
+def update_grasp_visualization(vis, gripper_name):
+    if app_state.grasps is None:
+        return
+
+    vis["GraspGen"].delete()
+
+    for j, grasp in enumerate(app_state.grasps):
+        is_selected = j in app_state.selected_grasps
+        is_current = j == app_state.current_grasp_index
+
+        if (is_selected and app_state.display_selected_grasps) or (
+            not is_selected and app_state.display_non_selected_grasps
+        ):
+            color = [0, 185, 0]  # Default color for non-selected grasps
+            if is_current:
+                color = [255, 0, 0]  # Highlight color for current grasp
+            elif is_selected:
+                color = [0, 0, 255]  # Color for other selected grasps
+
+            visualize_grasp(
+                vis,
+                f"GraspGen/{j:03d}/grasp",
+                grasp,
+                color=color,
+                gripper_name=gripper_name,
+                linewidth=2.5 if is_current else 1.5,
+            )
+
+
 def generate_and_visualize_grasps(vis, obj_pc, grasp_sampler, gripper_name, args):
     """Generates grasps and visualizes them."""
     method = "GraspGen"
@@ -288,18 +396,7 @@ def generate_and_visualize_grasps(vis, obj_pc, grasp_sampler, gripper_name, args
         print(
             f"[{method}] Scores with min {app_state.grasp_conf.min():.3f} and max {app_state.grasp_conf.max():.3f}"
         )
-
-        map_method2color = {"GraspGen": [0, 185, 0]}
-        for j, grasp in enumerate(app_state.grasps):
-            color = map_method2color[method]
-            visualize_grasp(
-                vis,
-                f"{method}/{j:03d}/grasp",
-                grasp,
-                color=color,
-                gripper_name=gripper_name,
-                linewidth=1.5,
-            )
+        update_grasp_visualization(vis, gripper_name)
     else:
         print(f"[{method}] No grasps found! Skipping to next scene...")
         app_state.grasps = None
