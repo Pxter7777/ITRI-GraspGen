@@ -110,8 +110,11 @@ def save_scene_and_obj(
         scene_colors,
         current_time_str,
     )
-    save_obj_mesh(
-        args.out_dir, object_points, object_colors, combined_vis, current_time_str
+    save_mesh(
+        args.out_dir, object_points, object_colors, combined_vis, current_time_str, "object"
+    )
+    save_mesh(
+        args.out_dir, scene_points, scene_colors, combined_vis, current_time_str, "scene"
     )
 
 
@@ -190,7 +193,7 @@ def save_e57_object_and_scene(
     logging.info("Scene saved to e57")
 
 
-def save_obj_mesh(out_dir, object_points, object_colors, combined_vis, timestamp):
+def save_mesh(out_dir, object_points, object_colors, combined_vis, timestamp, name):
     """Saves the segmented object as a mesh in an .obj file."""
     try:
         segmented_points_np = np.array(object_points)
@@ -223,7 +226,7 @@ def save_obj_mesh(out_dir, object_points, object_colors, combined_vis, timestamp
         ]
         mesh.vertex_colors = o3d.utility.Vector3dVector(mesh_colors)
 
-        mesh_filename = f"segmented_mesh_{timestamp}.obj"
+        mesh_filename = f"segmented_{name}_{timestamp}.obj"
         mesh_filepath = os.path.join(out_dir, mesh_filename)
 
         o3d.io.write_triangle_mesh(mesh_filepath, mesh, write_vertex_colors=True)
