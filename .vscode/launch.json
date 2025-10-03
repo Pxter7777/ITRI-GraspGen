@@ -15,5 +15,17 @@
                 "0"
             ]
         },
+        {
+            "name": "main_zed.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/main_zed.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--erosion_iterations",
+                "0"
+            ]
+        },
     ]
+    
 }

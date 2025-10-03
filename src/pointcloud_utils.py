@@ -111,10 +111,20 @@ def save_scene_and_obj(
         current_time_str,
     )
     save_mesh(
-        args.out_dir, object_points, object_colors, combined_vis, current_time_str, "object"
+        args.out_dir,
+        object_points,
+        object_colors,
+        combined_vis,
+        current_time_str,
+        "object",
     )
     save_mesh(
-        args.out_dir, scene_points, scene_colors, combined_vis, current_time_str, "scene"
+        args.out_dir,
+        scene_points,
+        scene_colors,
+        combined_vis,
+        current_time_str,
+        "scene",
     )
 
 
