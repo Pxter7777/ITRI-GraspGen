@@ -10,10 +10,10 @@ import json
 import datetime
 import pye57
 
+from src.stereo_utils2 import FoundationStereoModel
 from src import (
     mouse_handler,
     sam_utils,
-    stereo_utils,
     visualization,
 )
 from src.zed_utils import ZedCamera
@@ -114,7 +114,9 @@ def save_e57_object_and_scene(
     logging.info("Scene saved to e57")
 
 
-def save_mesh(out_dir, object_points, object_colors, combined_vis, timestamp, name):
+def save_mesh(
+    out_dir, object_points, object_colors, combined_vis, timestamp, name, voxel_size=None
+):
     """Saves the segmented object as a mesh in an .obj file."""
     try:
         segmented_points_np = np.array(object_points)
@@ -127,6 +129,9 @@ def save_mesh(out_dir, object_points, object_colors, combined_vis, timestamp, na
         segmented_pcd = o3d.geometry.PointCloud()
         segmented_pcd.points = o3d.utility.Vector3dVector(segmented_points_np)
         segmented_pcd.colors = o3d.utility.Vector3dVector(segmented_colors_rgb / 255.0)
+
+        if voxel_size:
+            segmented_pcd = segmented_pcd.voxel_down_sample(voxel_size)
 
         segmented_pcd.estimate_normals(
             search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.01, max_nn=30)
@@ -165,8 +170,7 @@ def save_mesh(out_dir, object_points, object_colors, combined_vis, timestamp, na
 def save_zed_point_cloud(
     args,
     K_cam,
-    baseline,
-    disp,
+    depth,
     color_np_org,
     mask,
     combined_vis,
@@ -175,7 +179,6 @@ def save_zed_point_cloud(
 
     K_scaled_cam = K_cam.copy()
     K_scaled_cam[:2, :] *= args.scale
-    depth = K_scaled_cam[0, 0] * baseline / (disp + 1e-6)
 
     xyz_map = depth2xyzmap(depth, K_scaled_cam)
     points_in_cam_view = xyz_map.reshape(-1, 3)
@@ -266,6 +269,7 @@ def save_zed_point_cloud(
         combined_vis,
         current_time_str,
         "scene",
+        voxel_size=0.01,
     )
 
 
@@ -308,14 +312,14 @@ def main():
     os.makedirs(args.out_dir, exist_ok=True)
 
     # ---------- Load Models ----------
-    stereo_model, stereo_args = stereo_utils.load_stereo_model(args)
+    stereo_model = FoundationStereoModel(args)
     sam_predictor = sam_utils.load_sam_model()
 
     # ---------- ZED Init ----------
     zed = ZedCamera()
 
     # ---------- Window and Mouse Callback Setup ----------
-    win_name = "RGB + Mask | Disparity"
+    win_name = "RGB + Mask | Depth"
     cv2.namedWindow(win_name)
     cv2.setMouseCallback(win_name, mouse_handler.select_box)
     logging.info("Streaming... Draw a box with your mouse.")
@@ -360,19 +364,19 @@ def main():
                     )
 
                 # ---------- FoundationStereo Inference ----------
-                disp, (H_scaled, W_scaled) = stereo_utils.run_stereo_inference(
-                    stereo_model, left_gray, right_gray, stereo_args
+                depth, (H_scaled, W_scaled) = stereo_model.run_inference(
+                    left_gray, right_gray, zed.K_left, zed.baseline
                 )
 
-                vis_disp = visualization.vis_disparity(disp)
-                vis_disp_resized = cv2.resize(
-                    vis_disp,
-                    fx=1 / stereo_args.scale,
-                    fy=1 / stereo_args.scale,
+                vis_depth = visualization.vis_depth(depth)
+                vis_depth_resized = cv2.resize(
+                    vis_depth,
+                    fx=1 / stereo_model.args.scale,
+                    fy=1 / stereo_model.args.scale,
                     dsize=None,
                 )
 
-                combined_vis = np.concatenate([display_frame, vis_disp_resized], axis=1)
+                combined_vis = np.concatenate([display_frame, vis_depth_resized], axis=1)
                 cv2.imshow(win_name, combined_vis)
                 key = cv2.waitKey(1)
 
@@ -382,10 +386,9 @@ def main():
 
                 if key == 32 and mouse_handler.box_defined:
                     save_zed_point_cloud(
-                        stereo_args,
+                        stereo_model.args,
                         zed.K_left,
-                        zed.baseline,
-                        disp,
+                        depth,
                         color_np_org,
                         mask,
                         combined_vis,
