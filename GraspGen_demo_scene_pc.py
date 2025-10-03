@@ -28,7 +28,7 @@ from grasp_gen.utils.meshcat_utils import (
     visualize_grasp,
     visualize_pointcloud,
 )
-from grasp_gen.utils.point_cloud_utils import point_cloud_outlier_removal
+from grasp_gen.utils.point_cloud_utils import point_cloud_outlier_removal_with_color
 from grasp_gen.dataset.eval_utils import save_to_isaac_grasp_format
 
 
@@ -341,8 +341,9 @@ def process_and_visualize_scene(vis, json_file):
 
     visualize_pointcloud(vis, "pc_scene", xyz_scene, xyz_scene_color, size=0.0025)
 
-    obj_pc, _ = point_cloud_outlier_removal(torch.from_numpy(obj_pc))
+    obj_pc, _, obj_pc_color, _ = point_cloud_outlier_removal_with_color(torch.from_numpy(obj_pc), torch.from_numpy(obj_pc_color))
     obj_pc = obj_pc.cpu().numpy()
+    obj_pc_color = obj_pc_color.cpu().numpy()
 
     visualize_pointcloud(vis, "pc_obj", obj_pc, obj_pc_color, size=0.005)
 
