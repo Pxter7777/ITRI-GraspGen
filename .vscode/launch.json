@@ -15,5 +15,30 @@
                 "0"
             ]
         },
+        {
+            "name": "main_zed.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/main_zed.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--erosion_iterations",
+                "0"
+            ]
+        },
+        {
+            "name": "GraspGen_demo_scene_pc.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/GraspGen_demo_scene_pc.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--sample_data_dir", "./output",
+                "--gripper_config", "../GraspGenModels/checkpoints/graspgen_franka_panda.yml",
+                "--return_topk",
+                "--topk_num_grasps", "5"
+            ]
+        },
     ]
+    
 }

@@ -33,3 +33,20 @@ def vis_disparity(disp, vmax_percent=95):
     disp_vis = cv2.applyColorMap(disp_vis, cv2.COLORMAP_JET)
     disp_vis[disp == np.inf] = [0, 0, 0]
     return disp_vis
+
+def vis_depth(depth, vmax_percent=95):
+    """
+    vmax: max value of depth
+    """
+    depth_vis = depth.copy()
+    depth_vis[depth_vis == np.inf] = 0
+
+    if vmax_percent != 100:
+        vmax = np.percentile(depth_vis, vmax_percent)
+        depth_vis[depth_vis > vmax] = vmax
+
+    depth_vis = depth_vis / (vmax + 1e-6)
+    depth_vis = (depth_vis * 255).astype(np.uint8)
+    depth_vis = cv2.applyColorMap(depth_vis, cv2.COLORMAP_JET)
+    depth_vis[depth == np.inf] = [0, 0, 0]
+    return depth_vis
