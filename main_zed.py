@@ -16,6 +16,7 @@ from src import (
     stereo_utils,
     visualization,
 )
+from src.zed_utils import ZedCamera
 
 
 def set_logging_format():
@@ -27,42 +28,6 @@ def set_logging_format():
 def set_seed(seed):
     torch.manual_seed(seed)
     np.random.seed(seed)
-
-
-def initialize_zed():
-    zed = sl.Camera()
-
-    init_params = sl.InitParameters()
-    init_params.camera_resolution = sl.RESOLUTION.VGA  # Use VGA video mode
-    init_params.camera_fps = 30
-    init_params.depth_mode = sl.DEPTH_MODE.NONE
-
-    err = zed.open(init_params)
-    if err != sl.ERROR_CODE.SUCCESS:
-        print(f"Failed to open ZED camera: {err}")
-        exit(1)
-
-    info = zed.get_camera_information()
-    cam_params = info.camera_configuration.calibration_parameters
-
-    K_left = np.array(
-        [
-            [cam_params.left_cam.fx, 0, cam_params.left_cam.cx],
-            [0, cam_params.left_cam.fy, cam_params.left_cam.cy],
-            [0, 0, 1],
-        ]
-    )
-
-    baseline = (
-        info.camera_configuration.calibration_parameters.get_camera_baseline() / 1000.0
-    )
-
-    W = zed.get_camera_information().camera_configuration.resolution.width
-    H = zed.get_camera_information().camera_configuration.resolution.height
-
-    ext_ir1_to_color = np.identity(4)
-
-    return zed, K_left, K_left, ext_ir1_to_color, baseline, (W, H)
 
 
 def depth2xyzmap(depth, K):
@@ -347,7 +312,7 @@ def main():
     sam_predictor = sam_utils.load_sam_model()
 
     # ---------- ZED Init ----------
-    zed, K_left, K_color, ext_ir1_to_color, baseline, (W, H) = initialize_zed()
+    zed = ZedCamera()
 
     # ---------- Window and Mouse Callback Setup ----------
     win_name = "RGB + Mask | Disparity"
@@ -355,17 +320,10 @@ def main():
     cv2.setMouseCallback(win_name, mouse_handler.select_box)
     logging.info("Streaming... Draw a box with your mouse.")
     logging.info("Press SPACE to save, 'r' to reset box, ESC to exit.")
-
-    # Create ZED image objects
-    left_image = sl.Mat()
-    right_image = sl.Mat()
-
     try:
         while True:
-            if zed.grab() == sl.ERROR_CODE.SUCCESS:
-                zed.retrieve_image(left_image, sl.VIEW.LEFT)
-                zed.retrieve_image(right_image, sl.VIEW.RIGHT)
-
+            zed_status, left_image, right_image = zed.capture_images()
+            if zed_status == sl.ERROR_CODE.SUCCESS:
                 # Convert to numpy arrays
                 left_gray = cv2.cvtColor(left_image.get_data(), cv2.COLOR_BGRA2GRAY)
                 right_gray = cv2.cvtColor(right_image.get_data(), cv2.COLOR_BGRA2GRAY)
@@ -425,8 +383,8 @@ def main():
                 if key == 32 and mouse_handler.box_defined:
                     save_zed_point_cloud(
                         stereo_args,
-                        K_left,
-                        baseline,
+                        zed.K_left,
+                        zed.baseline,
                         disp,
                         color_np_org,
                         mask,
