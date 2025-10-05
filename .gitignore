@@ -1,6 +1,8 @@
 output/*
 old_output/*
 picked/*
+sam2_checkpoints/*
+!sam2_checkpoints/download_ckpts.sh
 #FoundationStereo/
 __pycache__/
 
