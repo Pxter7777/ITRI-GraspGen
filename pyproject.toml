@@ -2,6 +2,10 @@
 [tool.ruff]
 
 target-version = "py311"
+extend-exclude = [
+	"FoundationStereo",
+	"GraspGen"
+]
 
 [tool.ruff.lint]
 
@@ -10,10 +14,6 @@ extend-select = [
   "C",
   "I",
   "W",
-]
-
-exclude = [
-	"FoundationStereo",
 ]
 
 ignore = [

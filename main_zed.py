@@ -115,7 +115,13 @@ def save_e57_object_and_scene(
 
 
 def save_mesh(
-    out_dir, object_points, object_colors, combined_vis, timestamp, name, voxel_size=None
+    out_dir,
+    object_points,
+    object_colors,
+    combined_vis,
+    timestamp,
+    name,
+    voxel_size=None,
 ):
     """Saves the segmented object as a mesh in an .obj file."""
     try:
@@ -376,7 +382,9 @@ def main():
                     dsize=None,
                 )
 
-                combined_vis = np.concatenate([display_frame, vis_depth_resized], axis=1)
+                combined_vis = np.concatenate(
+                    [display_frame, vis_depth_resized], axis=1
+                )
                 cv2.imshow(win_name, combined_vis)
                 key = cv2.waitKey(1)
 

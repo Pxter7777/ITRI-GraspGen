@@ -34,6 +34,7 @@ def vis_disparity(disp, vmax_percent=95):
     disp_vis[disp == np.inf] = [0, 0, 0]
     return disp_vis
 
+
 def vis_depth(depth, vmax_percent=95):
     """
     vmax: max value of depth

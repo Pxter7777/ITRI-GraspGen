@@ -7,6 +7,7 @@ from FoundationStereo.core.utils.utils import InputPadder
 import cv2
 import numpy as np
 
+
 class FoundationStereoModel:
     """A class to encapsulate the FoundationStereo model and its inference."""
 
@@ -50,8 +51,12 @@ class FoundationStereoModel:
         """
         ir1_np_bgr = cv2.cvtColor(ir1_np, cv2.COLOR_GRAY2BGR)
         ir2_np_bgr = cv2.cvtColor(ir2_np, cv2.COLOR_GRAY2BGR)
-        img0 = cv2.resize(ir1_np_bgr, fx=self.args.scale, fy=self.args.scale, dsize=None)
-        img1 = cv2.resize(ir2_np_bgr, fx=self.args.scale, fy=self.args.scale, dsize=None)
+        img0 = cv2.resize(
+            ir1_np_bgr, fx=self.args.scale, fy=self.args.scale, dsize=None
+        )
+        img1 = cv2.resize(
+            ir2_np_bgr, fx=self.args.scale, fy=self.args.scale, dsize=None
+        )
         H_scaled, W_scaled = img0.shape[:2]
 
         img0_t = torch.as_tensor(img0).cuda().float()[None].permute(0, 3, 1, 2)
@@ -60,7 +65,9 @@ class FoundationStereoModel:
         img0_t, img1_t = padder.pad(img0_t, img1_t)
 
         with torch.cuda.amp.autocast(True):
-            disp = self.model.forward(img0_t, img1_t, iters=self.args.valid_iters, test_mode=True)
+            disp = self.model.forward(
+                img0_t, img1_t, iters=self.args.valid_iters, test_mode=True
+            )
 
         disp = padder.unpad(disp.float()).data.cpu().numpy().reshape(H_scaled, W_scaled)
 

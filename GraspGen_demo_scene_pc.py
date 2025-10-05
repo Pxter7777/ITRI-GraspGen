@@ -341,7 +341,9 @@ def process_and_visualize_scene(vis, json_file):
 
     visualize_pointcloud(vis, "pc_scene", xyz_scene, xyz_scene_color, size=0.0025)
 
-    obj_pc, _, obj_pc_color, _ = point_cloud_outlier_removal_with_color(torch.from_numpy(obj_pc), torch.from_numpy(obj_pc_color))
+    obj_pc, _, obj_pc_color, _ = point_cloud_outlier_removal_with_color(
+        torch.from_numpy(obj_pc), torch.from_numpy(obj_pc_color)
+    )
     obj_pc = obj_pc.cpu().numpy()
     obj_pc_color = obj_pc_color.cpu().numpy()
 
