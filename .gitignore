@@ -1,7 +1,6 @@
 output/*
 old_output/*
 picked/*
-FoundationStereo/
 __pycache__/
 
 !.gitkeep

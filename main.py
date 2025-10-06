@@ -5,7 +5,12 @@ import numpy as np
 import cv2
 import torch
 
+import sys
+
+sys.path.insert(0, os.path.expanduser("~/Third_Party"))
+
 from src import (
+    config,
     mouse_handler,
     sam_utils,
     realsense_utils,
@@ -28,10 +33,9 @@ def set_seed(seed):
 
 def main():
     parser = argparse.ArgumentParser()
-    code_dir = os.path.dirname(os.path.realpath(__file__))
     parser.add_argument(
         "--ckpt_dir",
-        default=f"{code_dir}/FoundationStereo/pretrained_models/23-51-11/model_best_bp2.pth",
+        default=str(config.FOUNDATIONSTEREO_CHECKPOINT),
         type=str,
         help="pretrained model path",
     )
@@ -54,7 +58,7 @@ def main():
     parser.add_argument(
         "--erosion_iterations",
         type=int,
-        default=6,
+        default=0,  # can be 6
         help="Number of erosion iterations for the SAM mask.",
     )
     args = parser.parse_args()

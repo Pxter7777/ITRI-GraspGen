@@ -1,5 +1,6 @@
 {
     "python.analysis.extraPaths": [
-        "~/GraspGen"
+        "~/Third_Party/GraspGen",
+        "~/Third_Party"
     ]
 }

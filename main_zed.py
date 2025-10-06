@@ -9,9 +9,13 @@ import open3d as o3d
 import json
 import datetime
 import pye57
+import sys
+
+sys.path.insert(0, os.path.expanduser("~/Third_Party"))
 
 from src.stereo_utils2 import FoundationStereoModel
 from src import (
+    config,
     mouse_handler,
     sam_utils,
     visualization,
@@ -115,7 +119,13 @@ def save_e57_object_and_scene(
 
 
 def save_mesh(
-    out_dir, object_points, object_colors, combined_vis, timestamp, name, voxel_size=None
+    out_dir,
+    object_points,
+    object_colors,
+    combined_vis,
+    timestamp,
+    name,
+    voxel_size=None,
 ):
     """Saves the segmented object as a mesh in an .obj file."""
     try:
@@ -275,13 +285,14 @@ def save_zed_point_cloud(
 
 def main():
     parser = argparse.ArgumentParser()
-    code_dir = os.path.dirname(os.path.realpath(__file__))
+
     parser.add_argument(
         "--ckpt_dir",
-        default=f"{code_dir}/FoundationStereo/pretrained_models/23-51-11/model_best_bp2.pth",
+        default=str(config.FOUNDATIONSTEREO_CHECKPOINT),
         type=str,
         help="pretrained model path",
     )
+
     parser.add_argument(
         "--scale",
         default=1,
@@ -301,7 +312,7 @@ def main():
     parser.add_argument(
         "--erosion_iterations",
         type=int,
-        default=6,
+        default=0,  # can be 6
         help="Number of erosion iterations for the SAM mask.",
     )
     args = parser.parse_args()
@@ -376,7 +387,9 @@ def main():
                     dsize=None,
                 )
 
-                combined_vis = np.concatenate([display_frame, vis_depth_resized], axis=1)
+                combined_vis = np.concatenate(
+                    [display_frame, vis_depth_resized], axis=1
+                )
                 cv2.imshow(win_name, combined_vis)
                 key = cv2.waitKey(1)
 

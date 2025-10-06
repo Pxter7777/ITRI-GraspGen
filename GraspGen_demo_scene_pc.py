@@ -30,6 +30,7 @@ from grasp_gen.utils.meshcat_utils import (
 )
 from grasp_gen.utils.point_cloud_utils import point_cloud_outlier_removal_with_color
 from grasp_gen.dataset.eval_utils import save_to_isaac_grasp_format
+from src import config
 
 
 class AppState:
@@ -222,13 +223,13 @@ def parse_args():
     parser.add_argument(
         "--sample_data_dir",
         type=str,
-        default="",
+        default=str(config.GRASPGEN_SCENE_DIR),
         help="Directory containing JSON files with point cloud data",
     )
     parser.add_argument(
         "--gripper_config",
         type=str,
-        default="",
+        default=str(config.GRIPPER_CFG),
         help="Path to gripper configuration YAML file",
     )
     parser.add_argument(
@@ -251,7 +252,7 @@ def parse_args():
     parser.add_argument(
         "--topk_num_grasps",
         type=int,
-        default=-1,
+        default=5,
         help="Number of top grasps to return when return_topk is True",
     )
     parser.add_argument(
@@ -341,7 +342,9 @@ def process_and_visualize_scene(vis, json_file):
 
     visualize_pointcloud(vis, "pc_scene", xyz_scene, xyz_scene_color, size=0.0025)
 
-    obj_pc, _, obj_pc_color, _ = point_cloud_outlier_removal_with_color(torch.from_numpy(obj_pc), torch.from_numpy(obj_pc_color))
+    obj_pc, _, obj_pc_color, _ = point_cloud_outlier_removal_with_color(
+        torch.from_numpy(obj_pc), torch.from_numpy(obj_pc_color)
+    )
     obj_pc = obj_pc.cpu().numpy()
     obj_pc_color = obj_pc_color.cpu().numpy()
 
