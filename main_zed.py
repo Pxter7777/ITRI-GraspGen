@@ -264,6 +264,7 @@ def save_zed_point_cloud(
         scene_colors,
         current_time_str,
     )
+    """
     save_mesh(
         args.out_dir,
         object_points,
@@ -281,7 +282,7 @@ def save_zed_point_cloud(
         "scene",
         voxel_size=0.01,
     )
-
+    """
 
 def main():
     parser = argparse.ArgumentParser()
