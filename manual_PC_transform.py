@@ -12,6 +12,7 @@ from threading import Thread
 import glob
 
 import numpy as np
+import pye57
 
 from grasp_gen.utils.meshcat_utils import (
     create_visualizer,
@@ -64,9 +65,14 @@ class ControlPanel:
         self.rot_y_var = self.create_control(transform_frame, "Yaw:", -180, 180, 1, 7)
 
         self.save_button = tk.Button(
-            self.root, text="Save Transformed PC", command=self.save_transformed_pc
+            self.root, text="Save Transformed PC (JSON)", command=self.save_transformed_pc
         )
         self.save_button.pack(padx=20, pady=5)
+
+        self.save_e57_button = tk.Button(
+            self.root, text="Save as .e57", command=self.save_as_e57
+        )
+        self.save_e57_button.pack(padx=20, pady=5)
 
     def create_control(self, parent, label, from_, to, resolution, row):
         var = tk.DoubleVar()
@@ -156,6 +162,43 @@ class ControlPanel:
             json.dump(data_to_save, f, indent=4)
         print(f"Saved transformed point cloud and matrix to {output_path}")
 
+    def save_as_e57(self):
+        if app_state.object_pc is None and app_state.scene_pc is None:
+            print("No point cloud to save.")
+            return
+
+        input_filename = self.selected_file.get()
+        base_name = os.path.basename(input_filename)
+        name, ext = os.path.splitext(base_name)
+        output_filename = f"{name}_transformed.e57"
+        output_path = os.path.join("output", output_filename)
+        
+        os.makedirs("output", exist_ok=True)
+
+        pc_list = []
+        pc_color_list = []
+        if app_state.object_pc is not None:
+            pc_list.append(app_state.object_pc)
+            pc_color_list.append(app_state.object_pc_color)
+        if app_state.scene_pc is not None:
+            pc_list.append(app_state.scene_pc)
+            pc_color_list.append(app_state.scene_pc_color)
+        
+        combined_pc = np.concatenate(pc_list, axis=0)
+        combined_colors = np.concatenate(pc_color_list, axis=0)
+
+        e57_data = dict()
+        e57_data["cartesianX"] = combined_pc[:, 0]
+        e57_data["cartesianY"] = combined_pc[:, 1]
+        e57_data["cartesianZ"] = combined_pc[:, 2]
+        e57_data["colorRed"] = combined_colors[:, 0]
+        e57_data["colorGreen"] = combined_colors[:, 1]
+        e57_data["colorBlue"] = combined_colors[:, 2]
+
+        with pye57.E57(output_path, mode="w") as e57_write:
+            e57_write.write_scan_raw(e57_data)
+        
+        print(f"Saved combined transformed point cloud to {output_path}")
 
     def run(self):
         self.root.mainloop()
