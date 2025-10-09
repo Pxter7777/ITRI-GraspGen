@@ -52,29 +52,29 @@ class ControlPanel:
         # Transformation controls
         transform_frame = tk.Frame(self.root, borderwidth=2, relief="groove")
         transform_frame.pack(padx=10, pady=10)
-        
-        tk.Label(transform_frame, text="Translation").grid(row=0, column=0, columnspan=2)
-        self.trans_x = self.create_slider(transform_frame, "X:", -2.0, 2.0, 0.01, 1, self.on_transform_change)
-        self.trans_y = self.create_slider(transform_frame, "Y:", -2.0, 2.0, 0.01, 2, self.on_transform_change)
-        self.trans_z = self.create_slider(transform_frame, "Z:", -2.0, 2.0, 0.01, 3, self.on_transform_change)
 
-        tk.Label(transform_frame, text="Rotation (degrees)").grid(row=4, column=0, columnspan=2)
-        self.rot_r = self.create_slider(transform_frame, "Roll:", -180, 180, 1, 5, self.on_transform_change)
-        self.rot_p = self.create_slider(transform_frame, "Pitch:", -180, 180, 1, 6, self.on_transform_change)
-        self.rot_y = self.create_slider(transform_frame, "Yaw:", -180, 180, 1, 7, self.on_transform_change)
+        self.trans_x_var = self.create_control(transform_frame, "X:", -2.0, 2.0, 0.01, 1)
+        self.trans_y_var = self.create_control(transform_frame, "Y:", -2.0, 2.0, 0.01, 2)
+        self.trans_z_var = self.create_control(transform_frame, "Z:", -2.0, 2.0, 0.01, 3)
+        self.rot_r_var = self.create_control(transform_frame, "Roll:", -180, 180, 1, 5)
+        self.rot_p_var = self.create_control(transform_frame, "Pitch:", -180, 180, 1, 6)
+        self.rot_y_var = self.create_control(transform_frame, "Yaw:", -180, 180, 1, 7)
 
         self.save_button = tk.Button(
             self.root, text="Save Transformed PC", command=self.save_transformed_pc
         )
         self.save_button.pack(padx=20, pady=5)
 
-    def create_slider(self, parent, label, from_, to, resolution, row, command):
-        tk.Label(parent, text=label).grid(row=row, column=0)
-        slider = tk.Scale(parent, from_=from_, to=to, resolution=resolution, orient=tk.HORIZONTAL, length=200, command=command)
-        slider.grid(row=row, column=1)
-        return slider
+    def create_control(self, parent, label, from_, to, resolution, row):
+        var = tk.DoubleVar()
+        var.trace_add("write", self.on_transform_change)
 
-    def on_transform_change(self, value):
+        tk.Label(parent, text=label).grid(row=row, column=0)
+        tk.Scale(parent, from_=from_, to=to, resolution=resolution, orient=tk.HORIZONTAL, length=200, variable=var).grid(row=row, column=1)
+        tk.Entry(parent, textvariable=var, width=10).grid(row=row, column=2)
+        return var
+
+    def on_transform_change(self, *args):
         self.apply_transform()
 
     def load_scene(self):
@@ -87,12 +87,12 @@ class ControlPanel:
             return
 
         # Get values from sliders
-        tx = self.trans_x.get()
-        ty = self.trans_y.get()
-        tz = self.trans_z.get()
-        rr = self.rot_r.get()
-        rp = self.rot_p.get()
-        ry = self.rot_y.get()
+        tx = self.trans_x_var.get()
+        ty = self.trans_y_var.get()
+        tz = self.trans_z_var.get()
+        rr = self.rot_r_var.get()
+        rp = self.rot_p_var.get()
+        ry = self.rot_y_var.get()
 
         # Create transformation matrix
         translation_matrix = np.array([
