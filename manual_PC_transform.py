@@ -21,9 +21,12 @@ from scipy.spatial.transform import Rotation as R
 
 class AppState:
     def __init__(self):
-        self.pc = None
-        self.pc_color = None
-        self.original_pc = None
+        self.object_pc = None
+        self.object_pc_color = None
+        self.original_object_pc = None
+        self.scene_pc = None
+        self.scene_pc_color = None
+        self.original_scene_pc = None
         self.transformation = np.identity(4)
 
 app_state = AppState()
@@ -83,7 +86,7 @@ class ControlPanel:
             load_and_process_scene(self.vis, selected)
 
     def apply_transform(self):
-        if app_state.original_pc is None:
+        if app_state.original_object_pc is None and app_state.original_scene_pc is None:
             return
 
         # Get values from sliders
@@ -108,16 +111,23 @@ class ControlPanel:
         
         app_state.transformation = translation_matrix @ rotation_matrix
 
-        # Apply transformation
-        original_pc_homogeneous = np.hstack((app_state.original_pc, np.ones((app_state.original_pc.shape[0], 1))))
-        transformed_pc_homogeneous = (app_state.transformation @ original_pc_homogeneous.T).T
-        app_state.pc = transformed_pc_homogeneous[:, :3]
+        # Apply transformation to object pc
+        if app_state.original_object_pc is not None:
+            original_object_pc_homogeneous = np.hstack((app_state.original_object_pc, np.ones((app_state.original_object_pc.shape[0], 1))))
+            transformed_object_pc_homogeneous = (app_state.transformation @ original_object_pc_homogeneous.T).T
+            app_state.object_pc = transformed_object_pc_homogeneous[:, :3]
+
+        # Apply transformation to scene pc
+        if app_state.original_scene_pc is not None:
+            original_scene_pc_homogeneous = np.hstack((app_state.original_scene_pc, np.ones((app_state.original_scene_pc.shape[0], 1))))
+            transformed_scene_pc_homogeneous = (app_state.transformation @ original_scene_pc_homogeneous.T).T
+            app_state.scene_pc = transformed_scene_pc_homogeneous[:, :3]
 
         # Update visualization
         update_visualization(self.vis)
 
     def save_transformed_pc(self):
-        if app_state.pc is None:
+        if app_state.object_pc is None and app_state.scene_pc is None:
             print("No point cloud to save.")
             return
 
@@ -131,10 +141,15 @@ class ControlPanel:
 
         data_to_save = {
             "transformation_matrix": app_state.transformation.tolist(),
-            "point_cloud": {
-                "points": app_state.pc.tolist(),
-                "colors": app_state.pc_color.tolist()
-            }
+            "object_info": {
+                "pc": app_state.object_pc.tolist() if app_state.object_pc is not None else [],
+                "pc_color": app_state.object_pc_color.tolist() if app_state.object_pc_color is not None else []
+            },
+            "scene_info": {
+                "pc_color": [app_state.scene_pc.tolist()] if app_state.scene_pc is not None else [],
+                "img_color": [app_state.scene_pc_color.tolist()] if app_state.scene_pc_color is not None else []
+            },
+            "grasp_info": {"grasp_poses": [], "grasp_conf": []},
         }
 
         with open(output_path, 'w') as f:
@@ -203,45 +218,48 @@ def load_and_process_scene(vis, json_file):
     with open(json_file, "rb") as f:
         data = json.load(f)
 
-    pc_list = []
-    pc_color_list = []
+    # Reset state
+    app_state.object_pc = None
+    app_state.object_pc_color = None
+    app_state.original_object_pc = None
+    app_state.scene_pc = None
+    app_state.scene_pc_color = None
+    app_state.original_scene_pc = None
 
     if "object_info" in data and "pc" in data["object_info"] and len(data["object_info"]["pc"]) > 0:
-        pc_list.append(np.array(data["object_info"]["pc"]))
-        pc_color_list.append(np.array(data["object_info"]["pc_color"]))
+        app_state.original_object_pc = np.array(data["object_info"]["pc"])
+        app_state.object_pc = app_state.original_object_pc
+        app_state.object_pc_color = np.array(data["object_info"]["pc_color"])
 
     if "scene_info" in data and "pc_color" in data["scene_info"] and len(data["scene_info"]["pc_color"]) > 0:
-        # scene_info stores pc and color differently
-        scene_pc_with_color = np.array(data["scene_info"]["pc_color"][0])
-        scene_colors = np.array(data["scene_info"]["img_color"][0])
-        pc_list.append(scene_pc_with_color)
-        pc_color_list.append(scene_colors)
+        app_state.original_scene_pc = np.array(data["scene_info"]["pc_color"][0])
+        app_state.scene_pc = app_state.original_scene_pc
+        app_state.scene_pc_color = np.array(data["scene_info"]["img_color"][0])
 
-    if "point_cloud" in data: # for loading already transformed clouds
-        pc = np.array(data["point_cloud"]["points"])
-        pc_color = np.array(data["point_cloud"]["colors"])
-        app_state.original_pc = pc
-        app_state.pc = pc
-        app_state.pc_color = pc_color
-        update_visualization(vis)
-        return
-
-    if not pc_list:
+    if app_state.original_object_pc is None and app_state.original_scene_pc is None:
         print("Could not find point cloud data in JSON file.")
         return
-
-    pc = np.concatenate(pc_list, axis=0)
-    pc_color = np.concatenate(pc_color_list, axis=0)
-
-    app_state.original_pc = pc
-    app_state.pc = pc
-    app_state.pc_color = pc_color
     
     update_visualization(vis)
 
 def update_visualization(vis):
-    if app_state.pc is not None:
-        visualize_pointcloud(vis, "pointcloud", app_state.pc, app_state.pc_color, size=0.005)
+    pc_list = []
+    pc_color_list = []
+    if app_state.object_pc is not None:
+        pc_list.append(app_state.object_pc)
+        pc_color_list.append(app_state.object_pc_color)
+    if app_state.scene_pc is not None:
+        pc_list.append(app_state.scene_pc)
+        pc_color_list.append(app_state.scene_pc_color)
+
+    if not pc_list:
+        return
+        
+    pc = np.concatenate(pc_list, axis=0)
+    pc_color = np.concatenate(pc_color_list, axis=0)
+    
+    if pc is not None:
+        visualize_pointcloud(vis, "pointcloud", pc, pc_color, size=0.005)
 
 def create_control_panel(vis, json_files, args):
     root = tk.Tk()
