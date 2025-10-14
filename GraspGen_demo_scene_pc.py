@@ -37,9 +37,11 @@ from src import config
 class AppState:
     def __init__(self):
         self.grasps = None
+        self.qualified_grasps = None
+        self.selected_grasp_pool = None
         self.grasp_conf = None
         self.current_grasp_index = 0
-        self.display_unqualified_grasps = True
+        self.display_unqualified_grasps = False
 
 
 app_state = AppState()
@@ -64,7 +66,7 @@ class ControlPanel:
         self.root.title("Control Panel")
 
         self.custom_filename_var = tk.BooleanVar()
-        self.display_disqualified_var = tk.BooleanVar(value=True)
+        self.display_disqualified_var = tk.BooleanVar(value=False)
         self.filename_entry_var = tk.StringVar()
         self.selected_file = tk.StringVar()
 
@@ -137,7 +139,7 @@ class ControlPanel:
         else:
             self.filename_entry.config(state=tk.DISABLED)
     def save_grasp_euler(self):
-        grasp = app_state.grasps[app_state.current_grasp_index]
+        grasp = app_state.selected_grasp_pool[app_state.current_grasp_index]
         position = grasp[:3, 3].tolist()
         euler_orientation = list(trimesh.transformations.euler_from_matrix(grasp))
         data = {
@@ -208,16 +210,16 @@ class ControlPanel:
         self.root.mainloop()
 
     def next_grasp(self, event=None):
-        if app_state.grasps is not None:
+        if app_state.selected_grasp_pool is not None:
             app_state.current_grasp_index = (app_state.current_grasp_index + 1) % len(
-                app_state.grasps
+                app_state.selected_grasp_pool
             )
             self._update_grasps()
 
     def prev_grasp(self, event=None):
-        if app_state.grasps is not None:
+        if app_state.selected_grasp_pool is not None:
             app_state.current_grasp_index = (app_state.current_grasp_index - 1) % len(
-                app_state.grasps
+                app_state.selected_grasp_pool
             )
             self._update_grasps()
 
@@ -225,6 +227,11 @@ class ControlPanel:
 
     def toggle_grasp_display(self):
         app_state.display_unqualified_grasps = self.display_disqualified_var.get()
+        if app_state.display_unqualified_grasps:
+            app_state.selected_grasp_pool = app_state.grasps
+        else:
+            app_state.selected_grasp_pool = app_state.qualified_grasps
+        app_state.current_grasp_index = 0
         self._update_grasps()
 
 
@@ -378,19 +385,19 @@ def get_right_up_and_front(grasp: np.array):
     return right, up, front
 def is_qualified(grasp: np.array):
     right, up, front = get_right_up_and_front(grasp)
-    if up[2] < 0.7:
+    if up[2] < 0.9:
         return False
-    if front[0] < 0.2:
+    if front[0] < -0.5:
         return False
     return True
 
 def update_grasp_visualization(vis, gripper_name):
-    if app_state.grasps is None:
+    if app_state.selected_grasp_pool is None:
         return
 
     vis["GraspGen"].delete()
 
-    for j, grasp in enumerate(app_state.grasps):
+    for j, grasp in enumerate(app_state.selected_grasp_pool):
         is_current = j == app_state.current_grasp_index
 
 
@@ -452,6 +459,11 @@ def generate_and_visualize_grasps(vis, obj_pc, grasp_sampler, gripper_name, args
         app_state.grasp_conf = grasp_conf.cpu().numpy()
         app_state.grasps = grasps.cpu().numpy()
         app_state.grasps[:, 3, 3] = 1
+        app_state.qualified_grasps = np.array([grasp for grasp in app_state.grasps if is_qualified(grasp)])
+        if app_state.display_unqualified_grasps:
+            app_state.selected_grasp_pool = app_state.grasps
+        else:
+            app_state.selected_grasp_pool = app_state.qualified_grasps
         print(
             f"[{method}] Scores with min {app_state.grasp_conf.min():.3f} and max {app_state.grasp_conf.max():.3f}"
         )
