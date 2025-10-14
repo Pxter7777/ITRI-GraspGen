@@ -283,11 +283,8 @@ def save_zed_point_cloud(
         voxel_size=0.01,
     )
     """
-
-
-def main():
-    parser = argparse.ArgumentParser()
-
+def parse_args():
+    parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
     parser.add_argument(
         "--ckpt_dir",
         default=str(config.FOUNDATIONSTEREO_CHECKPOINT),
@@ -317,7 +314,10 @@ def main():
         default=0,  # can be 6
         help="Number of erosion iterations for the SAM mask.",
     )
-    args = parser.parse_args()
+    return parser.parse_args()
+
+def main():
+    args = parse_args()
 
     set_logging_format()
     set_seed(0)
