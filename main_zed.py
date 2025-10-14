@@ -122,7 +122,7 @@ def save_mesh(
     out_dir,
     object_points,
     object_colors,
-    combined_vis,
+    captured_vis,
     timestamp,
     name,
     voxel_size=None,
@@ -170,12 +170,20 @@ def save_mesh(
 
         vis_filename = f"segmented_vis_{timestamp}.png"
         vis_filepath = os.path.join(out_dir, vis_filename)
-        cv2.imwrite(vis_filepath, combined_vis)
+        cv2.imwrite(vis_filepath, captured_vis)
         logging.info(f"Combined visualization saved to {vis_filepath}")
 
     except Exception as e:
         logging.error(f"An error occurred during mesh reconstruction or saving: {e}")
-
+def save_capture_view(
+        captured_vis,
+        out_dir,
+        timestamp
+    ):
+    vis_filename = f"segmented_vis_{timestamp}.png"
+    vis_filepath = os.path.join(out_dir, vis_filename)
+    cv2.imwrite(vis_filepath, captured_vis)
+    logging.info(f"Combined visualization saved to {vis_filepath}")
 
 def save_zed_point_cloud(
     args,
@@ -183,7 +191,7 @@ def save_zed_point_cloud(
     depth,
     color_np_org,
     mask,
-    combined_vis,
+    captured_vis,
 ):
     logging.info("Saving scene and object...")
 
@@ -256,20 +264,26 @@ def save_zed_point_cloud(
         scene_colors,
         current_time_str,
     )
-    save_e57_object_and_scene(
+    save_capture_view(
+        captured_vis,
         args.out_dir,
-        object_points,
-        object_colors,
-        scene_points,
-        scene_colors,
-        current_time_str,
+        current_time_str
     )
+    if args.save_e57:
+        save_e57_object_and_scene(
+            args.out_dir,
+            object_points,
+            object_colors,
+            scene_points,
+            scene_colors,
+            current_time_str,
+        )
     """
     save_mesh(
         args.out_dir,
         object_points,
         object_colors,
-        combined_vis,
+        captured_vis,
         current_time_str,
         "object",
     )
@@ -277,7 +291,7 @@ def save_zed_point_cloud(
         args.out_dir,
         scene_points,
         scene_colors,
-        combined_vis,
+        captured_vis,
         current_time_str,
         "scene",
         voxel_size=0.01,
@@ -313,6 +327,11 @@ def parse_args():
         type=int,
         default=0,  # can be 6
         help="Number of erosion iterations for the SAM mask.",
+    )
+    parser.add_argument(
+        "--save-e57",
+        action="store_true",
+        help="Whether to return only the top k grasps",
     )
     return parser.parse_args()
 
@@ -377,22 +396,9 @@ def main():
                     )
 
                 # ---------- FoundationStereo Inference ----------
-                depth, (H_scaled, W_scaled) = stereo_model.run_inference(
-                    left_gray, right_gray, zed.K_left, zed.baseline
-                )
+                
 
-                vis_depth = visualization.vis_depth(depth)
-                vis_depth_resized = cv2.resize(
-                    vis_depth,
-                    fx=1 / stereo_model.args.scale,
-                    fy=1 / stereo_model.args.scale,
-                    dsize=None,
-                )
-
-                combined_vis = np.concatenate(
-                    [display_frame, vis_depth_resized], axis=1
-                )
-                cv2.imshow(win_name, combined_vis)
+                cv2.imshow(win_name, display_frame)
                 key = cv2.waitKey(1)
 
                 if key == ord("r"):
@@ -400,13 +406,16 @@ def main():
                     mouse_handler.reset_box()
 
                 if key == 32 and mouse_handler.box_defined:
+                    depth, (H_scaled, W_scaled) = stereo_model.run_inference(
+                        left_gray, right_gray, zed.K_left, zed.baseline
+                    )
                     save_zed_point_cloud(
                         stereo_model.args,
                         zed.K_left,
                         depth,
                         color_np_org,
                         mask,
-                        combined_vis,
+                        display_frame,
                     )
 
                 if key == 27:
