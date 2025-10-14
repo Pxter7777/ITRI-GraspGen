@@ -46,7 +46,7 @@ def depth2xyzmap(depth, K):
 
 
 def save_json_object_and_scene(
-    out_dir, object_points, object_colors, scene_points, scene_colors, timestamp
+    out_dir, output_tag, object_points, object_colors, scene_points, scene_colors, timestamp
 ):
     """Saves the scene and object data to a JSON file."""
     object_colors_arr = np.array(object_colors)
@@ -70,6 +70,8 @@ def save_json_object_and_scene(
     }
 
     json_filename = f"scene_{timestamp}.json"
+    if output_tag != "":
+        json_filename = f"scene_{output_tag}.json"
     json_filepath = os.path.join(out_dir, json_filename)
 
     with open(json_filepath, "w") as f:
@@ -78,10 +80,12 @@ def save_json_object_and_scene(
 
 
 def save_e57_object_and_scene(
-    out_dir, object_points, object_colors, scene_points, scene_colors, timestamp
+    out_dir, output_tag, object_points, object_colors, scene_points, scene_colors, timestamp
 ):
     """Saves the scene points and colors to a .e57 file."""
     e57_object_filename = f"object_{timestamp}.e57"
+    if output_tag!="":
+        e57_object_filename = f"object_{output_tag}.e57"
     e57_object_filepath = os.path.join(out_dir, e57_object_filename)
 
     object_points = np.array(object_points)
@@ -99,6 +103,8 @@ def save_e57_object_and_scene(
         e57_write.write_scan_raw(object_data)
 
     e57_scene_filename = f"scene_{timestamp}.e57"
+    if output_tag!="":
+        e57_scene_filename = f"scene_{output_tag}.e57"
     e57_scene_filepath = os.path.join(out_dir, e57_scene_filename)
 
     scene_points = np.array(scene_points)
@@ -178,9 +184,12 @@ def save_mesh(
 def save_capture_view(
         captured_vis,
         out_dir,
+        output_tag,
         timestamp
     ):
     vis_filename = f"segmented_vis_{timestamp}.png"
+    if output_tag != "":
+        vis_filename = f"segmented_vis_{output_tag}.png"
     vis_filepath = os.path.join(out_dir, vis_filename)
     cv2.imwrite(vis_filepath, captured_vis)
     logging.info(f"Combined visualization saved to {vis_filepath}")
@@ -258,6 +267,7 @@ def save_zed_point_cloud(
 
     save_json_object_and_scene(
         args.out_dir,
+        args.output_tag,
         object_points,
         object_colors,
         scene_points,
@@ -267,11 +277,13 @@ def save_zed_point_cloud(
     save_capture_view(
         captured_vis,
         args.out_dir,
+        args.output_tag,
         current_time_str
     )
     if args.save_e57:
         save_e57_object_and_scene(
             args.out_dir,
+            args.output_tag,
             object_points,
             object_colors,
             scene_points,
@@ -324,6 +336,12 @@ def parse_args():
     )
     parser.add_argument(
         "--out_dir", default="./output/", type=str, help="the directory to save results"
+    )
+    parser.add_argument(
+        "--output-tag",
+        default="",
+        type=str,
+        help="pretrained model path",
     )
     parser.add_argument(
         "--erosion_iterations",
