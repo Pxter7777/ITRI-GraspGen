@@ -449,12 +449,13 @@ def main():
 
     # If a filename is provided, load it. Otherwise, the GUI will handle it.
     if args.filename:
-        if os.path.exists(args.filename):
+        filepath = os.path.join(args.sample_data_dir, args.filename)
+        if os.path.exists(filepath):
             load_and_process_scene(
-                vis, args.filename, grasp_sampler, gripper_name, args
+                vis, filepath, grasp_sampler, gripper_name, args
             )
         else:
-            print(f"File not found: {args.filename}")
+            print(f"File not found: {filepath}")
 
     # Keep the main thread alive to handle signals
     try:

@@ -6,7 +6,7 @@ python main.py --erosion_iterations 10
 ```
 - GraspGen
 ```bash
-python ./GraspGen_demo_scene_pc.py --return_topk --topk_num_grasps 5
+python ./GraspGen_demo_scene_pc.py --return_topk --topk_num_grasps 5 --filename scene_20251014_115650_transformed.json
 ```
 
 ```bash
