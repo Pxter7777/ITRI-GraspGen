@@ -38,10 +38,7 @@ class AppState:
     def __init__(self):
         self.grasps = None
         self.grasp_conf = None
-        self.selected_grasps = []
         self.current_grasp_index = 0
-        self.display_selected_grasps = True
-        self.display_non_selected_grasps = True
 
 
 app_state = AppState()
@@ -68,8 +65,6 @@ class ControlPanel:
         self.custom_filename_var = tk.BooleanVar()
         self.filename_entry_var = tk.StringVar()
         self.selected_file = tk.StringVar()
-        self.display_selected_var = tk.BooleanVar(value=True)
-        self.display_non_selected_var = tk.BooleanVar(value=True)
 
         # Dropdown for JSON files
         self.selected_file.set(json_files[0] if json_files else "")
@@ -99,7 +94,7 @@ class ControlPanel:
             self.root, textvariable=self.filename_entry_var, state=tk.DISABLED
         )
         self.filename_entry.pack(padx=20, pady=5)
-
+        """
         self.display_selected_checkbox = tk.Checkbutton(
             self.root,
             text="Display Selected Grasps",
@@ -107,14 +102,8 @@ class ControlPanel:
             command=self.toggle_grasp_display,
         )
         self.display_selected_checkbox.pack(pady=5)
+        """
 
-        self.display_non_selected_checkbox = tk.Checkbutton(
-            self.root,
-            text="Display Non-Selected Grasps",
-            var=self.display_non_selected_var,
-            command=self.toggle_grasp_display,
-        )
-        self.display_non_selected_checkbox.pack(pady=5)
 
         # Grasp navigation frame
         nav_frame = tk.Frame(self.root)
@@ -123,10 +112,6 @@ class ControlPanel:
         self.prev_button = tk.Button(nav_frame, text="<", command=self.prev_grasp)
         self.prev_button.pack(side=tk.LEFT, padx=5)
 
-        self.add_grasp_button = tk.Button(
-            nav_frame, text="Add Grasp", command=self.select_grasp
-        )
-        self.add_grasp_button.pack(side=tk.LEFT, padx=5)
 
         self.next_button = tk.Button(nav_frame, text=">", command=self.next_grasp)
         self.next_button.pack(side=tk.LEFT, padx=5)
@@ -234,11 +219,7 @@ class ControlPanel:
             )
             self._update_grasps()
 
-    def select_grasp(self, event=None):
-        if app_state.grasps is not None:
-            if app_state.current_grasp_index not in app_state.selected_grasps:
-                app_state.selected_grasps.append(app_state.current_grasp_index)
-            self._update_grasps()
+
 
     def toggle_grasp_display(self):
         app_state.display_selected_grasps = self.display_selected_var.get()
@@ -402,56 +383,50 @@ def update_grasp_visualization(vis, gripper_name):
     vis["GraspGen"].delete()
 
     for j, grasp in enumerate(app_state.grasps):
-        is_selected = j in app_state.selected_grasps
         is_current = j == app_state.current_grasp_index
 
-        if (is_selected and app_state.display_selected_grasps) or (
-            not is_selected and app_state.display_non_selected_grasps
-        ):
-            color = [0, 185, 0]  # Default color for non-selected grasps
-            if is_current:
-                color = [255, 0, 0]  # Highlight color for current grasp
-            elif is_selected:
-                color = [0, 0, 255]  # Color for other selected grasps
-            if is_current:
-                print(grasp)
-                right, up, front = get_right_up_and_front(grasp)
-                origin = grasp[:3, 3]
-                vector_length = 0.1
-                num_points = 10
 
-                # Right vector (red)
-                right_points = np.linspace(
-                    origin, origin + right * vector_length, num_points
-                )
-                right_colors = np.tile([255, 0, 0], (num_points, 1))
-                visualize_pointcloud(
-                    vis, f"GraspGen/{j:03d}/right", right_points, right_colors, size=0.005
-                )
+        color = [0, 185, 0]  # Default color for non-selected grasps
+        if is_current:
+            color = [255, 0, 0]  # Highlight color for current grasp
+            print(grasp)
+            right, up, front = get_right_up_and_front(grasp)
+            origin = grasp[:3, 3]
+            vector_length = 0.1
+            num_points = 10
 
-                # Up vector (green)
-                up_points = np.linspace(origin, origin + up * vector_length, num_points)
-                up_colors = np.tile([0, 255, 0], (num_points, 1))
-                visualize_pointcloud(
-                    vis, f"GraspGen/{j:03d}/up", up_points, up_colors, size=0.005
-                )
-
-                # Front vector (blue)
-                front_points = np.linspace(
-                    origin, origin + front * vector_length, num_points
-                )
-                front_colors = np.tile([0, 0, 255], (num_points, 1))
-                visualize_pointcloud(
-                    vis, f"GraspGen/{j:03d}/front", front_points, front_colors, size=0.005
-                )
-            visualize_grasp(
-                vis,
-                f"GraspGen/{j:03d}/grasp",
-                grasp,
-                color=color,
-                gripper_name=gripper_name,
-                linewidth=2.5 if is_current else 1.5,
+            # Right vector (red)
+            right_points = np.linspace(
+                origin, origin + right * vector_length, num_points
             )
+            right_colors = np.tile([255, 0, 0], (num_points, 1))
+            visualize_pointcloud(
+                vis, f"GraspGen/{j:03d}/right", right_points, right_colors, size=0.005
+            )
+
+            # Up vector (green)
+            up_points = np.linspace(origin, origin + up * vector_length, num_points)
+            up_colors = np.tile([0, 255, 0], (num_points, 1))
+            visualize_pointcloud(
+                vis, f"GraspGen/{j:03d}/up", up_points, up_colors, size=0.005
+            )
+
+            # Front vector (blue)
+            front_points = np.linspace(
+                origin, origin + front * vector_length, num_points
+            )
+            front_colors = np.tile([0, 0, 255], (num_points, 1))
+            visualize_pointcloud(
+                vis, f"GraspGen/{j:03d}/front", front_points, front_colors, size=0.005
+            )
+        visualize_grasp(
+            vis,
+            f"GraspGen/{j:03d}/grasp",
+            grasp,
+            color=color,
+            gripper_name=gripper_name,
+            linewidth=2.5 if is_current else 1.5,
+        )
 
 
 def generate_and_visualize_grasps(vis, obj_pc, grasp_sampler, gripper_name, args):
