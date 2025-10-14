@@ -156,6 +156,7 @@ class ControlPanel:
         with open(json_filepath, "w") as f:
             json.dump(data, f, indent=4)
         print(f"saved to {json_filepath}")
+        os.kill(os.getpid(), signal.SIGINT)
     """
     def save_isaac_grasps(self):
         if app_state.grasps is not None and app_state.grasp_conf is not None:
