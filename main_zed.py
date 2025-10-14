@@ -278,6 +278,9 @@ def save_zed_point_cloud(
             scene_colors,
             current_time_str,
         )
+    if args.exit_after_save:
+        print("saved and finish")
+        exit(0)
     """
     save_mesh(
         args.out_dir,
@@ -331,7 +334,12 @@ def parse_args():
     parser.add_argument(
         "--save-e57",
         action="store_true",
-        help="Whether to return only the top k grasps",
+        help="save e57",
+    )
+    parser.add_argument(
+        "--exit-after-save",
+        action="store_true",
+        help="exit after first save",
     )
     return parser.parse_args()
 
