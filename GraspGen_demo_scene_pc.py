@@ -181,7 +181,24 @@ class ControlPanel:
         else:
             print("No grasps available to save.")
 
+    def quickload(self):
+        if self.args.filename:
+            # Find the full path from json_files that matches the filename
+            found_file = None
+            for f in self.json_files:
+                if os.path.basename(f) == self.args.filename:
+                    found_file = f
+                    break
+
+            if found_file:
+                self.selected_file.set(found_file)
+                self.filename_entry_var.set(self.args.filename)
+                self.load_scene()
+            else:
+                print(f"File not found in json_files: {self.args.filename}")
+
     def run(self):
+        self.root.after(100, self.quickload)
         self.root.mainloop()
 
     def next_grasp(self, event=None):
@@ -482,16 +499,6 @@ def main():
         daemon=True,
     )
     gui_thread.start()
-
-    # If a filename is provided, load it. Otherwise, the GUI will handle it.
-    if args.filename:
-        filepath = os.path.join(args.sample_data_dir, args.filename)
-        if os.path.exists(filepath):
-            load_and_process_scene(
-                vis, filepath, grasp_sampler, gripper_name, args
-            )
-        else:
-            print(f"File not found: {filepath}")
 
     # Keep the main thread alive to handle signals
     try:
