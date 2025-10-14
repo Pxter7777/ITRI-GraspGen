@@ -1,6 +1,7 @@
 output/*
 old_output/*
 picked/*
+transform_config/*
 __pycache__/
 
 !.gitkeep

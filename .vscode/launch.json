@@ -5,6 +5,18 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python Debugger: Transform",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/manual_PC_transform.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--quick",
+                "--filename", "scene_20251014_115650.json",
+                "--transform-config", "transform_config_1.json"
+            ]
+        },
+        {
             "name": "Python Debugger: GenPointCloud",
             "type": "debugpy",
             "request": "launch",

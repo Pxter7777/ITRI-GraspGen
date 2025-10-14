@@ -28,3 +28,8 @@ python ./scripts/demo_object_mesh.py  --mesh_file /home/j300/GenPointCloud/outpu
 - Idea for dockerization:
     - use bindmount for ITRI-GraspGen(source code) and models
     - bake Third_Party into the image
+
+- quick transform
+```bash
+python manual_PC_transform.py --quick --filename scene_20251014_115650.json --transform-config transform_config_1.json
+```
