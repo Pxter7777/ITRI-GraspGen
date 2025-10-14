@@ -21,6 +21,7 @@ from threading import Thread
 
 import numpy as np
 import torch
+import trimesh
 
 from grasp_gen.grasp_server import GraspGenSampler, load_grasp_cfg
 from grasp_gen.utils.meshcat_utils import (
@@ -82,7 +83,7 @@ class ControlPanel:
         self.load_button.pack(padx=20, pady=5)
 
         save_button = tk.Button(
-            self.root, text="Save Isaac Grasp", command=self.save_isaac_grasps
+            self.root, text="Save Grasp Euler", command=self.save_grasp_euler
         )
         save_button.pack(padx=20, pady=5)
 
@@ -148,7 +149,25 @@ class ControlPanel:
             self.filename_entry.config(state=tk.NORMAL)
         else:
             self.filename_entry.config(state=tk.DISABLED)
+    def save_grasp_euler(self):
+        grasp = app_state.grasps[app_state.current_grasp_index]
+        position = grasp[:3, 3].tolist()
+        euler_orientation = list(trimesh.transformations.euler_from_matrix(grasp))
+        data = {
+            "position" : position,
+            "euler_orientation" : euler_orientation
+        }
+        
+        input_filename = self.selected_file.get()
+        base_name = os.path.basename(input_filename)
+        timestamp_from_file = os.path.splitext(base_name)[0]
+        json_filename = f"grasp_{timestamp_from_file}.json"
+        json_filepath = os.path.join("output", json_filename)
 
+        with open(json_filepath, "w") as f:
+            json.dump(data, f, indent=4)
+        print(f"saved to {json_filepath}")
+    """
     def save_isaac_grasps(self):
         if app_state.grasps is not None and app_state.grasp_conf is not None:
             if self.custom_filename_var.get():
@@ -180,7 +199,7 @@ class ControlPanel:
             print("Save complete.")
         else:
             print("No grasps available to save.")
-
+    """
     def quickload(self):
         if self.args.filename:
             # Find the full path from json_files that matches the filename

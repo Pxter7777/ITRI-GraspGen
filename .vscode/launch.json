@@ -46,7 +46,7 @@
             "console": "integratedTerminal",
             "args": [
                 "--sample_data_dir", "./output",
-                "--gripper_config", "../GraspGenModels/checkpoints/graspgen_franka_panda.yml",
+                "--gripper_config", "~/models/GraspGenModels/checkpoints/graspgen_franka_panda.yml",
                 "--return_topk",
                 "--topk_num_grasps", "5"
             ]
