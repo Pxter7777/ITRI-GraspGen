@@ -284,6 +284,7 @@ def save_zed_point_cloud(
     )
     """
 
+
 def main():
     parser = argparse.ArgumentParser()
 

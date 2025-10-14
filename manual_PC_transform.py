@@ -20,6 +20,7 @@ from grasp_gen.utils.meshcat_utils import (
 )
 from scipy.spatial.transform import Rotation as R
 
+
 class AppState:
     def __init__(self):
         self.object_pc = None
@@ -30,7 +31,9 @@ class AppState:
         self.original_scene_pc = None
         self.transformation = np.identity(4)
 
+
 app_state = AppState()
+
 
 class ControlPanel:
     def __init__(self, root, vis, json_files, args):
@@ -57,15 +60,23 @@ class ControlPanel:
         transform_frame = tk.Frame(self.root, borderwidth=2, relief="groove")
         transform_frame.pack(padx=10, pady=10)
 
-        self.trans_x_var = self.create_control(transform_frame, "X:", -2.0, 2.0, 0.01, 1)
-        self.trans_y_var = self.create_control(transform_frame, "Y:", -2.0, 2.0, 0.01, 2)
-        self.trans_z_var = self.create_control(transform_frame, "Z:", -2.0, 2.0, 0.01, 3)
+        self.trans_x_var = self.create_control(
+            transform_frame, "X:", -2.0, 2.0, 0.01, 1
+        )
+        self.trans_y_var = self.create_control(
+            transform_frame, "Y:", -2.0, 2.0, 0.01, 2
+        )
+        self.trans_z_var = self.create_control(
+            transform_frame, "Z:", -2.0, 2.0, 0.01, 3
+        )
         self.rot_r_var = self.create_control(transform_frame, "Roll:", -180, 180, 1, 5)
         self.rot_p_var = self.create_control(transform_frame, "Pitch:", -180, 180, 1, 6)
         self.rot_y_var = self.create_control(transform_frame, "Yaw:", -180, 180, 1, 7)
 
         self.save_button = tk.Button(
-            self.root, text="Save Transformed PC (JSON)", command=self.save_transformed_pc
+            self.root,
+            text="Save Transformed PC (JSON)",
+            command=self.save_transformed_pc,
         )
         self.save_button.pack(padx=20, pady=5)
 
@@ -79,7 +90,15 @@ class ControlPanel:
         var.trace_add("write", self.on_transform_change)
 
         tk.Label(parent, text=label).grid(row=row, column=0)
-        tk.Scale(parent, from_=from_, to=to, resolution=resolution, orient=tk.HORIZONTAL, length=200, variable=var).grid(row=row, column=1)
+        tk.Scale(
+            parent,
+            from_=from_,
+            to=to,
+            resolution=resolution,
+            orient=tk.HORIZONTAL,
+            length=200,
+            variable=var,
+        ).grid(row=row, column=1)
         tk.Entry(parent, textvariable=var, width=10).grid(row=row, column=2)
         return var
 
@@ -104,29 +123,40 @@ class ControlPanel:
         ry = self.rot_y_var.get()
 
         # Create transformation matrix
-        translation_matrix = np.array([
-            [1, 0, 0, tx],
-            [0, 1, 0, ty],
-            [0, 0, 1, tz],
-            [0, 0, 0, 1]
-        ])
+        translation_matrix = np.array(
+            [[1, 0, 0, tx], [0, 1, 0, ty], [0, 0, 1, tz], [0, 0, 0, 1]]
+        )
 
-        rotation = R.from_euler('xyz', [rr, rp, ry], degrees=True)
+        rotation = R.from_euler("xyz", [rr, rp, ry], degrees=True)
         rotation_matrix = np.identity(4)
         rotation_matrix[:3, :3] = rotation.as_matrix()
-        
+
         app_state.transformation = translation_matrix @ rotation_matrix
 
         # Apply transformation to object pc
         if app_state.original_object_pc is not None:
-            original_object_pc_homogeneous = np.hstack((app_state.original_object_pc, np.ones((app_state.original_object_pc.shape[0], 1))))
-            transformed_object_pc_homogeneous = (app_state.transformation @ original_object_pc_homogeneous.T).T
+            original_object_pc_homogeneous = np.hstack(
+                (
+                    app_state.original_object_pc,
+                    np.ones((app_state.original_object_pc.shape[0], 1)),
+                )
+            )
+            transformed_object_pc_homogeneous = (
+                app_state.transformation @ original_object_pc_homogeneous.T
+            ).T
             app_state.object_pc = transformed_object_pc_homogeneous[:, :3]
 
         # Apply transformation to scene pc
         if app_state.original_scene_pc is not None:
-            original_scene_pc_homogeneous = np.hstack((app_state.original_scene_pc, np.ones((app_state.original_scene_pc.shape[0], 1))))
-            transformed_scene_pc_homogeneous = (app_state.transformation @ original_scene_pc_homogeneous.T).T
+            original_scene_pc_homogeneous = np.hstack(
+                (
+                    app_state.original_scene_pc,
+                    np.ones((app_state.original_scene_pc.shape[0], 1)),
+                )
+            )
+            transformed_scene_pc_homogeneous = (
+                app_state.transformation @ original_scene_pc_homogeneous.T
+            ).T
             app_state.scene_pc = transformed_scene_pc_homogeneous[:, :3]
 
         # Update visualization
@@ -142,23 +172,31 @@ class ControlPanel:
         name, ext = os.path.splitext(base_name)
         output_filename = f"{name}_transformed.json"
         output_path = os.path.join("output", output_filename)
-        
+
         os.makedirs("output", exist_ok=True)
 
         data_to_save = {
             "transformation_matrix": app_state.transformation.tolist(),
             "object_info": {
-                "pc": app_state.object_pc.tolist() if app_state.object_pc is not None else [],
-                "pc_color": app_state.object_pc_color.tolist() if app_state.object_pc_color is not None else []
+                "pc": app_state.object_pc.tolist()
+                if app_state.object_pc is not None
+                else [],
+                "pc_color": app_state.object_pc_color.tolist()
+                if app_state.object_pc_color is not None
+                else [],
             },
             "scene_info": {
-                "pc_color": [app_state.scene_pc.tolist()] if app_state.scene_pc is not None else [],
-                "img_color": [app_state.scene_pc_color.tolist()] if app_state.scene_pc_color is not None else []
+                "pc_color": [app_state.scene_pc.tolist()]
+                if app_state.scene_pc is not None
+                else [],
+                "img_color": [app_state.scene_pc_color.tolist()]
+                if app_state.scene_pc_color is not None
+                else [],
             },
             "grasp_info": {"grasp_poses": [], "grasp_conf": []},
         }
 
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             json.dump(data_to_save, f, indent=4)
         print(f"Saved transformed point cloud and matrix to {output_path}")
 
@@ -172,7 +210,7 @@ class ControlPanel:
         name, ext = os.path.splitext(base_name)
         output_filename = f"{name}_transformed.e57"
         output_path = os.path.join("output", output_filename)
-        
+
         os.makedirs("output", exist_ok=True)
 
         pc_list = []
@@ -183,7 +221,7 @@ class ControlPanel:
         if app_state.scene_pc is not None:
             pc_list.append(app_state.scene_pc)
             pc_color_list.append(app_state.scene_pc_color)
-        
+
         combined_pc = np.concatenate(pc_list, axis=0)
         combined_colors = np.concatenate(pc_color_list, axis=0)
 
@@ -197,7 +235,7 @@ class ControlPanel:
 
         with pye57.E57(output_path, mode="w") as e57_write:
             e57_write.write_scan_raw(e57_data)
-        
+
         print(f"Saved combined transformed point cloud to {output_path}")
 
     def run(self):
@@ -236,6 +274,7 @@ def start_meshcat_server():
     time.sleep(2)
     return meshcat_server_process
 
+
 def open_meshcat_url(url):
     print(f"\n--- Meshcat Visualizer ---\nURL: {url}\n--------------------------\n")
     try:
@@ -254,6 +293,7 @@ def open_meshcat_url(url):
     except Exception:
         pass
 
+
 def load_and_process_scene(vis, json_file):
     print(f"Loading scene from {json_file}")
     vis.delete()
@@ -269,12 +309,20 @@ def load_and_process_scene(vis, json_file):
     app_state.scene_pc_color = None
     app_state.original_scene_pc = None
 
-    if "object_info" in data and "pc" in data["object_info"] and len(data["object_info"]["pc"]) > 0:
+    if (
+        "object_info" in data
+        and "pc" in data["object_info"]
+        and len(data["object_info"]["pc"]) > 0
+    ):
         app_state.original_object_pc = np.array(data["object_info"]["pc"])
         app_state.object_pc = app_state.original_object_pc
         app_state.object_pc_color = np.array(data["object_info"]["pc_color"])
 
-    if "scene_info" in data and "pc_color" in data["scene_info"] and len(data["scene_info"]["pc_color"]) > 0:
+    if (
+        "scene_info" in data
+        and "pc_color" in data["scene_info"]
+        and len(data["scene_info"]["pc_color"]) > 0
+    ):
         app_state.original_scene_pc = np.array(data["scene_info"]["pc_color"][0])
         app_state.scene_pc = app_state.original_scene_pc
         app_state.scene_pc_color = np.array(data["scene_info"]["img_color"][0])
@@ -282,8 +330,9 @@ def load_and_process_scene(vis, json_file):
     if app_state.original_object_pc is None and app_state.original_scene_pc is None:
         print("Could not find point cloud data in JSON file.")
         return
-    
+
     update_visualization(vis)
+
 
 def update_visualization(vis):
     pc_list = []
@@ -297,12 +346,13 @@ def update_visualization(vis):
 
     if not pc_list:
         return
-        
+
     pc = np.concatenate(pc_list, axis=0)
     pc_color = np.concatenate(pc_color_list, axis=0)
-    
+
     if pc is not None:
         visualize_pointcloud(vis, "pointcloud", pc, pc_color, size=0.005)
+
 
 def create_control_panel(vis, json_files, args):
     root = tk.Tk()
