@@ -352,6 +352,12 @@ def process_and_visualize_scene(vis, json_file):
 
     return obj_pc
 
+def get_right_up_and_front(grasp: np.array):
+    right = grasp[:3, 0]
+    up = grasp[:3, 1]
+    front = grasp[:3, 2]
+    return right, up, front
+
 
 def update_grasp_visualization(vis, gripper_name):
     if app_state.grasps is None:
@@ -371,7 +377,37 @@ def update_grasp_visualization(vis, gripper_name):
                 color = [255, 0, 0]  # Highlight color for current grasp
             elif is_selected:
                 color = [0, 0, 255]  # Color for other selected grasps
+            if is_current:
+                print(grasp)
+                right, up, front = get_right_up_and_front(grasp)
+                origin = grasp[:3, 3]
+                vector_length = 0.1
+                num_points = 10
 
+                # Right vector (red)
+                right_points = np.linspace(
+                    origin, origin + right * vector_length, num_points
+                )
+                right_colors = np.tile([255, 0, 0], (num_points, 1))
+                visualize_pointcloud(
+                    vis, f"GraspGen/{j:03d}/right", right_points, right_colors, size=0.005
+                )
+
+                # Up vector (green)
+                up_points = np.linspace(origin, origin + up * vector_length, num_points)
+                up_colors = np.tile([0, 255, 0], (num_points, 1))
+                visualize_pointcloud(
+                    vis, f"GraspGen/{j:03d}/up", up_points, up_colors, size=0.005
+                )
+
+                # Front vector (blue)
+                front_points = np.linspace(
+                    origin, origin + front * vector_length, num_points
+                )
+                front_colors = np.tile([0, 0, 255], (num_points, 1))
+                visualize_pointcloud(
+                    vis, f"GraspGen/{j:03d}/front", front_points, front_colors, size=0.005
+                )
             visualize_grasp(
                 vis,
                 f"GraspGen/{j:03d}/grasp",
