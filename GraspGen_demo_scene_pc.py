@@ -39,6 +39,7 @@ class AppState:
         self.grasps = None
         self.grasp_conf = None
         self.current_grasp_index = 0
+        self.display_unqualified_grasps = True
 
 
 app_state = AppState()
@@ -63,6 +64,7 @@ class ControlPanel:
         self.root.title("Control Panel")
 
         self.custom_filename_var = tk.BooleanVar()
+        self.display_disqualified_var = tk.BooleanVar(value=True)
         self.filename_entry_var = tk.StringVar()
         self.selected_file = tk.StringVar()
 
@@ -94,15 +96,15 @@ class ControlPanel:
             self.root, textvariable=self.filename_entry_var, state=tk.DISABLED
         )
         self.filename_entry.pack(padx=20, pady=5)
-        """
-        self.display_selected_checkbox = tk.Checkbutton(
+        
+        self.display_disqualified_checkbox = tk.Checkbutton(
             self.root,
-            text="Display Selected Grasps",
-            var=self.display_selected_var,
+            text="Display Disqualified Grasps",
+            var=self.display_disqualified_var,
             command=self.toggle_grasp_display,
         )
-        self.display_selected_checkbox.pack(pady=5)
-        """
+        self.display_disqualified_checkbox.pack(pady=5)
+        
 
 
         # Grasp navigation frame
@@ -222,9 +224,9 @@ class ControlPanel:
 
 
     def toggle_grasp_display(self):
-        app_state.display_selected_grasps = self.display_selected_var.get()
-        app_state.display_non_selected_grasps = self.display_non_selected_var.get()
+        app_state.display_unqualified_grasps = self.display_disqualified_var.get()
         self._update_grasps()
+
 
     def _update_grasps(self):
         update_grasp_visualization(
@@ -374,7 +376,13 @@ def get_right_up_and_front(grasp: np.array):
     up = grasp[:3, 1]
     front = grasp[:3, 2]
     return right, up, front
-
+def is_qualified(grasp: np.array):
+    right, up, front = get_right_up_and_front(grasp)
+    if up[2] < 0.7:
+        return False
+    if front[0] < 0.2:
+        return False
+    return True
 
 def update_grasp_visualization(vis, gripper_name):
     if app_state.grasps is None:
