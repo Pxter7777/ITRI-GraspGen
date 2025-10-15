@@ -30,7 +30,6 @@ from grasp_gen.utils.meshcat_utils import (
     visualize_pointcloud,
 )
 from grasp_gen.utils.point_cloud_utils import point_cloud_outlier_removal_with_color
-from grasp_gen.dataset.eval_utils import save_to_isaac_grasp_format
 from src import config
 
 
@@ -98,7 +97,7 @@ class ControlPanel:
             self.root, textvariable=self.filename_entry_var, state=tk.DISABLED
         )
         self.filename_entry.pack(padx=20, pady=5)
-        
+
         self.display_disqualified_checkbox = tk.Checkbutton(
             self.root,
             text="Display Disqualified Grasps",
@@ -106,8 +105,6 @@ class ControlPanel:
             command=self.toggle_grasp_display,
         )
         self.display_disqualified_checkbox.pack(pady=5)
-        
-
 
         # Grasp navigation frame
         nav_frame = tk.Frame(self.root)
@@ -115,7 +112,6 @@ class ControlPanel:
 
         self.prev_button = tk.Button(nav_frame, text="<", command=self.prev_grasp)
         self.prev_button.pack(side=tk.LEFT, padx=5)
-
 
         self.next_button = tk.Button(nav_frame, text=">", command=self.next_grasp)
         self.next_button.pack(side=tk.LEFT, padx=5)
@@ -138,19 +134,20 @@ class ControlPanel:
             self.filename_entry.config(state=tk.NORMAL)
         else:
             self.filename_entry.config(state=tk.DISABLED)
+
     def save_grasp_euler(self):
         grasp = app_state.selected_grasp_pool[app_state.current_grasp_index]
         position = grasp[:3, 3].tolist()
-        
+
         euler_orientation = list(trimesh.transformations.euler_from_matrix(grasp))
         euler_orientation = np.rad2deg(euler_orientation).tolist()
-        _,_,front = get_right_up_and_front(grasp)
+        _, _, front = get_right_up_and_front(grasp)
         data = {
-            "position" : position,
-            "euler_orientation" : euler_orientation,
-            "forward_vec" : front.tolist()
+            "position": position,
+            "euler_orientation": euler_orientation,
+            "forward_vec": front.tolist(),
         }
-        
+
         input_filename = self.selected_file.get()
         base_name = os.path.basename(input_filename)
         timestamp_from_file = os.path.splitext(base_name)[0]
@@ -161,6 +158,7 @@ class ControlPanel:
             json.dump(data, f, indent=4)
         print(f"saved to {json_filepath}")
         os.kill(os.getpid(), signal.SIGINT)
+
     """
     def save_isaac_grasps(self):
         if app_state.grasps is not None and app_state.grasp_conf is not None:
@@ -194,6 +192,7 @@ class ControlPanel:
         else:
             print("No grasps available to save.")
     """
+
     def quickload(self):
         if self.args.filename:
             # Find the full path from json_files that matches the filename
@@ -228,8 +227,6 @@ class ControlPanel:
             )
             self._update_grasps()
 
-
-
     def toggle_grasp_display(self):
         app_state.display_unqualified_grasps = self.display_disqualified_var.get()
         if app_state.display_unqualified_grasps:
@@ -238,7 +235,6 @@ class ControlPanel:
             app_state.selected_grasp_pool = app_state.qualified_grasps
         app_state.current_grasp_index = 0
         self._update_grasps()
-
 
     def _update_grasps(self):
         update_grasp_visualization(
@@ -383,11 +379,14 @@ def process_and_visualize_scene(vis, json_file):
 
     return obj_pc
 
+
 def get_right_up_and_front(grasp: np.array):
     right = grasp[:3, 0]
     up = grasp[:3, 1]
     front = grasp[:3, 2]
     return right, up, front
+
+
 def is_qualified(grasp: np.array):
     right, up, front = get_right_up_and_front(grasp)
     if up[2] < 0.9:
@@ -395,6 +394,7 @@ def is_qualified(grasp: np.array):
     if front[0] < -0.5:
         return False
     return True
+
 
 def update_grasp_visualization(vis, gripper_name):
     if app_state.selected_grasp_pool is None:
@@ -404,7 +404,6 @@ def update_grasp_visualization(vis, gripper_name):
 
     for j, grasp in enumerate(app_state.selected_grasp_pool):
         is_current = j == app_state.current_grasp_index
-
 
         color = [0, 185, 0]  # Default color for non-selected grasps
         if is_current:
@@ -464,7 +463,9 @@ def generate_and_visualize_grasps(vis, obj_pc, grasp_sampler, gripper_name, args
         app_state.grasp_conf = grasp_conf.cpu().numpy()
         app_state.grasps = grasps.cpu().numpy()
         app_state.grasps[:, 3, 3] = 1
-        app_state.qualified_grasps = np.array([grasp for grasp in app_state.grasps if is_qualified(grasp)])
+        app_state.qualified_grasps = np.array(
+            [grasp for grasp in app_state.grasps if is_qualified(grasp)]
+        )
         if app_state.display_unqualified_grasps:
             app_state.selected_grasp_pool = app_state.grasps
         else:
