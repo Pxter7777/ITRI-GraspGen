@@ -6,7 +6,7 @@ python main.py --erosion_iterations 10
 ```
 - GraspGen
 ```bash
-python ./GraspGen_demo_scene_pc.py --return_topk --topk_num_grasps 5
+python ./GraspGen_demo_scene_pc.py --return_topk --topk_num_grasps 10 --filename scene_20251014_115650_transformed.json
 ```
 
 ```bash
@@ -28,3 +28,23 @@ python ./scripts/demo_object_mesh.py  --mesh_file /home/j300/GenPointCloud/outpu
 - Idea for dockerization:
     - use bindmount for ITRI-GraspGen(source code) and models
     - bake Third_Party into the image
+
+- quick main_zed
+```bash
+python main_zed.py --exit-after-save --output-tag "hey"
+```
+
+- quick transform
+```bash
+python manual_PC_transform.py --quick --filename scene_BABA.json --transform-config right.json
+```
+
+- quick GraspGen --filename
+```bash
+python ./GraspGen_demo_scene_pc.py --return_topk --topk_num_grasps 10 --filename scene_change_transformed.json
+```
+
+- slow GraspGen
+```bash
+python ./GraspGen_demo_scene_pc.py --return_topk --topk_num_grasps 10
+```

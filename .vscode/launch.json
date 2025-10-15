@@ -5,6 +5,18 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python Debugger: Transform",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/manual_PC_transform.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--quick",
+                "--filename", "scene_20251014_115650.json",
+                "--transform-config", "transform_config_1.json"
+            ]
+        },
+        {
             "name": "Python Debugger: GenPointCloud",
             "type": "debugpy",
             "request": "launch",
@@ -34,7 +46,7 @@
             "console": "integratedTerminal",
             "args": [
                 "--sample_data_dir", "./output",
-                "--gripper_config", "../GraspGenModels/checkpoints/graspgen_franka_panda.yml",
+                "--gripper_config", "~/models/GraspGenModels/checkpoints/graspgen_franka_panda.yml",
                 "--return_topk",
                 "--topk_num_grasps", "5"
             ]

@@ -46,7 +46,13 @@ def depth2xyzmap(depth, K):
 
 
 def save_json_object_and_scene(
-    out_dir, object_points, object_colors, scene_points, scene_colors, timestamp
+    out_dir,
+    output_tag,
+    object_points,
+    object_colors,
+    scene_points,
+    scene_colors,
+    timestamp,
 ):
     """Saves the scene and object data to a JSON file."""
     object_colors_arr = np.array(object_colors)
@@ -70,6 +76,8 @@ def save_json_object_and_scene(
     }
 
     json_filename = f"scene_{timestamp}.json"
+    if output_tag != "":
+        json_filename = f"scene_{output_tag}.json"
     json_filepath = os.path.join(out_dir, json_filename)
 
     with open(json_filepath, "w") as f:
@@ -78,10 +86,18 @@ def save_json_object_and_scene(
 
 
 def save_e57_object_and_scene(
-    out_dir, object_points, object_colors, scene_points, scene_colors, timestamp
+    out_dir,
+    output_tag,
+    object_points,
+    object_colors,
+    scene_points,
+    scene_colors,
+    timestamp,
 ):
     """Saves the scene points and colors to a .e57 file."""
     e57_object_filename = f"object_{timestamp}.e57"
+    if output_tag != "":
+        e57_object_filename = f"object_{output_tag}.e57"
     e57_object_filepath = os.path.join(out_dir, e57_object_filename)
 
     object_points = np.array(object_points)
@@ -99,6 +115,8 @@ def save_e57_object_and_scene(
         e57_write.write_scan_raw(object_data)
 
     e57_scene_filename = f"scene_{timestamp}.e57"
+    if output_tag != "":
+        e57_scene_filename = f"scene_{output_tag}.e57"
     e57_scene_filepath = os.path.join(out_dir, e57_scene_filename)
 
     scene_points = np.array(scene_points)
@@ -122,7 +140,7 @@ def save_mesh(
     out_dir,
     object_points,
     object_colors,
-    combined_vis,
+    captured_vis,
     timestamp,
     name,
     voxel_size=None,
@@ -170,11 +188,20 @@ def save_mesh(
 
         vis_filename = f"segmented_vis_{timestamp}.png"
         vis_filepath = os.path.join(out_dir, vis_filename)
-        cv2.imwrite(vis_filepath, combined_vis)
+        cv2.imwrite(vis_filepath, captured_vis)
         logging.info(f"Combined visualization saved to {vis_filepath}")
 
     except Exception as e:
         logging.error(f"An error occurred during mesh reconstruction or saving: {e}")
+
+
+def save_capture_view(captured_vis, out_dir, output_tag, timestamp):
+    vis_filename = f"segmented_vis_{timestamp}.png"
+    if output_tag != "":
+        vis_filename = f"segmented_vis_{output_tag}.png"
+    vis_filepath = os.path.join(out_dir, vis_filename)
+    cv2.imwrite(vis_filepath, captured_vis)
+    logging.info(f"Combined visualization saved to {vis_filepath}")
 
 
 def save_zed_point_cloud(
@@ -183,7 +210,7 @@ def save_zed_point_cloud(
     depth,
     color_np_org,
     mask,
-    combined_vis,
+    captured_vis,
 ):
     logging.info("Saving scene and object...")
 
@@ -250,26 +277,33 @@ def save_zed_point_cloud(
 
     save_json_object_and_scene(
         args.out_dir,
+        args.output_tag,
         object_points,
         object_colors,
         scene_points,
         scene_colors,
         current_time_str,
     )
-    save_e57_object_and_scene(
-        args.out_dir,
-        object_points,
-        object_colors,
-        scene_points,
-        scene_colors,
-        current_time_str,
-    )
+    save_capture_view(captured_vis, args.out_dir, args.output_tag, current_time_str)
+    if args.save_e57:
+        save_e57_object_and_scene(
+            args.out_dir,
+            args.output_tag,
+            object_points,
+            object_colors,
+            scene_points,
+            scene_colors,
+            current_time_str,
+        )
+    if args.exit_after_save:
+        print("saved and finish")
+        exit(0)
     """
     save_mesh(
         args.out_dir,
         object_points,
         object_colors,
-        combined_vis,
+        captured_vis,
         current_time_str,
         "object",
     )
@@ -277,16 +311,16 @@ def save_zed_point_cloud(
         args.out_dir,
         scene_points,
         scene_colors,
-        combined_vis,
+        captured_vis,
         current_time_str,
         "scene",
         voxel_size=0.01,
     )
     """
 
-def main():
-    parser = argparse.ArgumentParser()
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
     parser.add_argument(
         "--ckpt_dir",
         default=str(config.FOUNDATIONSTEREO_CHECKPOINT),
@@ -311,12 +345,32 @@ def main():
         "--out_dir", default="./output/", type=str, help="the directory to save results"
     )
     parser.add_argument(
+        "--output-tag",
+        default="",
+        type=str,
+        help="pretrained model path",
+    )
+    parser.add_argument(
         "--erosion_iterations",
         type=int,
         default=0,  # can be 6
         help="Number of erosion iterations for the SAM mask.",
     )
-    args = parser.parse_args()
+    parser.add_argument(
+        "--save-e57",
+        action="store_true",
+        help="save e57",
+    )
+    parser.add_argument(
+        "--exit-after-save",
+        action="store_true",
+        help="exit after first save",
+    )
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
 
     set_logging_format()
     set_seed(0)
@@ -376,22 +430,8 @@ def main():
                     )
 
                 # ---------- FoundationStereo Inference ----------
-                depth, (H_scaled, W_scaled) = stereo_model.run_inference(
-                    left_gray, right_gray, zed.K_left, zed.baseline
-                )
 
-                vis_depth = visualization.vis_depth(depth)
-                vis_depth_resized = cv2.resize(
-                    vis_depth,
-                    fx=1 / stereo_model.args.scale,
-                    fy=1 / stereo_model.args.scale,
-                    dsize=None,
-                )
-
-                combined_vis = np.concatenate(
-                    [display_frame, vis_depth_resized], axis=1
-                )
-                cv2.imshow(win_name, combined_vis)
+                cv2.imshow(win_name, display_frame)
                 key = cv2.waitKey(1)
 
                 if key == ord("r"):
@@ -399,13 +439,16 @@ def main():
                     mouse_handler.reset_box()
 
                 if key == 32 and mouse_handler.box_defined:
+                    depth, (H_scaled, W_scaled) = stereo_model.run_inference(
+                        left_gray, right_gray, zed.K_left, zed.baseline
+                    )
                     save_zed_point_cloud(
                         stereo_model.args,
                         zed.K_left,
                         depth,
                         color_np_org,
                         mask,
-                        combined_vis,
+                        display_frame,
                     )
 
                 if key == 27:

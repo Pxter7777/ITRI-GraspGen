@@ -10,7 +10,7 @@ FOUNDATIONSTEREO_CHECKPOINT = os.path.join(
 SAM2_CHECKPOINT = os.path.join(MODELS_DIR, "SAM2Models", "sam2.1_hiera_large.pt")
 SAM2_CFG = "configs/sam2.1/sam2.1_hiera_l.yaml"
 GRIPPER_CFG = os.path.join(
-    MODELS_DIR, "GraspGenModels", "checkpoints", "graspgen_franka_panda.yml"
+    MODELS_DIR, "GraspGenModels", "checkpoints", "graspgen_robotiq_2f_140.yml"
 )
 GRASPGEN_SCENE_DIR = os.path.join(".", "output")
 

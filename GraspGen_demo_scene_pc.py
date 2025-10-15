@@ -21,6 +21,7 @@ from threading import Thread
 
 import numpy as np
 import torch
+import trimesh
 
 from grasp_gen.grasp_server import GraspGenSampler, load_grasp_cfg
 from grasp_gen.utils.meshcat_utils import (
@@ -29,18 +30,17 @@ from grasp_gen.utils.meshcat_utils import (
     visualize_pointcloud,
 )
 from grasp_gen.utils.point_cloud_utils import point_cloud_outlier_removal_with_color
-from grasp_gen.dataset.eval_utils import save_to_isaac_grasp_format
 from src import config
 
 
 class AppState:
     def __init__(self):
         self.grasps = None
+        self.qualified_grasps = None
+        self.selected_grasp_pool = None
         self.grasp_conf = None
-        self.selected_grasps = []
         self.current_grasp_index = 0
-        self.display_selected_grasps = True
-        self.display_non_selected_grasps = True
+        self.display_unqualified_grasps = False
 
 
 app_state = AppState()
@@ -65,10 +65,9 @@ class ControlPanel:
         self.root.title("Control Panel")
 
         self.custom_filename_var = tk.BooleanVar()
+        self.display_disqualified_var = tk.BooleanVar(value=False)
         self.filename_entry_var = tk.StringVar()
         self.selected_file = tk.StringVar()
-        self.display_selected_var = tk.BooleanVar(value=True)
-        self.display_non_selected_var = tk.BooleanVar(value=True)
 
         # Dropdown for JSON files
         self.selected_file.set(json_files[0] if json_files else "")
@@ -82,7 +81,7 @@ class ControlPanel:
         self.load_button.pack(padx=20, pady=5)
 
         save_button = tk.Button(
-            self.root, text="Save Isaac Grasp", command=self.save_isaac_grasps
+            self.root, text="Save Grasp Euler", command=self.save_grasp_euler
         )
         save_button.pack(padx=20, pady=5)
 
@@ -99,21 +98,13 @@ class ControlPanel:
         )
         self.filename_entry.pack(padx=20, pady=5)
 
-        self.display_selected_checkbox = tk.Checkbutton(
+        self.display_disqualified_checkbox = tk.Checkbutton(
             self.root,
-            text="Display Selected Grasps",
-            var=self.display_selected_var,
+            text="Display Disqualified Grasps",
+            var=self.display_disqualified_var,
             command=self.toggle_grasp_display,
         )
-        self.display_selected_checkbox.pack(pady=5)
-
-        self.display_non_selected_checkbox = tk.Checkbutton(
-            self.root,
-            text="Display Non-Selected Grasps",
-            var=self.display_non_selected_var,
-            command=self.toggle_grasp_display,
-        )
-        self.display_non_selected_checkbox.pack(pady=5)
+        self.display_disqualified_checkbox.pack(pady=5)
 
         # Grasp navigation frame
         nav_frame = tk.Frame(self.root)
@@ -121,11 +112,6 @@ class ControlPanel:
 
         self.prev_button = tk.Button(nav_frame, text="<", command=self.prev_grasp)
         self.prev_button.pack(side=tk.LEFT, padx=5)
-
-        self.add_grasp_button = tk.Button(
-            nav_frame, text="Add Grasp", command=self.select_grasp
-        )
-        self.add_grasp_button.pack(side=tk.LEFT, padx=5)
 
         self.next_button = tk.Button(nav_frame, text=">", command=self.next_grasp)
         self.next_button.pack(side=tk.LEFT, padx=5)
@@ -149,6 +135,31 @@ class ControlPanel:
         else:
             self.filename_entry.config(state=tk.DISABLED)
 
+    def save_grasp_euler(self):
+        grasp = app_state.selected_grasp_pool[app_state.current_grasp_index]
+        position = grasp[:3, 3].tolist()
+
+        euler_orientation = list(trimesh.transformations.euler_from_matrix(grasp))
+        euler_orientation = np.rad2deg(euler_orientation).tolist()
+        _, _, front = get_right_up_and_front(grasp)
+        data = {
+            "position": position,
+            "euler_orientation": euler_orientation,
+            "forward_vec": front.tolist(),
+        }
+
+        input_filename = self.selected_file.get()
+        base_name = os.path.basename(input_filename)
+        timestamp_from_file = os.path.splitext(base_name)[0]
+        json_filename = f"grasp_{timestamp_from_file}.json"
+        json_filepath = os.path.join("output", json_filename)
+
+        with open(json_filepath, "w") as f:
+            json.dump(data, f, indent=4)
+        print(f"saved to {json_filepath}")
+        os.kill(os.getpid(), signal.SIGINT)
+
+    """
     def save_isaac_grasps(self):
         if app_state.grasps is not None and app_state.grasp_conf is not None:
             if self.custom_filename_var.get():
@@ -180,33 +191,49 @@ class ControlPanel:
             print("Save complete.")
         else:
             print("No grasps available to save.")
+    """
+
+    def quickload(self):
+        if self.args.filename:
+            # Find the full path from json_files that matches the filename
+            found_file = None
+            for f in self.json_files:
+                if os.path.basename(f) == self.args.filename:
+                    found_file = f
+                    break
+
+            if found_file:
+                self.selected_file.set(found_file)
+                self.filename_entry_var.set(self.args.filename)
+                self.load_scene()
+            else:
+                print(f"File not found in json_files: {self.args.filename}")
 
     def run(self):
+        self.root.after(100, self.quickload)
         self.root.mainloop()
 
     def next_grasp(self, event=None):
-        if app_state.grasps is not None:
+        if app_state.selected_grasp_pool is not None:
             app_state.current_grasp_index = (app_state.current_grasp_index + 1) % len(
-                app_state.grasps
+                app_state.selected_grasp_pool
             )
             self._update_grasps()
 
     def prev_grasp(self, event=None):
-        if app_state.grasps is not None:
+        if app_state.selected_grasp_pool is not None:
             app_state.current_grasp_index = (app_state.current_grasp_index - 1) % len(
-                app_state.grasps
+                app_state.selected_grasp_pool
             )
             self._update_grasps()
 
-    def select_grasp(self, event=None):
-        if app_state.grasps is not None:
-            if app_state.current_grasp_index not in app_state.selected_grasps:
-                app_state.selected_grasps.append(app_state.current_grasp_index)
-            self._update_grasps()
-
     def toggle_grasp_display(self):
-        app_state.display_selected_grasps = self.display_selected_var.get()
-        app_state.display_non_selected_grasps = self.display_non_selected_var.get()
+        app_state.display_unqualified_grasps = self.display_disqualified_var.get()
+        if app_state.display_unqualified_grasps:
+            app_state.selected_grasp_pool = app_state.grasps
+        else:
+            app_state.selected_grasp_pool = app_state.qualified_grasps
+        app_state.current_grasp_index = 0
         self._update_grasps()
 
     def _update_grasps(self):
@@ -235,7 +262,7 @@ def parse_args():
     parser.add_argument(
         "--grasp_threshold",
         type=float,
-        default=0.80,
+        default=0.70,
         help="Threshold for valid grasps. If -1.0, then the top 100 grasps will be ranked and returned",
     )
     parser.add_argument(
@@ -353,33 +380,72 @@ def process_and_visualize_scene(vis, json_file):
     return obj_pc
 
 
+def get_right_up_and_front(grasp: np.array):
+    right = grasp[:3, 0]
+    up = grasp[:3, 1]
+    front = grasp[:3, 2]
+    return right, up, front
+
+
+def is_qualified(grasp: np.array):
+    right, up, front = get_right_up_and_front(grasp)
+    if up[2] < 0.9:
+        return False
+    if front[0] < -0.5:
+        return False
+    return True
+
+
 def update_grasp_visualization(vis, gripper_name):
-    if app_state.grasps is None:
+    if app_state.selected_grasp_pool is None:
         return
 
     vis["GraspGen"].delete()
 
-    for j, grasp in enumerate(app_state.grasps):
-        is_selected = j in app_state.selected_grasps
+    for j, grasp in enumerate(app_state.selected_grasp_pool):
         is_current = j == app_state.current_grasp_index
 
-        if (is_selected and app_state.display_selected_grasps) or (
-            not is_selected and app_state.display_non_selected_grasps
-        ):
-            color = [0, 185, 0]  # Default color for non-selected grasps
-            if is_current:
-                color = [255, 0, 0]  # Highlight color for current grasp
-            elif is_selected:
-                color = [0, 0, 255]  # Color for other selected grasps
+        color = [0, 185, 0]  # Default color for non-selected grasps
+        if is_current:
+            color = [255, 0, 0]  # Highlight color for current grasp
+            print(grasp)
+            right, up, front = get_right_up_and_front(grasp)
+            origin = grasp[:3, 3]
+            vector_length = 0.1
+            num_points = 10
 
-            visualize_grasp(
-                vis,
-                f"GraspGen/{j:03d}/grasp",
-                grasp,
-                color=color,
-                gripper_name=gripper_name,
-                linewidth=2.5 if is_current else 1.5,
+            # Right vector (red)
+            right_points = np.linspace(
+                origin, origin + right * vector_length, num_points
             )
+            right_colors = np.tile([255, 0, 0], (num_points, 1))
+            visualize_pointcloud(
+                vis, f"GraspGen/{j:03d}/right", right_points, right_colors, size=0.005
+            )
+
+            # Up vector (green)
+            up_points = np.linspace(origin, origin + up * vector_length, num_points)
+            up_colors = np.tile([0, 255, 0], (num_points, 1))
+            visualize_pointcloud(
+                vis, f"GraspGen/{j:03d}/up", up_points, up_colors, size=0.005
+            )
+
+            # Front vector (blue)
+            front_points = np.linspace(
+                origin, origin + front * vector_length, num_points
+            )
+            front_colors = np.tile([0, 0, 255], (num_points, 1))
+            visualize_pointcloud(
+                vis, f"GraspGen/{j:03d}/front", front_points, front_colors, size=0.005
+            )
+        visualize_grasp(
+            vis,
+            f"GraspGen/{j:03d}/grasp",
+            grasp,
+            color=color,
+            gripper_name=gripper_name,
+            linewidth=2.5 if is_current else 1.5,
+        )
 
 
 def generate_and_visualize_grasps(vis, obj_pc, grasp_sampler, gripper_name, args):
@@ -397,6 +463,13 @@ def generate_and_visualize_grasps(vis, obj_pc, grasp_sampler, gripper_name, args
         app_state.grasp_conf = grasp_conf.cpu().numpy()
         app_state.grasps = grasps.cpu().numpy()
         app_state.grasps[:, 3, 3] = 1
+        app_state.qualified_grasps = np.array(
+            [grasp for grasp in app_state.grasps if is_qualified(grasp)]
+        )
+        if app_state.display_unqualified_grasps:
+            app_state.selected_grasp_pool = app_state.grasps
+        else:
+            app_state.selected_grasp_pool = app_state.qualified_grasps
         print(
             f"[{method}] Scores with min {app_state.grasp_conf.min():.3f} and max {app_state.grasp_conf.max():.3f}"
         )
@@ -446,15 +519,6 @@ def main():
         daemon=True,
     )
     gui_thread.start()
-
-    # If a filename is provided, load it. Otherwise, the GUI will handle it.
-    if args.filename:
-        if os.path.exists(args.filename):
-            load_and_process_scene(
-                vis, args.filename, grasp_sampler, gripper_name, args
-            )
-        else:
-            print(f"File not found: {args.filename}")
 
     # Keep the main thread alive to handle signals
     try:
