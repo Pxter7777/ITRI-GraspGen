@@ -142,6 +142,7 @@ class ControlPanel:
         grasp = app_state.selected_grasp_pool[app_state.current_grasp_index]
         position = grasp[:3, 3].tolist()
         euler_orientation = list(trimesh.transformations.euler_from_matrix(grasp))
+        euler_orientation = np.rad2deg(euler_orientation).tolist()
         data = {
             "position" : position,
             "euler_orientation" : euler_orientation
@@ -262,7 +263,7 @@ def parse_args():
     parser.add_argument(
         "--grasp_threshold",
         type=float,
-        default=0.80,
+        default=0.70,
         help="Threshold for valid grasps. If -1.0, then the top 100 grasps will be ranked and returned",
     )
     parser.add_argument(

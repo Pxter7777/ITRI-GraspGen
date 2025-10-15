@@ -29,7 +29,22 @@ python ./scripts/demo_object_mesh.py  --mesh_file /home/j300/GenPointCloud/outpu
     - use bindmount for ITRI-GraspGen(source code) and models
     - bake Third_Party into the image
 
+- quick main_zed
+```bash
+python main_zed.py --exit-after-save --output-tag "hey"
+```
+
 - quick transform
 ```bash
-python manual_PC_transform.py --quick --filename scene_20251014_115650.json --transform-config transform_config_1.json
+python manual_PC_transform.py --quick --filename scene_BABA.json --transform-config right.json
+```
+
+- quick GraspGen --filename
+```bash
+python ./GraspGen_demo_scene_pc.py --return_topk --topk_num_grasps 10 --filename scene_change_transformed.json
+```
+
+- slow GraspGen
+```bash
+python ./GraspGen_demo_scene_pc.py --return_topk --topk_num_grasps 10
 ```
