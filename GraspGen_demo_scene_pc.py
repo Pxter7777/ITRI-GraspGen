@@ -210,7 +210,7 @@ class ControlPanel:
                 self.selected_file.set(found_file)
                 self.filename_entry_var.set(self.args.filename)
                 if self.args.auto_select:
-                    for _ in range(5):
+                    for _ in range(10):
                         self.load_scene()
                         if len(app_state.qualified_grasps) > 0:
                             self.save_grasp_euler()
@@ -413,7 +413,9 @@ def is_qualified(grasp: np.array):
     right, up, front = get_right_up_and_front(grasp)
     if up[2] < 0.95:
         return False
-    if front[0] < 0.6:
+    if front[0] < 0.8:
+        return False
+    if front[1] < -0.2:
         return False
     if position[2] < 0.056: # for safety
         return False

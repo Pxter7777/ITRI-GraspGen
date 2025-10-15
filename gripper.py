@@ -180,7 +180,7 @@ def main():
     forward = data["forward_vec"]
     first_position = [p - 100 * f for p, f in zip(position, forward, strict=False)]
     second_position = position
-    third_position = [p + 60 * f for p, f in zip(position, forward, strict=False)]
+    third_position = [p + 65 * f for p, f in zip(position, forward, strict=False)]
 
     first_signal = first_position + euler_orientation
     second_signal = second_position + euler_orientation
