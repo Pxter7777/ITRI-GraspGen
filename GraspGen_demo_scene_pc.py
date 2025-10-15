@@ -141,11 +141,14 @@ class ControlPanel:
     def save_grasp_euler(self):
         grasp = app_state.selected_grasp_pool[app_state.current_grasp_index]
         position = grasp[:3, 3].tolist()
+        
         euler_orientation = list(trimesh.transformations.euler_from_matrix(grasp))
         euler_orientation = np.rad2deg(euler_orientation).tolist()
+        _,_,front = get_right_up_and_front(grasp)
         data = {
             "position" : position,
-            "euler_orientation" : euler_orientation
+            "euler_orientation" : euler_orientation,
+            "forward_vec" : front.tolist()
         }
         
         input_filename = self.selected_file.get()
