@@ -157,6 +157,8 @@ class ControlPanel:
         with open(json_filepath, "w") as f:
             json.dump(data, f, indent=4)
         print(f"saved to {json_filepath}")
+        print("Shutting down in 2 seconds...")
+        time.sleep(2)
         os.kill(os.getpid(), signal.SIGINT)
 
     """
@@ -205,7 +207,14 @@ class ControlPanel:
             if found_file:
                 self.selected_file.set(found_file)
                 self.filename_entry_var.set(self.args.filename)
-                self.load_scene()
+                if self.args.auto_select:
+                    for _ in range(5):
+                        self.load_scene()
+                        if len(app_state.qualified_grasps) > 0:
+                            self.save_grasp_euler()
+                    print("auto-select sadly failed")
+                else:
+                    self.load_scene()
             else:
                 print(f"File not found in json_files: {self.args.filename}")
 
@@ -287,6 +296,11 @@ def parse_args():
         type=str,
         default="",
         help="Specific JSON file to process. If not specified, a GUI will be presented to choose from sample_data_dir",
+    )
+    parser.add_argument(
+        "--auto-select",
+        action="store_true",
+        help="auto select grasp without meshcat and tkinter",
     )
     return parser.parse_args()
 
@@ -388,10 +402,15 @@ def get_right_up_and_front(grasp: np.array):
 
 
 def is_qualified(grasp: np.array):
+    position = grasp[:3, 3].tolist()
     right, up, front = get_right_up_and_front(grasp)
-    if up[2] < 0.9:
+    if up[2] < 0.95:
         return False
-    if front[0] < -0.5:
+    if front[0] < 0.6:
+        return False
+    if position[2] < 0.056:
+        return False
+    if position[2] > 0.129:
         return False
     return True
 
