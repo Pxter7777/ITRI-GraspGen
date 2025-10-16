@@ -12,6 +12,9 @@ import json
 import os
 import argparse
 
+HOME_SIGNAL = [326.8, -140.2, 212.6, 90.0, 0, 90.0]
+READY_POUR_SIGNAL = [581.6, -251.8, 167.9, 90, 0, 90.0]
+POUR_SIGNAL = [581.6, -251.8, 167.9, -90, -55, -90]
 
 def quat_to_euler_zyx_deg(qx, qy, qz, qw):
     def _clamp(v, lo, hi): return max(lo, min(hi, v))
@@ -304,9 +307,9 @@ def main():
     fifth_signal = fifth_position + fifth_orientation
     sixth_signal = sixth_position + sixth_orientation
 
-    home_position = [312.7, -148.5, 403.9]
-    home_orientation = [92.9, 0.0, 90]
-    home_signal = home_position + home_orientation
+    #home_position = [312.7, -148.5, 403.9]
+    #home_orientation = [92.9, 0.0, 90]
+    #home_signal = home_position + home_orientation
     rclpy.init()
     node = TMRobotController()
     try:
@@ -320,20 +323,20 @@ def main():
         node.append_gripper_close()
 
         node.append_tcp(fourth_signal)
-        node.append_tcp(fifth_signal)
-        node.append_tcp(sixth_signal, wait_time=2.0)
+        node.append_tcp(READY_POUR_SIGNAL)
+        node.append_tcp(POUR_SIGNAL, wait_time=2.0)
 
-        node.append_tcp(fifth_signal)
+        node.append_tcp(READY_POUR_SIGNAL)
         node.append_tcp(fourth_signal)
 
         third_signal[2] += 2
         second_signal[2] += 2
-        third_signal[2] += 2
+        first_signal[2] += 2
         node.append_tcp(third_signal)
         node.append_gripper_open()
         node.append_tcp(second_signal)
         node.append_tcp(first_signal)
-        node.append_tcp(home_signal)
+        node.append_tcp(HOME_SIGNAL)
         # node.append_tcp([367.05, -140.73, 258.21, 91.85, 8.72, 73.71])
         # node.append_gripper_open()
 
