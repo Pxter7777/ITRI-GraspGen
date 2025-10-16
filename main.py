@@ -10,6 +10,7 @@ import json
 import datetime
 import pye57
 import sys
+import trimesh
 
 sys.path.insert(0, os.path.expanduser("~/Third_Party"))
 
@@ -24,6 +25,20 @@ from src import (
     visualization,
 )
 from src.zed_utils import ZedCamera
+
+class AppState:
+    def __init__(self):
+        self.grasps = None
+        self.qualified_grasps = None
+        self.selected_grasp_pool = None
+        self.grasp_conf = None
+        self.current_grasp_index = 0
+        self.display_unqualified_grasps = False
+        self.obj_mass_center = None
+        self.obj_std = None
+
+
+app_state = AppState()
 
 zed = None
 ###### Models
@@ -296,6 +311,7 @@ def parse_args():
         default="demo4.json",
         help="Transform config",
     )
+    
     return parser.parse_args()
 
 
@@ -400,6 +416,50 @@ def quick_transform(original_pointcloud, transform_config):
 
 
     return info
+def get_right_up_and_front(grasp: np.array):
+    right = grasp[:3, 0]
+    up = grasp[:3, 1]
+    front = grasp[:3, 2]
+    return right, up, front
+def is_qualified(grasp: np.array):
+    position = grasp[:3, 3].tolist()
+    right, up, front = get_right_up_and_front(grasp)
+    if up[2] < 0.95:
+        return False
+    # if front[0] < 0.8:
+    #    return False
+    # if front[1] < -0.2:
+    #    return False
+
+    # Rule: planar 2D angle between grasp approach (front) vector and grasp position vector should be small
+    angle_front = np.arctan2(front[1], front[0])
+    angle_position = np.arctan2(position[1], position[0])
+    angle_diff = np.abs(angle_front - angle_position)
+    if angle_diff > np.pi:
+        angle_diff = 2 * np.pi - angle_diff
+    if angle_diff > np.deg2rad(20):
+        return False
+
+    if position[2] < 0.056:  # for safety
+        return False
+    if position[2] > app_state.obj_mass_center[2] + app_state.obj_std[2]:  # too high
+        return False
+    if position[2] < app_state.obj_mass_center[2] - app_state.obj_std[2]:  # too low
+        return False
+    return True
+
+def pack_grasp_euler(grasp):
+    position = grasp[:3, 3].tolist()
+
+    euler_orientation = list(trimesh.transformations.euler_from_matrix(grasp))
+    euler_orientation = np.rad2deg(euler_orientation).tolist()
+    _, _, front = get_right_up_and_front(grasp)
+    data = {
+        "position": position,
+        "euler_orientation": euler_orientation,
+        "forward_vec": front.tolist(),
+    }
+    return data
 
 
 def main():
@@ -421,8 +481,31 @@ def main():
                 pointcloud = gen_point_cloud(args)
                 if pointcloud is None:
                     continue
-                transform_pointcloud = quick_transform(pointcloud, args.transform_config)
+                transformed_pointcloud = quick_transform(pointcloud, args.transform_config)
                 print("what?")
+                obj_pc = transformed_pointcloud["object_info"]["pc"]
+                app_state.obj_mass_center = np.mean(obj_pc, axis=0)
+                app_state.obj_std = np.std(obj_pc, axis=0)
+                num_try = 0
+                while True:
+                    num_try += 1
+                    print("try", num_try)
+                    grasps, grasp_conf = GraspGenSampler.run_inference(
+                        obj_pc,
+                        grasp_sampler,
+                        grasp_threshold=args.grasp_threshold,
+                        num_grasps=args.num_grasps,
+                        topk_num_grasps=args.topk_num_grasps,
+                    )
+                    grasps = grasps.cpu().numpy()
+                    grasps[:, 3, 3] = 1
+                    qualified_grasps = np.array(
+                        [grasp for grasp in grasps if is_qualified(grasp)]
+                    )
+                    if len(qualified_grasps) > 0:
+                        grasp = pack_grasp_euler(qualified_grasps[0])
+                        break
+                print(grasp)
             elif text == "end":
                 break
             
