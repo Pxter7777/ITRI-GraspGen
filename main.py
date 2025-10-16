@@ -11,6 +11,10 @@ import datetime
 import pye57
 import sys
 import trimesh
+import subprocess
+import tempfile
+import subprocess
+import tempfile
 
 sys.path.insert(0, os.path.expanduser("~/Third_Party"))
 
@@ -308,7 +312,7 @@ def parse_args():
     parser.add_argument(
         "--transform-config",
         type=str,
-        default="demo4.json",
+        default="demo5.json",
         help="Transform config",
     )
     
@@ -437,7 +441,7 @@ def is_qualified(grasp: np.array):
     angle_diff = np.abs(angle_front - angle_position)
     if angle_diff > np.pi:
         angle_diff = 2 * np.pi - angle_diff
-    if angle_diff > np.deg2rad(20):
+    if angle_diff > np.deg2rad(30):
         return False
 
     if position[2] < 0.056:  # for safety
@@ -459,7 +463,13 @@ def pack_grasp_euler(grasp):
         "euler_orientation": euler_orientation,
         "forward_vec": front.tolist(),
     }
-    return data
+
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".json", delete=False, dir="/tmp"
+    ) as tmp:
+        json.dump(data, tmp)
+        logging.info(f"Grasp data saved to {tmp.name}")
+        return tmp.name
 
 
 def main():
@@ -503,9 +513,18 @@ def main():
                         [grasp for grasp in grasps if is_qualified(grasp)]
                     )
                     if len(qualified_grasps) > 0:
-                        grasp = pack_grasp_euler(qualified_grasps[0])
+                        temp_grasp_file = pack_grasp_euler(qualified_grasps[0])
+
+                        command = ["/usr/bin/python3", "quick_grip.py", "--input",temp_grasp_file]
+                        logging.info(f"Executing: {' '.join(command)}")
+                        subprocess.run(command, check=True)
+                        os.remove(temp_grasp_file)
+                        logging.info(
+                            "quick_grip.py executed successfully and temp file removed."
+                        )
+
                         break
-                print(grasp)
+
             elif text == "end":
                 break
             
