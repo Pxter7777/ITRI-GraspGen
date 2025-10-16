@@ -34,8 +34,8 @@ def quat_to_euler_zyx_deg(qx, qy, qz, qw):
     return math.degrees(roll), math.degrees(pitch), math.degrees(yaw)  # rx, ry, rz
 
 def is_two_point_identical(point1:list, point2:list):
-    pos_identical = all(abs(p1 - p2) < 50 for p1, p2 in zip(point1[:3], point2[:3]))
-    orient_identical = all(abs(o1 - o2) < 10 for o1, o2 in zip(point1[3:], point2[3:]))
+    pos_identical = all(abs(p1 - p2) < 5 for p1, p2 in zip(point1[:3], point2[:3]))
+    orient_identical = all(abs(o1 - o2) < 1 for o1, o2 in zip(point1[3:], point2[3:]))
     return pos_identical and orient_identical
 
 class TMRobotController(Node):
@@ -165,7 +165,7 @@ class TMRobotController(Node):
         if not (isinstance(states, (list, tuple)) and len(states) == 3):
             self.get_logger().error("IO 狀態必須為長度 3 的 list，例如 [1,0,0]")
             return
-        self.tcp_queue.append(f"IO:{states[0]},{states[1]},{states[2]}")
+        self.tcp_queue.append({"script": f"IO:{states[0]},{states[1]},{states[2]}", "wait_time": 0.0})
 
     def append_gripper_close(self):
         self.append_gripper_states([1, 0, 0])
@@ -186,7 +186,7 @@ class TMRobotController(Node):
             f"{tcp_values[3]:.2f}, {tcp_values[4]:.2f}, {tcp_values[5]:.2f},"
             f"{vel},{acc},{coord},{fine_str})"
         )
-        self.tcp_queue.append(script)
+        self.tcp_queue.append({"script": script, "wait_time": wait_time})
         if wait_time > 0:
             self.states_need_to_wait.append(
                 {
@@ -201,8 +201,8 @@ class TMRobotController(Node):
         now = time.time()
         if now - self._last_send_ts < self._min_send_interval:
             return
-
-        cmd = self.tcp_queue.popleft()
+        item = self.tcp_queue.popleft()
+        cmd, wait_time = item["script"], item["wait_time"]
         self._last_send_ts = now
         self._busy = True
 
@@ -221,9 +221,9 @@ class TMRobotController(Node):
         # 動作指令
         script_to_run = cmd
         self.get_logger().info(f"正在執行佇列中的腳本: {script_to_run}")
-        self._send_script_async(script_to_run)
+        self._send_script_async(script_to_run, wait_time)
 
-    def _send_script_async(self, script: str):
+    def _send_script_async(self, script: str, wait_time):
         if not self.script_cli:
             self.get_logger().error("send_script 客戶端尚未初始化。")
             self._busy = False
@@ -244,7 +244,8 @@ class TMRobotController(Node):
             except Exception as e:
                 self.get_logger().error(f"[SendScript 失敗] {e}")
             finally:
-                self._busy = False
+                if(wait_time==0):
+                    self._busy = False
 
         future.add_done_callback(_done)
 
