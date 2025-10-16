@@ -413,10 +413,20 @@ def is_qualified(grasp: np.array):
     right, up, front = get_right_up_and_front(grasp)
     if up[2] < 0.95:
         return False
-    if front[0] < 0.8:
+    #if front[0] < 0.8:
+    #    return False
+    #if front[1] < -0.2:
+    #    return False
+
+    # Rule: planar 2D angle between grasp approach (front) vector and grasp position vector should be small
+    angle_front = np.arctan2(front[1], front[0])
+    angle_position = np.arctan2(position[1], position[0])
+    angle_diff = np.abs(angle_front - angle_position)
+    if angle_diff > np.pi:
+        angle_diff = 2 * np.pi - angle_diff
+    if angle_diff > np.deg2rad(20):
         return False
-    if front[1] < -0.2:
-        return False
+
     if position[2] < 0.056: # for safety
         return False
     if position[2] > app_state.obj_mass_center[2] + app_state.obj_std[2]: # too high
