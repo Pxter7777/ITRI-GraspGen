@@ -39,6 +39,13 @@
             ]
         },
         {
+            "name": "main.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "console": "integratedTerminal",
+        },
+        {
             "name": "GraspGen_demo_scene_pc.py",
             "type": "debugpy",
             "request": "launch",
