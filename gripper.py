@@ -1,15 +1,42 @@
 # one_arm_control_CPP.py
 
 import time
+import math
 import rclpy
 from rclpy.node import Node
 from tm_msgs.srv import SendScript, SetIO
 from tm_msgs.msg import FeedbackState
+from geometry_msgs.msg import PoseStamped
 from collections import deque
 import json
 import os
 import argparse
 
+
+def quat_to_euler_zyx_deg(qx, qy, qz, qw):
+    def _clamp(v, lo, hi): return max(lo, min(hi, v))
+    def normalize_quat(x, y, z, w):
+        n = math.sqrt(x*x + y*y + z*z + w*w)
+        return (0.0, 0.0, 0.0, 1.0) if n == 0 else (x/n, y/n, z/n, w/n)
+    qx, qy, qz, qw = normalize_quat(qx, qy, qz, qw)
+    # yaw (Z)
+    siny = 2.0 * (qw*qz + qx*qy)
+    cosy = 1.0 - 2.0 * (qy*qy + qz*qz)
+    yaw = math.atan2(siny, cosy)
+    # pitch (Y)
+    sinp = 2.0 * (qw*qy - qz*qx)
+    sinp = _clamp(sinp, -1.0, 1.0)
+    pitch = math.asin(sinp)
+    # roll (X)
+    sinr = 2.0 * (qw*qx + qy*qz)
+    cosr = 1.0 - 2.0 * (qx*qx + qy*qy)
+    roll = math.atan2(sinr, cosr)
+    return math.degrees(roll), math.degrees(pitch), math.degrees(yaw)  # rx, ry, rz
+
+def is_two_point_identical(point1:list, point2:list):
+    pos_identical = all(abs(p1 - p2) < 50 for p1, p2 in zip(point1[:3], point2[:3]))
+    orient_identical = all(abs(o1 - o2) < 10 for o1, o2 in zip(point1[3:], point2[3:]))
+    return pos_identical and orient_identical
 
 class TMRobotController(Node):
     def __init__(self):
@@ -26,6 +53,8 @@ class TMRobotController(Node):
         self.create_timer(0.05, self._process_queue)
 
         self.gripper_poll_sec = 0.10
+
+        self.states_need_to_wait = []
 
     def setup_services(self):
         self.get_logger().info("等待 ROS 2 服務啟動...")
@@ -48,7 +77,9 @@ class TMRobotController(Node):
             FeedbackState, "feedback_states", self.feedback_callback, 10
         )
         self.get_logger().info("✅ 已訂閱 feedback_states")
-
+        self.sub = self.create_subscription(PoseStamped, '/tool_pose', self.cb, 10)
+        self.get_logger().info(' subscribe /tool_pose')
+        
     def feedback_callback(self, msg):
         self.ee_digital_output = list(msg.ee_digital_output)
 
@@ -60,6 +91,21 @@ class TMRobotController(Node):
                 self.waiting_for_gripper = False
                 self.target_ee_output = None
                 self._start_gripper_wait_timer()
+    def cb(self, msg: PoseStamped):
+        p = msg.pose.position
+        q = msg.pose.orientation
+        # 2)  transform to CPP（x y z rx ry rz）
+        x_mm, y_mm, z_mm = p.x*1000.0, p.y*1000.0, p.z*1000.0
+        rx, ry, rz = quat_to_euler_zyx_deg(q.x, q.y, q.z, q.w)
+
+        for state in self.states_need_to_wait:
+            if is_two_point_identical([x_mm, y_mm, z_mm, rx, ry, rz], state["position"]):
+                self.get_logger().info(
+                    f"🔄 夾爪狀態達成: {self.ee_digital_output}，開始等待 87 秒"
+                )
+                self._start_arm_wait_timer(state["time_to_wait"])
+                self.states_need_to_wait.remove(state)
+                
 
     def _start_gripper_wait_timer(self):
         # 建立 Timer，並在執行 callback 時自行取消
@@ -72,6 +118,17 @@ class TMRobotController(Node):
         if hasattr(self, "_wait_timer"):
             self._wait_timer.cancel()
             del self._wait_timer
+    def _start_arm_wait_timer(self, time):
+        # 建立 Timer，並在執行 callback 時自行取消
+        self._wait_timer_arm = self.create_timer(time, self._arm_wait_done)
+
+    def _arm_wait_done(self):
+        self.get_logger().info("✅ 夾爪動作等待完成")
+        self._busy = False
+
+        if hasattr(self, "_wait_timer_arm"):
+            self._wait_timer_arm.cancel()
+            del self._wait_timer_arm
 
     def set_io(self, states: list):
         """設定 End_DO0, End_DO1, End_DO2 狀態，例如 [1, 0, 0]"""
@@ -119,7 +176,7 @@ class TMRobotController(Node):
     def append_gripper_open(self):
         self.append_gripper_states([0, 0, 1])
 
-    def append_tcp(self, tcp_values: list, vel=20, acc=20, coord=80, fine=False):
+    def append_tcp(self, tcp_values: list, vel=20, acc=20, coord=80, fine=False, wait_time=0.0):
         if len(tcp_values) != 6:
             self.get_logger().error("TCP 必須 6 個數字")
             return
@@ -130,6 +187,13 @@ class TMRobotController(Node):
             f"{vel},{acc},{coord},{fine_str})"
         )
         self.tcp_queue.append(script)
+        if wait_time > 0:
+            self.states_need_to_wait.append(
+                {
+                    "position": tcp_values,
+                    "time_to_wait": wait_time
+                }
+            )
 
     def _process_queue(self):
         if self._busy or not self.tcp_queue:
@@ -256,7 +320,7 @@ def main():
 
         node.append_tcp(fourth_signal)
         node.append_tcp(fifth_signal)
-        node.append_tcp(sixth_signal)
+        node.append_tcp(sixth_signal, wait_time=2.0)
 
         node.append_tcp(fifth_signal)
         node.append_tcp(fourth_signal)
