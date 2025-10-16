@@ -51,6 +51,17 @@
                 "--topk_num_grasps", "5"
             ]
         },
+        {
+            "name": "gripper.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/gripper.py",
+            "console": "integratedTerminal",
+            "python": "/usr/bin/python3",
+            "args": [
+                "--input", "grasp_scene_20251016_131337_transformed.json"
+            ]
+        },
     ]
     
 }
