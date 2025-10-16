@@ -48,3 +48,9 @@ python ./GraspGen_demo_scene_pc.py --return_topk --topk_num_grasps 10 --filename
 ```bash
 python ./GraspGen_demo_scene_pc.py --return_topk --topk_num_grasps 10
 ```
+
+#### Reminder to run tm
+- launch this to connect to tm robotiq, before actually run any tm control code.
+```bash
+ros2 run tm_driver tm_driver robot_ip:=192.168.1.10
+```
