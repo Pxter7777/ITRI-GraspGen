@@ -34,8 +34,8 @@
             "program": "${workspaceFolder}/main_zed.py",
             "console": "integratedTerminal",
             "args": [
-                "--erosion_iterations",
-                "0"
+                "--erosion_iterations", "0",
+                "--use-yolo"
             ]
         },
         {
