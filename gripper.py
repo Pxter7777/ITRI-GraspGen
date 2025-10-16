@@ -1,8 +1,10 @@
 # one_arm_control_CPP.py
+
 import time
 import rclpy
 from rclpy.node import Node
-from tm_msgs.srv import SendScript, SetIO  # ★ add
+from tm_msgs.srv import SendScript, SetIO
+from tm_msgs.msg import FeedbackState
 from collections import deque
 import json
 import os
@@ -13,7 +15,7 @@ class TMRobotController(Node):
     def __init__(self):
         super().__init__("tm_robot_controller")
         self.script_cli = None
-        self.io_cli = None  # ★ add
+        self.io_cli = None
         self.tcp_queue = deque()
         self._busy = False
         self._min_send_interval = 0.20
@@ -23,47 +25,85 @@ class TMRobotController(Node):
         self.clear_queue_on_fail = False
         self.create_timer(0.05, self._process_queue)
 
+        self.gripper_poll_sec = 0.10
+
     def setup_services(self):
         self.get_logger().info("等待 ROS 2 服務啟動...")
+
         self.script_cli = self.create_client(SendScript, "send_script")
         while not self.script_cli.wait_for_service(timeout_sec=1.0):
             self.get_logger().info("等待 send_script 服務...")
 
-        self.io_cli = self.create_client(SetIO, "set_io")  # ★ add
+        self.io_cli = self.create_client(SetIO, "set_io")
         while not self.io_cli.wait_for_service(timeout_sec=1.0):
             self.get_logger().info("等待 set_io 服務...")
 
+        # 初始化 gripper 狀態追蹤
+        self.ee_digital_output = [0, 0, 1, 0]  # 初始狀態
+        self.target_ee_output = None  # 要等待的目標狀態
+        self.waiting_for_gripper = False  # 是否等待中
+
+        # 訂閱 feedback_states
+        self.create_subscription(
+            FeedbackState, "feedback_states", self.feedback_callback, 10
+        )
+        self.get_logger().info("✅ 已訂閱 feedback_states")
+
+    def feedback_callback(self, msg):
+        self.ee_digital_output = list(msg.ee_digital_output)
+
+        if self.waiting_for_gripper and self.target_ee_output is not None:
+            if self.ee_digital_output[:3] == self.target_ee_output:
+                self.get_logger().info(
+                    f"🔄 夾爪狀態達成: {self.ee_digital_output}，開始等待 6 秒"
+                )
+                self.waiting_for_gripper = False
+                self.target_ee_output = None
+                self._start_gripper_wait_timer()
+
+    def _start_gripper_wait_timer(self):
+        # 建立 Timer，並在執行 callback 時自行取消
+        self._wait_timer = self.create_timer(2.0, self._gripper_wait_done)
+
+    def _gripper_wait_done(self):
+        self.get_logger().info("✅ 夾爪動作等待完成")
+        self._busy = False
+
+        if hasattr(self, "_wait_timer"):
+            self._wait_timer.cancel()
+            del self._wait_timer
+
     def set_io(self, states: list):
-        """設定 End_DI0, End_DI1, End_DI2 狀態，例如 [1, 0, 0]"""
+        """設定 End_DO0, End_DO1, End_DO2 狀態，例如 [1, 0, 0]"""
         for pin, state in enumerate(states):
             req = SetIO.Request()
             req.module = 1  # End Module 夾爪
-            req.type = 1  # Digital Input
+            req.type = 1  # Digital Output
             req.pin = pin
             req.state = float(state)
-            future = self.io_cli.call_async(req)
-            """ while rclpy.ok():
-                rclpy.spin_once(self)
-                if future.done():
-                    msg = f"✅ End_DI{pin} 設定為 {state}" if future.result().ok else f"⚠️ End_DI{pin} 設定失敗"
-                    self.get_logger().info(msg)
-                    break """
 
-            def _done(fut, pin=pin, state=state):
+            future = self.io_cli.call_async(req)
+
+            def _done(fut):
                 try:
                     result = fut.result()
                     if result.ok:
-                        self.get_logger().info(f"✅ End_DI{pin} 設定為 {state}")
+                        self.get_logger().info(
+                            f"✅ End_DO{pin} 設定成功，等待 feedback 確認"
+                        )
+                        # 只設定一次 target 狀態即可
+                        if pin == 2:  # 最後一個 pin 設定完成時
+                            self.target_ee_output = states
+                            self.waiting_for_gripper = True
                     else:
-                        self.get_logger().warn(f"⚠️ End_DI{pin} 設定失敗")
+                        self.get_logger().warn(f"⚠️ End_DO{pin} 設定失敗，略過等待")
+                        self._busy = False
                 except Exception as e:
                     self.get_logger().error(f"[SetIO 失敗] {e}")
-                finally:
                     self._busy = False
 
             future.add_done_callback(_done)
 
-    # ★ 加上 append_gripper_* 系列，用 "IO:1,0,0" 字串推進 queue
     def append_gripper_states(self, states):
         if not (isinstance(states, (list, tuple)) and len(states) == 3):
             self.get_logger().error("IO 狀態必須為長度 3 的 list，例如 [1,0,0]")
@@ -102,19 +142,19 @@ class TMRobotController(Node):
         self._last_send_ts = now
         self._busy = True
 
-        # ★ 檢查是否是 IO 指令
+        # IO 指令
         if isinstance(cmd, str) and cmd.startswith("IO:"):
             self.get_logger().info(f"執行夾爪指令: {cmd}")
             try:
                 _, vals = cmd.split(":")
                 a, b, c = map(int, vals.split(","))
-                self.set_io([a, b, c])  # ← 呼叫你原版的 set_io()
+                self.set_io([a, b, c])
             except Exception as e:
                 self.get_logger().error(f"IO 解析錯誤: {e}")
-            # self._busy = False
+                self._busy = False
             return
 
-        # ★ 否則照原流程送動作
+        # 動作指令
         script_to_run = cmd
         self.get_logger().info(f"正在執行佇列中的腳本: {script_to_run}")
         self._send_script_async(script_to_run)
@@ -134,7 +174,7 @@ class TMRobotController(Node):
                 res = future.result()
                 ok = bool(getattr(res, "ok", False))
                 if ok:
-                    self.get_logger().info("✅ 執行成功")
+                    self.get_logger().info("✅ successed")
                 else:
                     self.get_logger().warn("⚠️ 執行失敗：跳過該指令")
             except Exception as e:
@@ -213,16 +253,19 @@ def main():
         node.append_tcp(second_signal)
         node.append_tcp(third_signal)
         node.append_gripper_close()
-        # time.sleep(1)
+
         node.append_tcp(fourth_signal)
         node.append_tcp(fifth_signal)
         node.append_tcp(sixth_signal)
-        # time.sleep(5)
+
         node.append_tcp(fifth_signal)
         node.append_tcp(fourth_signal)
-        # time.sleep(1)
-        node.append_gripper_open()
+
+        third_signal[2] += 2
+        second_signal[2] += 2
+        third_signal[2] += 2
         node.append_tcp(third_signal)
+        node.append_gripper_open()
         node.append_tcp(second_signal)
         node.append_tcp(first_signal)
         node.append_tcp(home_signal)
