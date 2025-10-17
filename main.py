@@ -4,15 +4,10 @@ import logging
 import numpy as np
 import cv2
 import torch
-import pyzed.sl as sl
 import open3d as o3d
 import json
-import datetime
-import pye57
 import sys
 import trimesh
-import subprocess
-import tempfile
 import subprocess
 import tempfile
 
@@ -24,11 +19,10 @@ from src.stereo_utils2 import FoundationStereoModel
 from src.yolo_inference import YOLOv5Detector
 from src import (
     config,
-    mouse_handler,
     sam_utils,
-    visualization,
 )
 from src.zed_utils import ZedCamera
+
 
 class AppState:
     def __init__(self):
@@ -52,6 +46,8 @@ yolo_detector = None
 grasp_cfg = None
 gripper_name = None
 grasp_sampler = None
+
+
 def set_logging_format():
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -112,7 +108,6 @@ def save_json_object_and_scene(
     with open(json_filepath, "w") as f:
         json.dump(scene_data, f, indent=4)
     logging.info(f"Scene saved to {json_filepath}")
-
 
 
 def generate_zed_point_cloud(
@@ -212,7 +207,6 @@ def generate_zed_point_cloud(
         "grasp_info": {"grasp_poses": [], "grasp_conf": []},
     }
     return scene_data
-
 
 
 def parse_args():
@@ -315,12 +309,11 @@ def parse_args():
         default="demo5.json",
         help="Transform config",
     )
-    
+
     return parser.parse_args()
 
 
 def gen_point_cloud(args):
-    
     try:
         set_seed(0)
         torch.autograd.set_grad_enabled(False)
@@ -339,7 +332,9 @@ def gen_point_cloud(args):
             raise ValueError
 
         if len(cup_detections) > 1:
-            print(f"Warning: Multiple cups ({len(cup_detections)}) detected. Using the most confident one.")
+            print(
+                f"Warning: Multiple cups ({len(cup_detections)}) detected. Using the most confident one."
+            )
             raise ValueError
 
         cup_box = cup_detections.iloc[0]
@@ -371,10 +366,10 @@ def gen_point_cloud(args):
             color_np_org,
         )
 
-
-    except:
+    except Exception:
         print("failed during pointcloud")
         return None
+
 
 def transform(original_pointcloud, transformation_matrix):
     original_pc_homogeneous = np.hstack(
@@ -388,6 +383,7 @@ def transform(original_pointcloud, transformation_matrix):
     ).T
     transformed_pointcloud = transformed_object_pc_homogeneous[:, :3]
     return transformed_pointcloud
+
 
 def quick_transform(original_pointcloud, transform_config):
     # check and load transform config
@@ -420,16 +416,20 @@ def quick_transform(original_pointcloud, transform_config):
 
     info = original_pointcloud
     info["object_info"]["pc"] = transform(info["object_info"]["pc"], transformation)
-    info["scene_info"]["pc_color"] = [transform(np.array(info["scene_info"]["pc_color"][0]) , transformation)]
-
-
+    info["scene_info"]["pc_color"] = [
+        transform(np.array(info["scene_info"]["pc_color"][0]), transformation)
+    ]
 
     return info
+
+
 def get_right_up_and_front(grasp: np.array):
     right = grasp[:3, 0]
     up = grasp[:3, 1]
     front = grasp[:3, 2]
     return right, up, front
+
+
 def is_qualified(grasp: np.array):
     position = grasp[:3, 3].tolist()
     right, up, front = get_right_up_and_front(grasp)
@@ -457,6 +457,7 @@ def is_qualified(grasp: np.array):
         return False
     return True
 
+
 def pack_grasp_euler(grasp):
     position = grasp[:3, 3].tolist()
 
@@ -479,11 +480,20 @@ def pack_grasp_euler(grasp):
 
 def main():
     args = parse_args()
-    global zed, stereo_model, sam_predictor, yolo_detector, grasp_cfg, gripper_name, grasp_sampler
+    global \
+        zed, \
+        stereo_model, \
+        sam_predictor, \
+        yolo_detector, \
+        grasp_cfg, \
+        gripper_name, \
+        grasp_sampler
     zed = ZedCamera()
     stereo_model = FoundationStereoModel(args)
     sam_predictor = sam_utils.load_sam_model()
-    yolo_detector = YOLOv5Detector(model_path="/home/j300/models/YOLOModels/yolov5x.pt",conf=0.4)
+    yolo_detector = YOLOv5Detector(
+        model_path="/home/j300/models/YOLOModels/yolov5x.pt", conf=0.4
+    )
 
     grasp_cfg = load_grasp_cfg(args.gripper_config)
     gripper_name = grasp_cfg.data.gripper_name
@@ -496,7 +506,9 @@ def main():
                 pointcloud = gen_point_cloud(args)
                 if pointcloud is None:
                     continue
-                transformed_pointcloud = quick_transform(pointcloud, args.transform_config)
+                transformed_pointcloud = quick_transform(
+                    pointcloud, args.transform_config
+                )
                 print("what?")
                 obj_pc = transformed_pointcloud["object_info"]["pc"]
                 app_state.obj_mass_center = np.mean(obj_pc, axis=0)
@@ -520,7 +532,12 @@ def main():
                     if len(qualified_grasps) > 0:
                         temp_grasp_file = pack_grasp_euler(qualified_grasps[0])
 
-                        command = ["/usr/bin/python3", "quick_grip.py", "--input",temp_grasp_file]
+                        command = [
+                            "/usr/bin/python3",
+                            "quick_grip.py",
+                            "--input",
+                            temp_grasp_file,
+                        ]
                         logging.info(f"Executing: {' '.join(command)}")
                         subprocess.run(command, check=True)
                         os.remove(temp_grasp_file)
@@ -532,14 +549,12 @@ def main():
 
             elif text == "end":
                 break
-            
+
     except KeyboardInterrupt:
         zed.close()
     finally:
         zed.close()
 
-
-    
 
 if __name__ == "__main__":
     main()

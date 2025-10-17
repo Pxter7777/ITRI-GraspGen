@@ -402,7 +402,9 @@ def main():
     stereo_model = FoundationStereoModel(args)
     sam_predictor = sam_utils.load_sam_model()
     if args.use_yolo:
-        yolo_detector = YOLOv5Detector(model_path="/home/j300/models/YOLOModels/yolov5x.pt",conf=0.4)
+        yolo_detector = YOLOv5Detector(
+            model_path="/home/j300/models/YOLOModels/yolov5x.pt", conf=0.4
+        )
 
     # ---------- ZED Init ----------
     zed = ZedCamera()
@@ -427,7 +429,7 @@ def main():
 
                 # ---------- Manual Box Selection + SAM2 Logic ----------
                 mask = np.zeros_like(color_np[:, :, 0], dtype=bool)
-                
+
                 key = cv2.waitKey(1)
                 if key == ord("y") and args.use_yolo:
                     df = yolo_detector.infer(display_frame)
@@ -474,7 +476,7 @@ def main():
                 # ---------- FoundationStereo Inference ----------
 
                 cv2.imshow(win_name, display_frame)
-                
+
                 if key == ord("r"):
                     logging.info("Box reset. Draw a new one.")
                     mouse_handler.reset_box()
