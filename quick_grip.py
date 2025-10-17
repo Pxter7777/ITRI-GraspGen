@@ -38,8 +38,8 @@ def quat_to_euler_zyx_deg(qx, qy, qz, qw):
     return math.degrees(roll), math.degrees(pitch), math.degrees(yaw)  # rx, ry, rz
 
 def is_two_point_identical(point1:list, point2:list):
-    pos_identical = all(abs(p1 - p2) < 5 for p1, p2 in zip(point1[:3], point2[:3]))
-    orient_identical = all(abs(o1 - o2) < 1 for o1, o2 in zip(point1[3:], point2[3:]))
+    pos_identical = all(abs(p1 - p2) < 10 for p1, p2 in zip(point1[:3], point2[:3]))
+    orient_identical = all(abs(o1 - o2) < 2 for o1, o2 in zip(point1[3:], point2[3:]))
     return pos_identical and orient_identical
 
 class TMRobotController(Node):
@@ -293,7 +293,7 @@ def main():
     forward = data["forward_vec"]
     first_position = [p - 60 * f for p, f in zip(position, forward, strict=False)]
     second_position = position
-    third_position = [p + 65 * f for p, f in zip(position, forward, strict=False)]
+    third_position = [p + 62 * f for p, f in zip(position, forward, strict=False)]
 
     first_signal = first_position + euler_orientation
     second_signal = second_position + euler_orientation
