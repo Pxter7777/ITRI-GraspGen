@@ -337,6 +337,11 @@ def gen_point_cloud(args):
         if cup_detections.empty:
             print("No Cup")
             raise ValueError
+
+        if len(cup_detections) > 1:
+            print(f"Warning: Multiple cups ({len(cup_detections)}) detected. Using the most confident one.")
+            raise ValueError
+
         cup_box = cup_detections.iloc[0]
         box = (
             int(cup_box["xmin"]),

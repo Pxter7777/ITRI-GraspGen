@@ -14,8 +14,8 @@ import argparse
 import sys
 
 HOME_SIGNAL = [326.8, -140.2, 212.6, 90.0, 0, 90.0]
-READY_POUR_SIGNAL = [581.6, -251.8, 167.9, 90, 0, 90.0]
-POUR_SIGNAL = [581.6, -251.8, 167.9, -90, -55, -90]
+READY_POUR_SIGNAL = [581.6, -251.8, 127.9, 90, 0, 90.0]
+POUR_SIGNAL = [581.6, -251.8, 127.9, -90, -55, -90]
 
 def quat_to_euler_zyx_deg(qx, qy, qz, qw):
     def _clamp(v, lo, hi): return max(lo, min(hi, v))
@@ -293,7 +293,7 @@ def main():
     forward = data["forward_vec"]
     first_position = [p - 60 * f for p, f in zip(position, forward, strict=False)]
     second_position = position
-    third_position = [p + 62 * f for p, f in zip(position, forward, strict=False)]
+    third_position = [p + 60 * f for p, f in zip(position, forward, strict=False)]
 
     first_signal = first_position + euler_orientation
     second_signal = second_position + euler_orientation
