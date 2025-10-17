@@ -14,6 +14,7 @@ import sys
 sys.path.insert(0, os.path.expanduser("~/Third_Party"))
 
 from src.stereo_utils2 import FoundationStereoModel
+from src.yolo_inference import YOLOv5Detector
 from src import (
     config,
     mouse_handler,
@@ -239,6 +240,15 @@ def save_zed_point_cloud(
         logging.warning("No valid points after filtering for depth > 0.")
         return
 
+    if args.max_depth is not None:
+        valid_depth_mask = points_post_filter[:, 2] < args.max_depth
+        points_post_filter = points_post_filter[valid_depth_mask]
+        if not points_post_filter.size:
+            logging.warning(
+                f"No points remaining after filtering with max_depth={args.max_depth}"
+            )
+            return
+
     # Since the depth map is already in the color camera's frame, no transformation is needed.
     # We just need to map points to pixels to get their color and check the mask.
     projected_points_uv = (K_cam @ points_post_filter.T).T
@@ -366,6 +376,17 @@ def parse_args():
         action="store_true",
         help="exit after first save",
     )
+    parser.add_argument(
+        "--use-yolo",
+        action="store_true",
+        help="use yolo to pick",
+    )
+    parser.add_argument(
+        "--max-depth",
+        type=float,
+        default=None,
+        help="Maximum depth in meters.",
+    )
     return parser.parse_args()
 
 
@@ -380,6 +401,10 @@ def main():
     # ---------- Load Models ----------
     stereo_model = FoundationStereoModel(args)
     sam_predictor = sam_utils.load_sam_model()
+    if args.use_yolo:
+        yolo_detector = YOLOv5Detector(
+            model_path="/home/j300/models/YOLOModels/yolov5x.pt", conf=0.4
+        )
 
     # ---------- ZED Init ----------
     zed = ZedCamera()
@@ -404,6 +429,25 @@ def main():
 
                 # ---------- Manual Box Selection + SAM2 Logic ----------
                 mask = np.zeros_like(color_np[:, :, 0], dtype=bool)
+
+                key = cv2.waitKey(1)
+                if key == ord("y") and args.use_yolo:
+                    df = yolo_detector.infer(display_frame)
+                    if "name" in df.columns:
+                        cup_detections = df[df["name"] == "cup"]
+                        if not cup_detections.empty:
+                            logging.info("Cup detected, selecting it.")
+                            cup_box = cup_detections.iloc[0]
+                            box = (
+                                int(cup_box["xmin"]),
+                                int(cup_box["ymin"]),
+                                int(cup_box["xmax"]),
+                                int(cup_box["ymax"]),
+                            )
+                            mouse_handler.box_start_point = (box[0], box[1])
+                            mouse_handler.box_end_point = (box[2], box[3])
+                            mouse_handler.box_defined = True
+                            mouse_handler.drawing_box = False
 
                 if mouse_handler.drawing_box:
                     visualization.draw_box(
@@ -432,7 +476,6 @@ def main():
                 # ---------- FoundationStereo Inference ----------
 
                 cv2.imshow(win_name, display_frame)
-                key = cv2.waitKey(1)
 
                 if key == ord("r"):
                     logging.info("Box reset. Draw a new one.")
@@ -443,7 +486,7 @@ def main():
                         left_gray, right_gray, zed.K_left, zed.baseline
                     )
                     save_zed_point_cloud(
-                        stereo_model.args,
+                        args,
                         zed.K_left,
                         depth,
                         color_np_org,

@@ -13,8 +13,8 @@ import os
 import argparse
 
 HOME_SIGNAL = [326.8, -140.2, 212.6, 90.0, 0, 90.0]
-READY_POUR_SIGNAL = [581.6, -251.8, 167.9, 90, 0, 90.0]
-POUR_SIGNAL = [581.6, -251.8, 167.9, -90, -55, -90]
+READY_POUR_SIGNAL = [581.6, -251.8, 127.9, 90, 0, 90.0]
+POUR_SIGNAL = [581.6, -251.8, 127.9, -90, -55, -90]
 
 
 def quat_to_euler_zyx_deg(qx, qy, qz, qw):
@@ -43,10 +43,10 @@ def quat_to_euler_zyx_deg(qx, qy, qz, qw):
 
 def is_two_point_identical(point1: list, point2: list):
     pos_identical = all(
-        abs(p1 - p2) < 5 for p1, p2 in zip(point1[:3], point2[:3], strict=False)
+        abs(p1 - p2) < 10 for p1, p2 in zip(point1[:3], point2[:3], strict=False)
     )
     orient_identical = all(
-        abs(o1 - o2) < 1 for o1, o2 in zip(point1[3:], point2[3:], strict=False)
+        abs(o1 - o2) < 2 for o1, o2 in zip(point1[3:], point2[3:], strict=False)
     )
     return pos_identical and orient_identical
 
@@ -63,7 +63,7 @@ class TMRobotController(Node):
 
         self.no_retry_on_fail = True
         self.clear_queue_on_fail = False
-        self.create_timer(0.05, self._process_queue)
+        self._queue_timer = self.create_timer(0.05, self._process_queue)
 
         self.gripper_poll_sec = 0.10
 
@@ -124,7 +124,7 @@ class TMRobotController(Node):
 
     def _start_gripper_wait_timer(self):
         # 建立 Timer，並在執行 callback 時自行取消
-        self._wait_timer = self.create_timer(2.0, self._gripper_wait_done)
+        self._wait_timer = self.create_timer(1.0, self._gripper_wait_done)
 
     def _gripper_wait_done(self):
         self.get_logger().info("✅ 夾爪動作等待完成")
@@ -213,8 +213,12 @@ class TMRobotController(Node):
             )
 
     def _process_queue(self):
-        if self._busy or not self.tcp_queue:
+        if self._busy:
             return
+        if not self.tcp_queue:
+            self.get_logger().info("Command queue is empty, killing process.")
+            self._queue_timer.cancel()
+            os._exit(0)
         now = time.time()
         if now - self._last_send_ts < self._min_send_interval:
             return
@@ -300,9 +304,9 @@ def main():
     signal = position + euler_orientation
     print("signal", signal)
     forward = data["forward_vec"]
-    first_position = [p - 100 * f for p, f in zip(position, forward, strict=False)]
+    first_position = [p - 60 * f for p, f in zip(position, forward, strict=False)]
     second_position = position
-    third_position = [p + 65 * f for p, f in zip(position, forward, strict=False)]
+    third_position = [p + 60 * f for p, f in zip(position, forward, strict=False)]
 
     first_signal = first_position + euler_orientation
     second_signal = second_position + euler_orientation
@@ -313,6 +317,7 @@ def main():
     fourth_orientation = euler_orientation
 
     fourth_signal = fourth_position + fourth_orientation
+
     # home_position = [312.7, -148.5, 403.9]
     # home_orientation = [92.9, 0.0, 90]
     # home_signal = home_position + home_orientation
@@ -330,7 +335,7 @@ def main():
 
         node.append_tcp(fourth_signal)
         node.append_tcp(READY_POUR_SIGNAL)
-        node.append_tcp(POUR_SIGNAL, wait_time=2.0)
+        node.append_tcp(POUR_SIGNAL, wait_time=1.0)
 
         node.append_tcp(READY_POUR_SIGNAL)
         node.append_tcp(fourth_signal)
