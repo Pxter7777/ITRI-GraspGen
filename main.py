@@ -72,7 +72,6 @@ def depth2xyzmap(depth, K):
     return xyz_map
 
 
-
 def generate_zed_point_cloud(
     args,
     K_cam,
