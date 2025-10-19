@@ -22,6 +22,7 @@ from src import (
     sam_utils,
 )
 from src.zed_utils import ZedCamera
+from src.usage_utils import UsageInspector
 
 
 class AppState:
@@ -46,6 +47,7 @@ yolo_detector = None
 grasp_cfg = None
 gripper_name = None
 grasp_sampler = None
+usage_inspector = None
 
 
 def set_logging_format():
@@ -70,46 +72,6 @@ def depth2xyzmap(depth, K):
     return xyz_map
 
 
-def save_json_object_and_scene(
-    out_dir,
-    output_tag,
-    object_points,
-    object_colors,
-    scene_points,
-    scene_colors,
-    timestamp,
-):
-    """Saves the scene and object data to a JSON file."""
-    object_colors_arr = np.array(object_colors)
-    if object_colors_arr.size > 0:
-        object_colors_arr = object_colors_arr[:, ::-1]
-
-    scene_colors_arr = np.array(scene_colors)
-    if scene_colors_arr.size > 0:
-        scene_colors_arr = scene_colors_arr[:, ::-1]
-
-    scene_data = {
-        "object_info": {
-            "pc": np.array(object_points).tolist(),
-            "pc_color": object_colors_arr.tolist(),
-        },
-        "scene_info": {
-            "pc_color": [np.array(scene_points).tolist()],
-            "img_color": [scene_colors_arr.tolist()],
-        },
-        "grasp_info": {"grasp_poses": [], "grasp_conf": []},
-    }
-
-    json_filename = f"scene_{timestamp}.json"
-    if output_tag != "":
-        json_filename = f"scene_{output_tag}.json"
-    json_filepath = os.path.join(out_dir, json_filename)
-
-    with open(json_filepath, "w") as f:
-        json.dump(scene_data, f, indent=4)
-    logging.info(f"Scene saved to {json_filepath}")
-
-
 def generate_zed_point_cloud(
     args,
     K_cam,
@@ -118,7 +80,7 @@ def generate_zed_point_cloud(
     mask,
     captured_vis,
 ):
-    logging.info("Saving scene and object...")
+    logging.info("generating scene and object...")
 
     K_scaled_cam = K_cam.copy()
     K_scaled_cam[:2, :] *= args.scale
@@ -309,6 +271,11 @@ def parse_args():
         default="demo5.json",
         help="Transform config",
     )
+    parser.add_argument(
+        "--usage-inspect",
+        action="store_true",
+        help="log time usage and vram usage for each state into a log file.",
+    )
 
     return parser.parse_args()
 
@@ -324,7 +291,9 @@ def gen_point_cloud(args):
         color_np_org = color_np.copy()
         mask = np.zeros_like(color_np[:, :, 0], dtype=bool)
 
+        usage_inspector.start("YOLO")
         df = yolo_detector.infer(color_np_org)
+        usage_inspector.end("YOLO")
 
         cup_detections = df[df["name"] == "cup"]
         if cup_detections.empty:
@@ -346,18 +315,23 @@ def gen_point_cloud(args):
         )
         # mask
         color_np_rgb = cv2.cvtColor(color_np, cv2.COLOR_BGR2RGB)
+        usage_inspector.start("SAM2")
         mask = sam_utils.run_sam2(
             sam_predictor,
             color_np_rgb,
             box,
             iterations=args.erosion_iterations,
         )
+        usage_inspector.end("SAM2")
         # zed inference
+        usage_inspector.start("FoundationStereo")
         depth, (H_scaled, W_scaled) = stereo_model.run_inference(
             left_gray, right_gray, zed.K_left, zed.baseline
         )
+        usage_inspector.end("FoundationStereo")
         # gen pointcloud
-        return generate_zed_point_cloud(
+        usage_inspector.start("PointCloud Generation")
+        result = generate_zed_point_cloud(
             args,
             zed.K_left,
             depth,
@@ -365,6 +339,8 @@ def gen_point_cloud(args):
             mask,
             color_np_org,
         )
+        usage_inspector.end("PointCloud Generation")
+        return result
 
     except Exception:
         print("failed during pointcloud")
@@ -487,8 +463,12 @@ def main():
         yolo_detector, \
         grasp_cfg, \
         gripper_name, \
-        grasp_sampler
+        grasp_sampler, \
+        usage_inspector
+    usage_inspector = UsageInspector(enabled=args.usage_inspect)
     zed = ZedCamera()
+
+    usage_inspector.start("Load Models")
     stereo_model = FoundationStereoModel(args)
     sam_predictor = sam_utils.load_sam_model()
     yolo_detector = YOLOv5Detector(
@@ -498,6 +478,7 @@ def main():
     grasp_cfg = load_grasp_cfg(args.gripper_config)
     gripper_name = grasp_cfg.data.gripper_name
     grasp_sampler = GraspGenSampler(grasp_cfg)
+    usage_inspector.end("Load Models")
 
     try:
         while True:
@@ -506,9 +487,11 @@ def main():
                 pointcloud = gen_point_cloud(args)
                 if pointcloud is None:
                     continue
+                usage_inspector.start("Transformation")
                 transformed_pointcloud = quick_transform(
                     pointcloud, args.transform_config
                 )
+                usage_inspector.end("Transformation")
                 print("what?")
                 obj_pc = transformed_pointcloud["object_info"]["pc"]
                 app_state.obj_mass_center = np.mean(obj_pc, axis=0)
@@ -517,6 +500,7 @@ def main():
                 while True:
                     num_try += 1
                     print("try", num_try)
+                    usage_inspector.start("GraspGen")
                     grasps, grasp_conf = GraspGenSampler.run_inference(
                         obj_pc,
                         grasp_sampler,
@@ -524,6 +508,7 @@ def main():
                         num_grasps=args.num_grasps,
                         topk_num_grasps=args.topk_num_grasps,
                     )
+                    usage_inspector.end("GraspGen")
                     grasps = grasps.cpu().numpy()
                     grasps[:, 3, 3] = 1
                     qualified_grasps = np.array(
