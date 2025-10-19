@@ -468,6 +468,8 @@ def main():
         usage_inspector
     usage_inspector = UsageInspector(enabled=args.usage_inspect)
     zed = ZedCamera()
+
+    usage_inspector.start("Load Models")
     stereo_model = FoundationStereoModel(args)
     sam_predictor = sam_utils.load_sam_model()
     yolo_detector = YOLOv5Detector(
@@ -477,6 +479,7 @@ def main():
     grasp_cfg = load_grasp_cfg(args.gripper_config)
     gripper_name = grasp_cfg.data.gripper_name
     grasp_sampler = GraspGenSampler(grasp_cfg)
+    usage_inspector.end("Load Models")
 
     try:
         while True:
