@@ -140,6 +140,9 @@ def generate_pointcloud(
 
 class PointCloudGenerator:
     def __init__(self, args):
+        # Init
+        set_seed(0)
+        torch.autograd.set_grad_enabled(False)
         # Init configs
         self.erosion_iterations = args.erosion_iterations
         self.max_depth = args.max_depth
@@ -242,16 +245,14 @@ class PointCloudGenerator:
 
                     if key == 27:
                         return None
-        finally:
-            cv2.destroyAllWindows()
-            self.zed.close()
+        except KeyboardInterrupt:
+            self.close()
+            sys.exit(0)
+        except Exception as e:
+            logging.error(f"An error occurred during mesh reconstruction or saving: {e}")
             
     def silent_mode(self):
         try:
-            # Init
-            set_seed(0)
-            torch.autograd.set_grad_enabled(False)
-
             # Capture image
             zed_status, left_image, right_image = self.zed.capture_images()
             color_np = left_image.get_data()[:, :, :3]  # Drop alpha channel
@@ -263,13 +264,13 @@ class PointCloudGenerator:
 
             # Check detection result
             if cup_detections.empty:
-                print("No Cup")
-                raise ValueError
+                logging.error("No Cup")
+                return None
             if len(cup_detections) > 1:
-                print(
-                    f"Warning: Multiple cups ({len(cup_detections)}) detected. Using the most confident one."
+                logging.error(
+                    f"Warning: Multiple cups ({len(cup_detections)}) detected, please keep only one cup in sight and retry."
                 )
-                raise ValueError
+                return None
             
             # collect the box returned by yolo
             cup_box = cup_detections.iloc[0]
@@ -310,7 +311,9 @@ class PointCloudGenerator:
         except Exception:
             print("failed during pointcloud generation")
             return None
-        pass
+    def close(self):
+        self.zed.close()
+        cv2.destroyAllWindows()
         
         
 
@@ -363,6 +366,6 @@ def main():
     args = parse_args()
     pc_generator = PointCloudGenerator(args)
     pc_generator.interactive_gui_mode()
-
+    pc_generator.close_camera()
 if __name__ == "__main__":
     main()
