@@ -105,6 +105,7 @@ def generate_pointcloud(depth, color_np_org, mask, K_cam, scale, max_depth):
         logging.warning(
             "The selected mask contains no points from the point cloud. Nothing to save."
         )
+        raise ValueError("The selected mask contains no points from the point cloud.")
     scene_points = [[z, -x, -y] for x, y, z in scene_points]
     object_points = [[z, -x, -y] for x, y, z in object_points]
 
@@ -244,6 +245,7 @@ class PointCloudGenerator:
             logging.error(
                 f"An error occurred during mesh reconstruction or saving: {e}"
             )
+            return None
 
     def silent_mode(self):
         try:

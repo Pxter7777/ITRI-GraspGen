@@ -1,9 +1,10 @@
 import argparse
-import logging
 
 from PointCloud_Generation.pointcloud_generation import PointCloudGenerator
 from PointCloud_Generation.PC_transform import silent_transform
 from common_utils import config
+from common_utils.graspgen_utils import GraspGenerator
+from common_utils.gripper_utils import send_cup_grasp_to_robot
 
 
 def parse_args():
@@ -55,12 +56,44 @@ def parse_args():
         default="demo5.json",
         help="transform-config",
     )
+    parser.add_argument(
+        "--gripper_config",
+        type=str,
+        default=str(config.GRIPPER_CFG),
+        help="Path to gripper configuration YAML file",
+    )
+    parser.add_argument(
+        "--grasp_threshold",
+        type=float,
+        default=0.70,
+        help="Threshold for valid grasps. If -1.0, then the top 100 grasps will be ranked and returned",
+    )
+    parser.add_argument(
+        "--num_grasps",
+        type=int,
+        default=200,
+        help="Number of grasps to generate",
+    )
+    parser.add_argument(
+        "--return_topk",
+        action="store_true",
+        help="Whether to return only the top k grasps",
+    )
+    parser.add_argument(
+        "--topk_num_grasps",
+        type=int,
+        default=5,
+        help="Number of top grasps to return when return_topk is True",
+    )
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
     pc_generator = PointCloudGenerator(args)
+    grasp_generator = GraspGenerator(
+        args.gripper_config, args.grasp_threshold, args.num_grasps, args.topk_num_grasps
+    )
     try:
         while True:
             text = input("text start to start")
@@ -69,17 +102,21 @@ def main():
             # "start" to generate pointcloud
             pointcloud = None
             if text == "start":
-                pointcloud = pc_generator.interactive_gui_mode()
+                pointcloud = pc_generator.silent_mode()
             if pointcloud is None:
                 continue
 
             # transform
-            pointcloud = silent_transform(pointcloud, args.transform_config)
-            print(pointcloud)
+            transformed_pointcloud = silent_transform(pointcloud, args.transform_config)
+            # GraspGen
+            grasp = grasp_generator.auto_select_valid_cup_grasp(
+                transformed_pointcloud["object_info"]["pc"]
+            )
+            if grasp is None:
+                continue
 
-    except Exception as e:
-        # unknown exception
-        logging.error(f"An error occurred: {e}")
+            # send the grasp to gripper
+            send_cup_grasp_to_robot(grasp)
     finally:
         pc_generator.close()
 
