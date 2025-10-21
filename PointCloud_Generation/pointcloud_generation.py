@@ -366,6 +366,6 @@ def main():
     args = parse_args()
     pc_generator = PointCloudGenerator(args)
     pc_generator.interactive_gui_mode()
-    pc_generator.close_camera()
+    pc_generator.close()
 if __name__ == "__main__":
     main()

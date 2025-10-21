@@ -11,7 +11,7 @@ import trimesh
 import subprocess
 import tempfile
 
-from PointCloud_Generation import PointCloudGenerator
+from PointCloud_Generation import PointCloudGenerator, silent_transform
 from common_utils import config
 
 def parse_args():
@@ -57,6 +57,12 @@ def parse_args():
         default=3.0,
         help="max depth for generating pointcloud",
     )
+    parser.add_argument(
+        "--transform-config",
+        type=str,
+        default="demo5.json",
+        help="transform-config",
+    )
     return parser.parse_args()
 
 def main():
@@ -73,6 +79,10 @@ def main():
                 pointcloud = pc_generator.interactive_gui_mode()
             if pointcloud == None:
                 continue
+
+            # transform
+            pointcloud = silent_transform(pointcloud, args.transform_config)
+            print(pointcloud)
             
             
     except Exception as e:

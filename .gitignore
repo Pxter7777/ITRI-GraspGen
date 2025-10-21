@@ -2,6 +2,7 @@ output/*
 old_output/*
 picked/*
 transform_config/*
+PointCloud_Generation/transform_config/*
 __pycache__/
 
 !.gitkeep
