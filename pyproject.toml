@@ -27,3 +27,10 @@ ignore = [
 [tool.ruff.lint.flake8-bugbear]
 # Allow default arguments like, e.g., `data: List[str] = fastapi.Query(None)`.
 extend-immutable-calls = ["fastapi.Depends", "fastapi.security.HTTPBasic"]
+
+[project]
+name = "GenPointCloud"
+version = "0.1.0"
+
+[tool.setuptools.packages.find]
+include = ["PointCloud_Generation", "common_utils", "src"]

@@ -54,3 +54,6 @@ python ./GraspGen_demo_scene_pc.py --return_topk --topk_num_grasps 10
 ```bash
 ros2 run tm_driver tm_driver robot_ip:=192.168.1.10
 ```
+
+#### pointcloud_generation.py
+- Give it two mode, gui or text mode
