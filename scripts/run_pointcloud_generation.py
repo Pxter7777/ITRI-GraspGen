@@ -1,8 +1,5 @@
 import argparse
-import logging
-
 from PointCloud_Generation.pointcloud_generation import PointCloudGenerator
-from PointCloud_Generation.PC_transform import silent_transform
 from common_utils import config
 
 
@@ -49,39 +46,14 @@ def parse_args():
         default=3.0,
         help="max depth for generating pointcloud",
     )
-    parser.add_argument(
-        "--transform-config",
-        type=str,
-        default="demo5.json",
-        help="transform-config",
-    )
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
     pc_generator = PointCloudGenerator(args)
-    try:
-        while True:
-            text = input("text start to start")
-            if text == "end":
-                break
-            # "start" to generate pointcloud
-            pointcloud = None
-            if text == "start":
-                pointcloud = pc_generator.interactive_gui_mode()
-            if pointcloud is None:
-                continue
-
-            # transform
-            pointcloud = silent_transform(pointcloud, args.transform_config)
-            print(pointcloud)
-
-    except Exception as e:
-        # unknown exception
-        logging.error(f"An error occurred: {e}")
-    finally:
-        pc_generator.close()
+    pc_generator.interactive_gui_mode()
+    pc_generator.close()
 
 
 if __name__ == "__main__":

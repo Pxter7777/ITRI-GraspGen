@@ -516,9 +516,12 @@ def quick_transform(args):
 
     save_pointcloud(info, output_path)
 
-def silent_transform(pointcloud: dict, config_filename:str)->dict:
+
+def silent_transform(pointcloud: dict, config_filename: str) -> dict:
     current_file_dir = os.path.dirname(os.path.abspath(__file__))
-    config_filepath = os.path.join(current_file_dir, "transform_config", config_filename)
+    config_filepath = os.path.join(
+        current_file_dir, "transform_config", config_filename
+    )
     with open(config_filepath, "rb") as f:
         transform_data = json.load(f)
     # Build Transformation matrix
@@ -548,6 +551,7 @@ def silent_transform(pointcloud: dict, config_filename:str)->dict:
     ]
 
     return info
+
 
 def main():
     args = parse_args()

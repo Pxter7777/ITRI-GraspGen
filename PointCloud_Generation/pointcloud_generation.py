@@ -1,12 +1,12 @@
 import os
 import sys
-import argparse
 import torch
 import cv2
 import logging
 import open3d as o3d
 import numpy as np
 import pyzed.sl as sl
+
 # Add the project root to sys.path to enable relative imports when run as a script
 current_file_dir = os.path.dirname(os.path.abspath(__file__))
 project_root_dir = os.path.dirname(current_file_dir)
@@ -15,21 +15,19 @@ if project_root_dir not in sys.path:
 THIRD_PARTY_DIR = os.path.expanduser("~/Third_Party")
 if THIRD_PARTY_DIR not in sys.path:
     sys.path.insert(0, THIRD_PARTY_DIR)
-from PointCloud_Generation import mouse_handler
-from PointCloud_Generation import visualization
-from PointCloud_Generation import sam_utils
-from PointCloud_Generation.stereo_utils import FoundationStereoModel
-from PointCloud_Generation.zed_utils import ZedCamera
-from PointCloud_Generation.yolo_inference import YOLOv5Detector
-from common_utils import usage_utils
-from common_utils import config
-
-
+from PointCloud_Generation import mouse_handler  # noqa: E402
+from PointCloud_Generation import visualization  # noqa: E402
+from PointCloud_Generation import sam_utils  # noqa: E402
+from PointCloud_Generation.stereo_utils import FoundationStereoModel  # noqa: E402
+from PointCloud_Generation.zed_utils import ZedCamera  # noqa: E402
+from PointCloud_Generation.yolo_inference import YOLOv5Detector  # noqa: E402
+from common_utils import config  # noqa: E402
 
 
 def set_seed(seed):
     torch.manual_seed(seed)
     np.random.seed(seed)
+
 
 def depth2xyzmap(depth, K):
     vy, vx = np.meshgrid(
@@ -41,14 +39,8 @@ def depth2xyzmap(depth, K):
     xyz_map = np.stack([x_map, y_map, z_map], axis=-1)
     return xyz_map
 
-def generate_pointcloud(
-    depth,
-    color_np_org,
-    mask,
-    K_cam,
-    scale,
-    max_depth
-):
+
+def generate_pointcloud(depth, color_np_org, mask, K_cam, scale, max_depth):
     logging.info("generating scene and object...")
 
     K_scaled_cam = K_cam.copy()
@@ -138,6 +130,7 @@ def generate_pointcloud(
     }
     return scene_data
 
+
 class PointCloudGenerator:
     def __init__(self, args):
         # Init
@@ -148,13 +141,10 @@ class PointCloudGenerator:
         self.max_depth = args.max_depth
         self.scale = args.scale
         # This part could take a while, to load all these three models
-        self.yolo_detector = YOLOv5Detector(
-            model_path=config.YOLO_CHECKPOINT, conf=0.4
-        )
+        self.yolo_detector = YOLOv5Detector(model_path=config.YOLO_CHECKPOINT, conf=0.4)
         self.sam_predictor = sam_utils.load_sam_model()
         self.stereo_model = FoundationStereoModel(args)
         self.zed = ZedCamera()
-
 
     def interactive_gui_mode(self, save_json=False):
         # ---------- Window and Mouse Callback Setup ----------
@@ -169,7 +159,9 @@ class PointCloudGenerator:
                 if zed_status == sl.ERROR_CODE.SUCCESS:
                     # Convert to numpy arrays
                     left_gray = cv2.cvtColor(left_image.get_data(), cv2.COLOR_BGRA2GRAY)
-                    right_gray = cv2.cvtColor(right_image.get_data(), cv2.COLOR_BGRA2GRAY)
+                    right_gray = cv2.cvtColor(
+                        right_image.get_data(), cv2.COLOR_BGRA2GRAY
+                    )
                     color_np = left_image.get_data()[:, :, :3]  # Drop alpha channel
                     color_np_org = color_np.copy()
 
@@ -239,7 +231,7 @@ class PointCloudGenerator:
                             mask,
                             self.zed.K_left,
                             self.scale,
-                            self.max_depth
+                            self.max_depth,
                         )
                         return result
 
@@ -249,15 +241,17 @@ class PointCloudGenerator:
             self.close()
             sys.exit(0)
         except Exception as e:
-            logging.error(f"An error occurred during mesh reconstruction or saving: {e}")
-            
+            logging.error(
+                f"An error occurred during mesh reconstruction or saving: {e}"
+            )
+
     def silent_mode(self):
         try:
             # Capture image
             zed_status, left_image, right_image = self.zed.capture_images()
             color_np = left_image.get_data()[:, :, :3]  # Drop alpha channel
             color_np_org = color_np.copy()
-            
+
             # Yolo detection
             df = self.yolo_detector.infer(color_np_org)
             cup_detections = df[df["name"] == "cup"]
@@ -271,7 +265,7 @@ class PointCloudGenerator:
                     f"Warning: Multiple cups ({len(cup_detections)}) detected, please keep only one cup in sight and retry."
                 )
                 return None
-            
+
             # collect the box returned by yolo
             cup_box = cup_detections.iloc[0]
             box = (
@@ -299,73 +293,14 @@ class PointCloudGenerator:
 
             # gen pointcloud
             result = generate_pointcloud(
-                depth,
-                color_np_org,
-                mask,
-                self.zed.K_left,
-                self.scale,
-                self.max_depth
+                depth, color_np_org, mask, self.zed.K_left, self.scale, self.max_depth
             )
             return result
 
         except Exception:
             print("failed during pointcloud generation")
             return None
+
     def close(self):
         self.zed.close()
         cv2.destroyAllWindows()
-        
-        
-
-def parse_args():
-    parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
-    parser.add_argument(
-        "--ckpt_dir",
-        default=str(config.FOUNDATIONSTEREO_CHECKPOINT),
-        type=str,
-        help="pretrained model path",
-    )
-
-    parser.add_argument(
-        "--scale",
-        default=1,
-        type=float,
-        help="downsize the image by scale, must be <=1",
-    )
-    parser.add_argument("--hiera", default=0, type=int, help="hierarchical inference")
-    parser.add_argument(
-        "--valid_iters",
-        type=int,
-        default=32,
-        help="number of flow-field updates during forward pass",
-    )
-    parser.add_argument(
-        "--out_dir", default="./output/", type=str, help="the directory to save results"
-    )
-    parser.add_argument(
-        "--output-tag",
-        default="",
-        type=str,
-        help="pretrained model path",
-    )
-    parser.add_argument(
-        "--erosion_iterations",
-        type=int,
-        default=0,  # can be 6
-        help="Number of erosion iterations for the SAM mask.",
-    )
-    parser.add_argument(
-        "--max-depth",
-        type=float,
-        default=3.0,
-        help="max depth for generating pointcloud",
-    )
-    return parser.parse_args()
-
-def main():
-    args = parse_args()
-    pc_generator = PointCloudGenerator(args)
-    pc_generator.interactive_gui_mode()
-    pc_generator.close()
-if __name__ == "__main__":
-    main()
