@@ -8,6 +8,7 @@ import numpy as np
 import pyzed.sl as sl
 
 from PointCloud_Generation.mouse_handlerv2 import MouseHandler
+from PointCloud_Generation.grounding_dino_utils import GroundindDinoPredictor
 
 # Add the project root to sys.path to enable relative imports when run as a script
 current_file_dir = os.path.dirname(os.path.abspath(__file__))
@@ -250,6 +251,7 @@ class PointCloudGenerator:
         self.yolo_detector = YOLOv5Detector(model_path=config.YOLO_CHECKPOINT, conf=0.4)
         self.sam_predictor = sam_utils.load_sam_model()
         self.stereo_model = FoundationStereoModel(args)
+        self.groundingdino_predictor = GroundindDinoPredictor()
         self.zed = ZedCamera()
 
     def interactive_gui_mode(self, save_json=False):
@@ -455,7 +457,112 @@ class PointCloudGenerator:
                 f"An error occurred during mesh reconstruction or saving: {e}"
             )
             return None
+    def interactive_gui_mode_multiple_grounding(self, save_json=False):
+        # ---------- Window and Mouse Callback Setup ----------
+        win_name = "RGB + Mask | Depth"
+        cv2.namedWindow(win_name)
+        mousehandler = MouseHandler()
+        cv2.setMouseCallback(win_name, mousehandler.select_box)
+        logging.info("Streaming... Draw a box with your mouse.")
+        logging.info("Press SPACE to save, 'r' to reset box, ESC to exit.")
+        try:
+            while True:
+                zed_status, left_image, right_image = self.zed.capture_images()
+                if zed_status == sl.ERROR_CODE.SUCCESS:
+                    # Convert to numpy arrays
+                    left_gray = cv2.cvtColor(left_image.get_data(), cv2.COLOR_BGRA2GRAY)
+                    right_gray = cv2.cvtColor(
+                        right_image.get_data(), cv2.COLOR_BGRA2GRAY
+                    )
+                    color_np = left_image.get_data()[:, :, :3]  # Drop alpha channel
+                    color_np_org = color_np.copy()
 
+                    display_frame = color_np.copy()
+
+                    # -- grounding dino test--
+                    boxes = self.groundingdino_predictor.predict_boxes(color_np_org)
+                    print(boxes)
+                    # ---------- Manual Box Selection + SAM2 Logic ----------
+                    mask = np.zeros_like(color_np[:, :, 0], dtype=bool)
+
+                    key = cv2.waitKey(1)
+                    if key == ord("y"):
+                        df = self.yolo_detector.infer(display_frame)
+                        if "name" in df.columns:
+                            cup_detections = df[df["name"] == "cup"]
+                            if cup_detections.empty:
+                                logging.warning("No Cup Detected!")
+                            for i in range(len(cup_detections)):
+                                cup_box = cup_detections.iloc[i]
+                                box = (
+                                    int(cup_box["xmin"]),
+                                    int(cup_box["ymin"]),
+                                    int(cup_box["xmax"]),
+                                    int(cup_box["ymax"]),
+                                )
+                                mousehandler.box_start_points.append((box[0], box[1]))
+                                mousehandler.box_end_points.append((box[2], box[3]))
+                                mousehandler.num_boxes += 1
+                                mousehandler.drawing_box = False
+
+                    #if mousehandler.drawing_box:
+                    #    for i in range (mousehandler.num_boxes):
+                    #        visualization.draw_box(
+                    #            display_frame,
+                    #            mousehandler.box_start_points[i],
+                    #            mousehandler.box_end_points[i],
+                    #        )
+                    masks = []
+                    if mousehandler.num_boxes>0:
+                        color_np_rgb = cv2.cvtColor(color_np, cv2.COLOR_BGR2RGB)
+                        boxes = mousehandler.get_boxes()
+                        for box in boxes:
+                            visualization.draw_box(
+                                display_frame, (box[0], box[1]), (box[2], box[3])
+                            )
+                            mask = sam_utils.run_sam2(
+                                self.sam_predictor,
+                                color_np_rgb,
+                                box,
+                                iterations=self.erosion_iterations,
+                            )
+                            display_frame = visualization.overlay_mask_on_frame(
+                                display_frame, mask
+                            )
+                            masks.append(mask)
+
+                    # ---------- FoundationStereo Inference ----------
+
+                    cv2.imshow(win_name, display_frame)
+
+                    if key == ord("r"):
+                        logging.info("Box reset. Draw a new one.")
+                        mousehandler.reset()
+
+                    if key == 32 and mousehandler.num_boxes>0:
+                        depth, (H_scaled, W_scaled) = self.stereo_model.run_inference(
+                            left_gray, right_gray, self.zed.K_left, self.zed.baseline
+                        )
+                        result = generate_pointcloud_multiple_obj(
+                            depth,
+                            color_np_org,
+                            masks,
+                            self.zed.K_left,
+                            self.scale,
+                            self.max_depth,
+                        )
+                        return result
+
+                    if key == 27:
+                        return None
+        except KeyboardInterrupt:
+            self.close()
+            sys.exit(0)
+        except Exception as e:
+            logging.error(
+                f"An error occurred during mesh reconstruction or saving: {e}"
+            )
+            return None
     def silent_mode(self):
         try:
             # Capture image

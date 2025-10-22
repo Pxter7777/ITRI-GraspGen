@@ -1,6 +1,7 @@
 {
     "python.analysis.extraPaths": [
         "~/Third_Party/GraspGen",
+        "~/Third_Party/GroundingDINO",
         "~/Third_Party"
     ]
 }
