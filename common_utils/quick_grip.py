@@ -13,8 +13,9 @@ import os
 import argparse
 
 HOME_SIGNAL = [326.8, -140.2, 212.6, 90.0, 0, 90.0]
-READY_POUR_SIGNAL = [581.6, -251.8, 127.9, 90, 0, 90.0]
-POUR_SIGNAL = [581.6, -251.8, 127.9, -90, -55, -90]
+READY_POUR_SIGNAL_ABOVE = [581.6, -251.8, 327.9, 90, 0, 90.0]
+READY_POUR_SIGNAL = [581.6, -251.8, 207.9, 90, 0, 90.0]
+POUR_SIGNAL = [581.6, -251.8, 207.9, -90, -55, -90]
 
 
 def quat_to_euler_zyx_deg(qx, qy, qz, qw):
@@ -313,10 +314,11 @@ def main():
     third_signal = third_position + euler_orientation
 
     fourth_position = third_position
-    fourth_position[2] = third_position[2] + 70
+    fourth_position[2] = third_position[2] + 150
     fourth_orientation = euler_orientation
 
     fourth_signal = fourth_position + fourth_orientation
+
 
     # home_position = [312.7, -148.5, 403.9]
     # home_orientation = [92.9, 0.0, 90]
@@ -334,10 +336,12 @@ def main():
         node.append_gripper_close()
 
         node.append_tcp(fourth_signal)
+        node.append_tcp(READY_POUR_SIGNAL_ABOVE)
         node.append_tcp(READY_POUR_SIGNAL)
         node.append_tcp(POUR_SIGNAL, wait_time=1.0)
 
         node.append_tcp(READY_POUR_SIGNAL)
+        node.append_tcp(READY_POUR_SIGNAL_ABOVE)
         node.append_tcp(fourth_signal)
 
         third_signal[2] += 2

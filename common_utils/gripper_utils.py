@@ -33,7 +33,7 @@ def send_cup_grasp_to_robot(grasp: np.array):
     # Construct the absolute path to quick_grip.py
     # Assuming quick_grip.py is in the project root, one level up from common_utils
     quick_grip_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "quick_grip.py"
+        os.path.dirname(os.path.abspath(__file__)), "quick_grip.py"
     )
     command = [
         "/usr/bin/python3",
