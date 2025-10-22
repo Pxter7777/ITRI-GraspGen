@@ -480,8 +480,9 @@ class PointCloudGenerator:
                     display_frame = color_np.copy()
 
                     # -- grounding dino test--
-                    boxes = self.groundingdino_predictor.predict_boxes(color_np_org)
-                    print(boxes)
+                    boxes = self.groundingdino_predictor.predict_boxes(color_np_org, "purple cup . purple cube .")
+                    for box in boxes:
+                        print(box.box, box.logits, box.phrase)
                     # ---------- Manual Box Selection + SAM2 Logic ----------
                     mask = np.zeros_like(color_np[:, :, 0], dtype=bool)
 
