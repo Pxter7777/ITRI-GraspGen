@@ -392,8 +392,8 @@ class PointCloudGenerator:
                                     int(cup_box["xmax"]),
                                     int(cup_box["ymax"]),
                                 )
-                                mousehandler.box_start_points.append(box[0], box[1])
-                                mousehandler.box_end_points.append(box[2], box[3])
+                                mousehandler.box_start_points.append((box[0], box[1]))
+                                mousehandler.box_end_points.append((box[2], box[3]))
                                 mousehandler.num_boxes += 1
                                 mousehandler.drawing_box = False
 
@@ -429,7 +429,7 @@ class PointCloudGenerator:
 
                     if key == ord("r"):
                         logging.info("Box reset. Draw a new one.")
-                        mousehandler.reset_box()
+                        mousehandler.reset()
 
                     if key == 32 and mousehandler.num_boxes>0:
                         depth, (H_scaled, W_scaled) = self.stereo_model.run_inference(
