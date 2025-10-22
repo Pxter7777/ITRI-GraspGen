@@ -102,7 +102,7 @@ def main():
             # "start" to generate pointcloud
             pointcloud = None
             if text == "start":
-                pointcloud = pc_generator.interactive_gui_mode_multiple_grounding()
+                pointcloud = pc_generator.silent_mode_multiple_grounding()
             if pointcloud is None:
                 continue
 

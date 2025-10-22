@@ -43,8 +43,8 @@ class GroundindDinoPredictor():
 
         results = []
         for i in range(boxes.size(0)):
-            results.append(ObjectInfo(box=xyxy_boxes[i].numpy(), phrase=phrases[i], logits=logits[i].item()))
-
+            results.append(ObjectInfo(box=tuple(xyxy_boxes[i].numpy().astype(int).tolist()), phrase=phrases[i], logits=logits[i].item()))
+            
         return results
 
 def main():
