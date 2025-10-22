@@ -17,8 +17,8 @@ class MouseHandler:
                 self.box_end_points[-1] = (x,y)
         elif event == cv2.EVENT_LBUTTONUP:
             self.drawing_box = False
-            if abs(self.box_start_point[-1][0] - x) > 1 and abs(self.box_start_point[-1][1] - y) > 1:
-                self.box_end_points = (x, y)
+            if abs(self.box_start_points[-1][0] - x) > 1 and abs(self.box_start_points[-1][1] - y) > 1:
+                self.box_end_points[-1] = (x, y)
             else:
                 # If the box is too small, reset it
                 self.num_boxes -= 1
