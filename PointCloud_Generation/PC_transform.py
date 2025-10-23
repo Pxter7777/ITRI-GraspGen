@@ -588,7 +588,41 @@ def silent_transform_multiple(pointcloud: dict, config_filename: str) -> dict:
     ]
 
     return info
+def silent_transform_multiple_obj_with_name(scene_data: dict, config_filename: str) -> dict:
+    current_file_dir = os.path.dirname(os.path.abspath(__file__))
+    config_filepath = os.path.join(
+        current_file_dir, "transform_config", config_filename
+    )
+    with open(config_filepath, "rb") as f:
+        transform_data = json.load(f)
+    # Build Transformation matrix
+    translation_matrix = np.array(
+        [
+            [1, 0, 0, transform_data["tx"]],
+            [0, 1, 0, transform_data["ty"]],
+            [0, 0, 1, transform_data["tz"]],
+            [0, 0, 0, 1],
+        ]
+    )
+    rotation = R.from_euler(
+        "xyz",
+        [transform_data["rr"], transform_data["rp"], transform_data["ry"]],
+        degrees=True,
+    )
+    rotation_matrix = np.identity(4)
+    rotation_matrix[:3, :3] = rotation.as_matrix()
+    transformation = translation_matrix @ rotation_matrix
 
+    # check and load pointcloud
+
+    info = scene_data
+    for i in range(len(scene_data["objects_info"])):
+        info["objects_info"][i]["pc"] = transform(info["objects_info"][i]["pc"], transformation)
+    info["scene_info"]["pc_color"] = [
+        transform(np.array(info["scene_info"]["pc_color"][0]), transformation)
+    ]
+
+    return info
 
 def main():
     args = parse_args()

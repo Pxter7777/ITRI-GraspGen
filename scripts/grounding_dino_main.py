@@ -100,14 +100,14 @@ def main():
             if text == "end":
                 break
             # "start" to generate pointcloud
-            pointcloud = None
+            scene_data = None
             if text == "start":
-                pointcloud = pc_generator.silent_mode_multiple_grounding()
-            if pointcloud is None:
+                scene_data = pc_generator.silent_mode_multiple_grounding()
+            if scene_data is None:
                 continue
-
+            print(scene_data)
             # transform
-            transformed_pointcloud = silent_transform_multiple(pointcloud, args.transform_config)
+            scene_data = silent_transform_multiple(scene_data, args.transform_config)
             objects_pointcloud = [pcs["pc"] for pcs in transformed_pointcloud["objects_info"]]
             # GraspGen
             for object_pointcloud in objects_pointcloud:

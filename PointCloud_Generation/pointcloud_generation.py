@@ -289,7 +289,7 @@ def generate_pointcloud_multiple_obj_with_name(depth, color_np_org, named_masks:
     object_infos = []
 
     for named_mask in named_masks:
-        object_info.append({
+        object_infos.append({
             "name": named_mask.name,
             "points": [],
             "colors": []
@@ -315,13 +315,13 @@ def generate_pointcloud_multiple_obj_with_name(depth, color_np_org, named_masks:
 
     # objects points parse
     for object_info in object_infos:
-        if not object_infos["poitns"]:
-            logging.warning(
+        if not object_info["points"]:
+            logging.error(
                 "The selected mask contains no points from the point cloud. Nothing to save."
             )
             raise ValueError("The selected mask contains no points from the point cloud.")
         
-        object_infos["points"] = [[z, -x, -y] for x, y, z in object_infos["points"]]
+        object_info["points"] = [[z, -x, -y] for x, y, z in object_info["points"]]
         object_info["points"] = np.array(object_info["points"])
         object_info["colors"] = np.array(object_info["colors"])
         if object_info["colors"].size > 0:
@@ -730,10 +730,10 @@ class PointCloudGenerator:
         
 
         # gen pointcloud
-        result = generate_pointcloud(
-            depth, color_np_org, mask, self.zed.K_left, self.scale, self.max_depth
+        result_scene_data = generate_pointcloud_multiple_obj_with_name(
+            depth, color_np_org, named_masks, self.zed.K_left, self.scale, self.max_depth
         )
-        return result
+        return result_scene_data
 
         
     def silent_mode(self):
