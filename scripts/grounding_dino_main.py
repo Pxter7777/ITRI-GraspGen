@@ -7,11 +7,10 @@ from common_utils import config
 from common_utils.graspgen_utils import GraspGenerator
 from common_utils.gripper_utils import send_cup_grasp_to_robot
 
+logging.basicConfig(
+    level=logging.DEBUG, format="[%(asctime)s][%(name)s][%(levelname)s] %(message)s", force=True
+)
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-log_handler = logging.StreamHandler()
-log_handler.setFormatter(logging.Formatter("[%(asctime)s][%(name)s] [%(levelname)s] %(message)s"))
-logger.addHandler(log_handler)
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
@@ -96,6 +95,7 @@ def parse_args():
 
 def main():
     args = parse_args()
+    logger.info("starting the program")
     pc_generator = PointCloudGenerator(args)
     grasp_generator = GraspGenerator(
         args.gripper_config, args.grasp_threshold, args.num_grasps, args.topk_num_grasps
@@ -110,6 +110,7 @@ def main():
             if text == "start":
                 scene_data = pc_generator.silent_mode_multiple_grounding()
             if scene_data is None:
+                logger.warning("Something Wrong while generating scene_data, try again.")
                 continue
             logger.info(scene_data)
             # transform
@@ -127,7 +128,9 @@ def main():
                 # send the grasp to gripper
                 send_cup_grasp_to_robot(grasp)
     finally:
+        logger.info("turning off zed camera")
         pc_generator.close()
+        logger.info("terminating process")
 
 
 if __name__ == "__main__":
