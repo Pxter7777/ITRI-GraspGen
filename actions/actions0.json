@@ -1,0 +1,18 @@
+[
+    {
+        "target_name": "green cup",
+        "qualifier": "cup_qualifier",
+        "action": "grab_and_pour_and_place_back",
+        "args": [
+            "READY_TO_POUR_POSE_1"
+        ]
+    },
+    {
+        "target_name": "purple cube",
+        "qualifier": "cube_qualifier",
+        "action": "grab_and_drop",
+        "args": [
+            "READY_TO_DROP_POSE_1"
+        ]
+    }
+]
