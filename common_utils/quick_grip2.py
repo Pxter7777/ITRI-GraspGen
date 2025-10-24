@@ -12,11 +12,6 @@ import json
 import os
 import argparse
 
-HOME_SIGNAL = [326.8, -140.2, 212.6, 90.0, 0, 90.0]
-READY_POUR_SIGNAL_ABOVE = [581.6, -251.8, 327.9, 90, 0, 90.0]
-READY_POUR_SIGNAL = [581.6, -251.8, 207.9, 90, 0, 90.0]
-POUR_SIGNAL = [581.6, -251.8, 207.9, -90, -55, -90]
-
 
 def quat_to_euler_zyx_deg(qx, qy, qz, qw):
     def _clamp(v, lo, hi):
@@ -297,27 +292,6 @@ def main():
     with open(json_file, "rb") as f:
         data = json.load(f)
     print("data", data)
-    position = data["position"]
-
-    position = [i * 1000 for i in position]
-    print("positiion", position)
-    euler_orientation = data["euler_orientation"]
-    signal = position + euler_orientation
-    print("signal", signal)
-    forward = data["forward_vec"]
-    first_position = [p - 60 * f for p, f in zip(position, forward, strict=False)]
-    second_position = position
-    third_position = [p + 60 * f for p, f in zip(position, forward, strict=False)]
-
-    first_signal = first_position + euler_orientation
-    second_signal = second_position + euler_orientation
-    third_signal = third_position + euler_orientation
-
-    fourth_position = third_position
-    fourth_position[2] = third_position[2] + 150
-    fourth_orientation = euler_orientation
-
-    fourth_signal = fourth_position + fourth_orientation
 
     # home_position = [312.7, -148.5, 403.9]
     # home_orientation = [92.9, 0.0, 90]
@@ -329,28 +303,13 @@ def main():
 
         # node.append_tcp([500.00, 300.00, 100.00, 90.00, 0.00, 90.00])
         # node.append_tcp([523.00, 193.00, 148.00, 101.00, 1.85, -27.8])
-        node.append_tcp(first_signal)
-        node.append_tcp(second_signal)
-        node.append_tcp(third_signal)
-        node.append_gripper_close()
-
-        node.append_tcp(fourth_signal)
-        node.append_tcp(READY_POUR_SIGNAL_ABOVE)
-        node.append_tcp(READY_POUR_SIGNAL)
-        node.append_tcp(POUR_SIGNAL, wait_time=1.0)
-
-        node.append_tcp(READY_POUR_SIGNAL)
-        node.append_tcp(READY_POUR_SIGNAL_ABOVE)
-        node.append_tcp(fourth_signal)
-
-        third_signal[2] += 2
-        second_signal[2] += 2
-        first_signal[2] += 2
-        node.append_tcp(third_signal)
-        node.append_gripper_open()
-        node.append_tcp(second_signal)
-        node.append_tcp(first_signal)
-        node.append_tcp(HOME_SIGNAL)
+        for move in data:
+            if move["type"] == "move_arm":
+                node.append_tcp(move["goal"], wait_time=move["wait_time"])
+            elif move["type"] == "gripper" and move["goal"] == "grab":
+                node.append_gripper_close()
+            elif move["type"] == "gripper" and move["goal"] == "release":
+                node.append_gripper_open()
         # node.append_tcp([367.05, -140.73, 258.21, 91.85, 8.72, 73.71])
         # node.append_gripper_open()
 

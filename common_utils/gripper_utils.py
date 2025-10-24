@@ -7,6 +7,8 @@ import subprocess
 import numpy as np
 from common_utils.graspgen_utils import get_left_up_and_front
 
+logger = logging.getLogger(__name__)
+
 
 def pack_grasp_euler(grasp: np.array):
     position = grasp[:3, 3].tolist()
@@ -28,12 +30,21 @@ def pack_grasp_euler(grasp: np.array):
         return tmp.name
 
 
+def pack_moves(moves: list[dict]):
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".json", delete=False, dir="/tmp"
+    ) as tmp:
+        json.dump(moves, tmp)
+        logger.info(f"Grasp data saved to {tmp.name}")
+        return tmp.name
+
+
 def send_cup_grasp_to_robot(grasp: np.array):
     temp_grasp_file = pack_grasp_euler(grasp)
     # Construct the absolute path to quick_grip.py
     # Assuming quick_grip.py is in the project root, one level up from common_utils
     quick_grip_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "quick_grip.py"
+        os.path.dirname(os.path.abspath(__file__)), "quick_grip.py"
     )
     command = [
         "/usr/bin/python3",
@@ -45,3 +56,20 @@ def send_cup_grasp_to_robot(grasp: np.array):
     subprocess.run(command, check=True)
     os.remove(temp_grasp_file)
     logging.info("quick_grip.py executed successfully and temp file removed.")
+
+
+def send_moves_to_robot(moves: list[dict]):
+    temp_moves_file = pack_moves(moves)
+    quick_grip2_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "quick_grip2.py"
+    )
+    command = [
+        "/usr/bin/python3",
+        quick_grip2_path,
+        "--input",
+        temp_moves_file,
+    ]
+    logger.info(f"Executing: {' '.join(command)}")
+    subprocess.run(command, check=True)
+    os.remove(temp_moves_file)
+    logger.info("quick_grip.py executed successfully and temp file removed.")
