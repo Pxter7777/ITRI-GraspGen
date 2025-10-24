@@ -613,16 +613,13 @@ def silent_transform_multiple_obj_with_name(scene_data: dict, config_filename: s
     rotation_matrix[:3, :3] = rotation.as_matrix()
     transformation = translation_matrix @ rotation_matrix
 
-    # check and load pointcloud
-
-    info = scene_data
-    for i in range(len(scene_data["objects_info"])):
-        info["objects_info"][i]["pc"] = transform(info["objects_info"][i]["pc"], transformation)
-    info["scene_info"]["pc_color"] = [
-        transform(np.array(info["scene_info"]["pc_color"][0]), transformation)
-    ]
-
-    return info
+    # actual transformation
+    for i in range(len(scene_data["objects_infos"])):
+        scene_data["objects_infos"][i]["points"] = transform(scene_data["objects_infos"][i]["points"], transformation)
+    scene_data["scene_infos"]["pc_color"] = [
+        transform(np.array(scene_data["scene_infos"]["pc_color"][0]), transformation)
+    ]    
+    return scene_data
 
 def main():
     args = parse_args()

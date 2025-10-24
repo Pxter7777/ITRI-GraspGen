@@ -26,6 +26,7 @@ from PointCloud_Generation.zed_utils import ZedCamera  # noqa: E402
 from PointCloud_Generation.yolo_inference import YOLOv5Detector  # noqa: E402
 from common_utils import config  # noqa: E402
 
+logger = logging.getLogger(__name__)
 
 class NamedMask:
     def __init__(self, name, mask):
@@ -664,20 +665,19 @@ class PointCloudGenerator:
                 f"An error occurred during mesh reconstruction or saving: {e}"
             )
             return None
-    def silent_mode_multiple_grounding(self, save_json=False):
+    def silent_mode_multiple_grounding(self, target_names:list[str]):
         # Target objects
-        TARGETS = ["green cup", "purple cube"]
         prompt = ""
-        target_boxes = dict()
+        target_box_count = dict()
 
-        for target in TARGETS:
+        for target in target_names:
             prompt += target + " ."
-            target_boxes[target] = None
+            target_box_count[target] = 0
         # Capture image
         try:
             zed_status, left_image, right_image = self.zed.capture_images()
         except Exception as e:
-            logging.error(f"error{e}")
+            logger.exception(f"error{e}")
             return None
 
         color_np = left_image.get_data()[:, :, :3]  # Drop alpha channel
@@ -701,13 +701,10 @@ class PointCloudGenerator:
         
         boxes = self.groundingdino_predictor.predict_boxes(color_np_org, prompt)
         for box in boxes:
-            if box.phrase not in target_boxes:
-                logging.error("Unknown Object, Failed")
+            if box.phrase not in target_box_count:
+                logger.error("Unknown Object, Failed")
                 return None
-            if target_boxes[box.phrase] is not None:
-                logging.error("Already occupied")
-                return None
-            target_boxes[box.phrase] = box
+            target_box_count[box.phrase] += 1
             print(box.box, box.logits, box.phrase)
             # fine... nothing wrong happened...
 
@@ -720,7 +717,10 @@ class PointCloudGenerator:
                 iterations=self.erosion_iterations,
             )
             named_masks.append(NamedMask(name=box.phrase, mask=mask))
-        
+        for target_box in target_box_count:
+            if target_box_count[target_box]!= 1:
+                logger.error(f"Number of {target_box} is not 1, is {target_box_count[target_box]}")
+                return None
 
         # gen pointcloud
         result_scene_data = generate_pointcloud_multiple_obj_with_name(

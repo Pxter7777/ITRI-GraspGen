@@ -1,12 +1,14 @@
+import sys
+import os
 import argparse
 import logging
-
+import json
 from PointCloud_Generation.pointcloud_generation import PointCloudGenerator
 from PointCloud_Generation.PC_transform import silent_transform, silent_transform_multiple, silent_transform_multiple_obj_with_name
 from common_utils import config
 from common_utils.graspgen_utils import GraspGenerator
 from common_utils.gripper_utils import send_cup_grasp_to_robot
-
+from common_utils.actions_format_checker import is_actions_format_valid
 logging.basicConfig(
     level=logging.DEBUG, format="[%(asctime)s][%(name)s][%(levelname)s] %(message)s", force=True
 )
@@ -94,23 +96,39 @@ def parse_args():
 
 
 def main():
-    args = parse_args()
     logger.info("starting the program")
-    pc_generator = PointCloudGenerator(args)
-    grasp_generator = GraspGenerator(
-        args.gripper_config, args.grasp_threshold, args.num_grasps, args.topk_num_grasps
-    )
+    args = parse_args()
+    # Directory path handle
+    current_file_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root_dir = os.path.dirname(current_file_dir)
     try:
+        pc_generator = PointCloudGenerator(args)
+        grasp_generator = GraspGenerator(
+            args.gripper_config, args.grasp_threshold, args.num_grasps, args.topk_num_grasps
+        )
         while True:
-            text = input("text start to start")
+            print("Please provide the <name> of actions to start, or type end to end.")
+            text = input("./actions/<name>.json: ")
             if text == "end":
                 break
-            # "start" to generate pointcloud
+            actions_filepath = os.path.join(project_root_dir, "actions", text + ".json")
+            actions = []
+            try:
+                with open(actions_filepath, "rb") as f:
+                    actions = json.load(f)
+                if not is_actions_format_valid(actions):
+                    logger.error("bad actions file format")
+                    continue
+            except Exception as e:
+                logger.exception(e)
+                logger.error("failed reading file, try again.")
+                continue
+            # start to generate pointcloud
             scene_data = None
-            if text == "start":
-                scene_data = pc_generator.silent_mode_multiple_grounding()
+            target_names = [action["target_name"] for action in actions]
+            scene_data = pc_generator.silent_mode_multiple_grounding(target_names)
             if scene_data is None:
-                logger.warning("Something Wrong while generating scene_data, try again.")
+                logger.error("Something Wrong while generating scene_data, try again.")
                 continue
             logger.info(scene_data)
             # transform
