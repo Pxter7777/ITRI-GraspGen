@@ -7,8 +7,9 @@ from PointCloud_Generation.pointcloud_generation import PointCloudGenerator
 from PointCloud_Generation.PC_transform import silent_transform, silent_transform_multiple, silent_transform_multiple_obj_with_name
 from common_utils import config
 from common_utils.graspgen_utils import GraspGenerator
-from common_utils.gripper_utils import send_cup_grasp_to_robot
+from common_utils.gripper_utils import send_moves_to_robot
 from common_utils.actions_format_checker import is_actions_format_valid
+from common_utils.movesets import act
 logging.basicConfig(
     level=logging.DEBUG, format="[%(asctime)s][%(name)s][%(levelname)s] %(message)s", force=True
 )
@@ -142,10 +143,10 @@ def main():
                 except:
                     logger.error(f"Error while generating grasp for {obj['name']}, stopping.")
                     break
-
+                moves = act(action["action"], grasp, action["args"])
                 # send the grasp to gripper
                 try:
-                    send_cup_grasp_to_robot(grasp)
+                    send_moves_to_robot(moves)
                 except KeyboardInterrupt:
                     logger.info("Manual stopping gripper.")
                     break

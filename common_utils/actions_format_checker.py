@@ -11,9 +11,6 @@ def is_actions_format_valid(actions) -> bool:
                 return False
             if not isinstance(action["args"], list):
                 return False
-            for arg in action["args"]:
-                if not isinstance(arg, str):
-                    return False
         return True
     except Exception:
         return False

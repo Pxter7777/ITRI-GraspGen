@@ -23,7 +23,7 @@ def cup_qualifier(grasp: np.array, mass_center, obj_std):
     if angle_diff > np.deg2rad(30):
         return False
 
-    if position[2] < 0.056:  # for safety
+    if position[2] < 0.05:  # for safety
         return False
     if position[2] > mass_center[2] + obj_std[2]:  # too high
         return False
@@ -34,7 +34,9 @@ def cup_qualifier(grasp: np.array, mass_center, obj_std):
 def small_cube_qualifier(grasp: np.array, mass_center, obj_std):
     position = grasp[:3, 3].tolist()
     left, up, front = get_left_up_and_front(grasp)
-    if front[2] > -0.3: # not facing down
+    if front[0] < 0:
+        return False
+    if front[2] > -0.2: # not facing down
         return False
     # Rule: planar 2D angle between grasp approach (front) vector and grasp position vector should be small
     angle_front = np.arctan2(front[1], front[0])

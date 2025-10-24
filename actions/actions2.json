@@ -1,14 +1,15 @@
 [
     {
-        "target_name": "purple cube",
+        "target_name": "green cup",
         "qualifier": "cup_qualifier",
-        "action": "grab_and_drop",
+        "action": "grab_and_pour_and_place_back",
         "args": [
-            [581.6, -301.8, 207.9, 90, 0, 90.0]
+            [581.6, -251.8, 207.9, 90, 0, 90.0],
+            [581.6, -251.8, 207.9, -90, -55, -90]
         ]
     },
     {
-        "target_name": "green cup",
+        "target_name": "white cup",
         "qualifier": "cup_qualifier",
         "action": "grab_and_pour_and_place_back",
         "args": [
