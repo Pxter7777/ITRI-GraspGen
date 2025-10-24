@@ -16,7 +16,7 @@ class DetectedBoxInfo:
 class GroundindDinoPredictor():
     def __init__(self):
         self.model = load_model("/home/j300/Third_Party/GroundingDINO/groundingdino/config/GroundingDINO_SwinT_OGC.py", "/home/j300/models/GroundingDinoModels/groundingdino_swint_ogc.pth")
-        self.BOX_TRESHOLD = 0.35
+        self.BOX_TRESHOLD = 0.4
         self.TEXT_TRESHOLD = 0.4
     def predict_boxes(self, image: np.array, text_prompt: str) -> list[DetectedBoxInfo]:
         transform = T.Compose(

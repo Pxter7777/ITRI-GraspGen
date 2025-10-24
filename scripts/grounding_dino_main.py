@@ -126,9 +126,9 @@ def main():
             # start to generate pointcloud
             scene_data = None
             target_names = [action["target_name"] for action in actions]
-            scene_data = pc_generator.silent_mode_multiple_grounding(target_names)
-            if scene_data is None:
-                logger.error("Something Wrong while generating scene_data, try again.")
+            try:
+                scene_data = pc_generator.silent_mode_multiple_grounding(target_names)
+            except:
                 continue
             logger.info(scene_data)
             # transform
@@ -136,15 +136,19 @@ def main():
             #objects_pointcloud = [pcs["pc"] for pcs in transformed_pointcloud["objects_info"]]
             #target_objects = [obj for obj in scene_data["object_infos"]]
             # GraspGen
-            for obj in scene_data["object_infos"]:
-                grasp = grasp_generator.auto_select_valid_cup_grasp(
-                    object_pointcloud
-                )
-                if grasp is None:
-                    continue
+            for obj, action in zip(scene_data["object_infos"], actions):
+                try:
+                    grasp = grasp_generator.flexible_auto_select_valid_grasp(obj, action["qualifier"])
+                except:
+                    logger.error(f"Error while generating grasp for {obj['name']}, stopping.")
+                    break
 
                 # send the grasp to gripper
-                send_cup_grasp_to_robot(grasp)
+                try:
+                    send_cup_grasp_to_robot(grasp)
+                except KeyboardInterrupt:
+                    logger.info("Manual stopping gripper.")
+                    break
     finally:
         logger.info("turning off zed camera")
         pc_generator.close()

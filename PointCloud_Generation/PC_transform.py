@@ -614,10 +614,10 @@ def silent_transform_multiple_obj_with_name(scene_data: dict, config_filename: s
     transformation = translation_matrix @ rotation_matrix
 
     # actual transformation
-    for i in range(len(scene_data["objects_infos"])):
-        scene_data["objects_infos"][i]["points"] = transform(scene_data["objects_infos"][i]["points"], transformation)
-    scene_data["scene_infos"]["pc_color"] = [
-        transform(np.array(scene_data["scene_infos"]["pc_color"][0]), transformation)
+    for i in range(len(scene_data["object_infos"])):
+        scene_data["object_infos"][i]["points"] = transform(scene_data["object_infos"][i]["points"], transformation)
+    scene_data["scene_info"]["pc_color"] = [
+        transform(np.array(scene_data["scene_info"]["pc_color"][0]), transformation)
     ]    
     return scene_data
 

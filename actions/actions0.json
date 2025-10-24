@@ -9,7 +9,7 @@
     },
     {
         "target_name": "purple cube",
-        "qualifier": "cube_qualifier",
+        "qualifier": "small_cube_qualifier",
         "action": "grab_and_drop",
         "args": [
             "READY_TO_DROP_POSE_1"
