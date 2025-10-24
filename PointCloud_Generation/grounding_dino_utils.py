@@ -6,18 +6,23 @@ import torch
 import groundingdino.datasets.transforms as T
 from torchvision.ops import box_convert
 
+
 class DetectedBoxInfo:
     def __init__(self, box, phrase, logits):
-        self.box = box # match pixel format like in pointcloud_generation.py
+        self.box = box  # match pixel format like in pointcloud_generation.py
         self.phrase = phrase
         self.logits = logits
 
 
-class GroundindDinoPredictor():
+class GroundindDinoPredictor:
     def __init__(self):
-        self.model = load_model("/home/j300/Third_Party/GroundingDINO/groundingdino/config/GroundingDINO_SwinT_OGC.py", "/home/j300/models/GroundingDinoModels/groundingdino_swint_ogc.pth")
+        self.model = load_model(
+            "/home/j300/Third_Party/GroundingDINO/groundingdino/config/GroundingDINO_SwinT_OGC.py",
+            "/home/j300/models/GroundingDinoModels/groundingdino_swint_ogc.pth",
+        )
         self.BOX_TRESHOLD = 0.4
         self.TEXT_TRESHOLD = 0.4
+
     def predict_boxes(self, image: np.array, text_prompt: str) -> list[DetectedBoxInfo]:
         transform = T.Compose(
             [
@@ -34,7 +39,7 @@ class GroundindDinoPredictor():
             image=image_transformed,
             caption=text_prompt,
             box_threshold=self.BOX_TRESHOLD,
-            text_threshold=self.TEXT_TRESHOLD
+            text_threshold=self.TEXT_TRESHOLD,
         )
 
         h, w, _ = image.shape
@@ -43,9 +48,16 @@ class GroundindDinoPredictor():
 
         results = []
         for i in range(boxes.size(0)):
-            results.append(DetectedBoxInfo(box=tuple(xyxy_boxes[i].numpy().astype(int).tolist()), phrase=phrases[i], logits=logits[i].item()))
-            
+            results.append(
+                DetectedBoxInfo(
+                    box=tuple(xyxy_boxes[i].numpy().astype(int).tolist()),
+                    phrase=phrases[i],
+                    logits=logits[i].item(),
+                )
+            )
+
         return results
+
 
 def main():
     predictor = GroundindDinoPredictor()

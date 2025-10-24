@@ -292,11 +292,6 @@ def main():
     with open(json_file, "rb") as f:
         data = json.load(f)
     print("data", data)
-    
-
-
-   
-
 
     # home_position = [312.7, -148.5, 403.9]
     # home_orientation = [92.9, 0.0, 90]

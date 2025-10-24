@@ -28,6 +28,7 @@ from common_utils import config  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
+
 class NamedMask:
     def __init__(self, name, mask):
         self.name = name
@@ -141,7 +142,10 @@ def generate_pointcloud(depth, color_np_org, mask, K_cam, scale, max_depth):
     }
     return scene_data
 
-def generate_pointcloud_multiple_obj(depth, color_np_org, masks, K_cam, scale, max_depth):
+
+def generate_pointcloud_multiple_obj(
+    depth, color_np_org, masks, K_cam, scale, max_depth
+):
     logging.info("generating scene and object...")
 
     K_scaled_cam = K_cam.copy()
@@ -186,10 +190,10 @@ def generate_pointcloud_multiple_obj(depth, color_np_org, masks, K_cam, scale, m
     scene_colors = []
     objects_points = []
     objects_colors = []
-    for mask in masks:
+    for _ in masks:
         objects_points.append([])
         objects_colors.append([])
-    #num_objects = len(masks)
+    # num_objects = len(masks)
 
     H_color, W_color = color_np_org.shape[:2]
 
@@ -221,30 +225,33 @@ def generate_pointcloud_multiple_obj(depth, color_np_org, masks, K_cam, scale, m
         "grasp_info": {"grasp_poses": [], "grasp_conf": []},
     }
 
-
     # objects points
-    for object_points, object_colors in zip(objects_points, objects_colors):
+    for object_points, object_colors in zip(
+        objects_points, objects_colors, strict=False
+    ):
         if not object_points:
             logging.warning(
                 "The selected mask contains no points from the point cloud. Nothing to save."
             )
-            raise ValueError("The selected mask contains no points from the point cloud.")
+            raise ValueError(
+                "The selected mask contains no points from the point cloud."
+            )
         object_points = [[z, -x, -y] for x, y, z in object_points]
 
         """Saves the scene and object data to a JSON file."""
         object_colors_arr = np.array(object_colors)
         if object_colors_arr.size > 0:
             object_colors_arr = object_colors_arr[:, ::-1]
-        scene_data["objects_info"].append({
-            "pc": np.array(object_points),
-            "pc_color": object_colors_arr
-        })
-        
+        scene_data["objects_info"].append(
+            {"pc": np.array(object_points), "pc_color": object_colors_arr}
+        )
 
-    
     return scene_data
 
-def generate_pointcloud_multiple_obj_with_name(depth, color_np_org, named_masks:list[NamedMask], K_cam, scale, max_depth):
+
+def generate_pointcloud_multiple_obj_with_name(
+    depth, color_np_org, named_masks: list[NamedMask], K_cam, scale, max_depth
+):
     logging.info("generating scene and object...")
 
     K_scaled_cam = K_cam.copy()
@@ -285,7 +292,7 @@ def generate_pointcloud_multiple_obj_with_name(depth, color_np_org, named_masks:
     projected_points_uv = (K_cam @ points_post_filter.T).T
     projected_points_uv[:, :2] /= projected_points_uv[:, 2:]
 
-    objects_name = [named_mask.name for named_mask in named_masks]
+    # objects_name = [named_mask.name for named_mask in named_masks]
     objects_points = [[] for _ in named_masks]
     objects_colors = [[] for _ in named_masks]
     scene_points = []
@@ -299,8 +306,10 @@ def generate_pointcloud_multiple_obj_with_name(depth, color_np_org, named_masks:
             point = points_post_filter[i]
             color = color_np_org[v, u]
 
-            for object_points, object_colors, named_mask in zip(objects_points, objects_colors, named_masks):
-                if named_mask.mask[v,u]:
+            for object_points, object_colors, named_mask in zip(
+                objects_points, objects_colors, named_masks, strict=False
+            ):
+                if named_mask.mask[v, u]:
                     object_points.append(point)
                     object_colors.append(color)
                     break
@@ -314,8 +323,10 @@ def generate_pointcloud_multiple_obj_with_name(depth, color_np_org, named_masks:
             logging.error(
                 "The selected mask contains no points from the point cloud. Nothing to save."
             )
-            raise ValueError("The selected mask contains no points from the point cloud.")
-        
+            raise ValueError(
+                "The selected mask contains no points from the point cloud."
+            )
+
         objects_points[i] = np.array([[z, -x, -y] for x, y, z in objects_points[i]])
         objects_colors[i] = np.array(objects_colors[i])
         if objects_colors[i].size > 0:
@@ -329,13 +340,18 @@ def generate_pointcloud_multiple_obj_with_name(depth, color_np_org, named_masks:
 
     # Final construct
     scene_data = {
-        "object_infos": [{"name": named_mask.name, "points": object_points, "colors": object_colors} for object_points, object_colors, named_mask in zip(objects_points, objects_colors, named_masks)],
+        "object_infos": [
+            {"name": named_mask.name, "points": object_points, "colors": object_colors}
+            for object_points, object_colors, named_mask in zip(
+                objects_points, objects_colors, named_masks, strict=False
+            )
+        ],
         "scene_info": {
             "pc_color": [scene_points],
             "img_color": [scene_colors],
         },
         "grasp_info": {"grasp_poses": [], "grasp_conf": []},
-    }  
+    }
     return scene_data
 
 
@@ -454,7 +470,7 @@ class PointCloudGenerator:
                 f"An error occurred during mesh reconstruction or saving: {e}"
             )
             return None
-        
+
     def interactive_gui_mode_multiple(self, save_json=False):
         # ---------- Window and Mouse Callback Setup ----------
         win_name = "RGB + Mask | Depth"
@@ -500,7 +516,7 @@ class PointCloudGenerator:
                                 mousehandler.num_boxes += 1
                                 mousehandler.drawing_box = False
 
-                    #if mousehandler.drawing_box:
+                    # if mousehandler.drawing_box:
                     #    for i in range (mousehandler.num_boxes):
                     #        visualization.draw_box(
                     #            display_frame,
@@ -508,7 +524,7 @@ class PointCloudGenerator:
                     #            mousehandler.box_end_points[i],
                     #        )
                     masks = []
-                    if mousehandler.num_boxes>0:
+                    if mousehandler.num_boxes > 0:
                         color_np_rgb = cv2.cvtColor(color_np, cv2.COLOR_BGR2RGB)
                         boxes = mousehandler.get_boxes()
                         for box in boxes:
@@ -534,7 +550,7 @@ class PointCloudGenerator:
                         logging.info("Box reset. Draw a new one.")
                         mousehandler.reset()
 
-                    if key == 32 and mousehandler.num_boxes>0:
+                    if key == 32 and mousehandler.num_boxes > 0:
                         depth, (H_scaled, W_scaled) = self.stereo_model.run_inference(
                             left_gray, right_gray, self.zed.K_left, self.zed.baseline
                         )
@@ -558,6 +574,7 @@ class PointCloudGenerator:
                 f"An error occurred during mesh reconstruction or saving: {e}"
             )
             return None
+
     def interactive_gui_mode_multiple_grounding(self, save_json=False):
         # ---------- Window and Mouse Callback Setup ----------
         win_name = "RGB + Mask | Depth"
@@ -581,7 +598,9 @@ class PointCloudGenerator:
                     display_frame = color_np.copy()
 
                     # -- grounding dino test--
-                    boxes = self.groundingdino_predictor.predict_boxes(color_np_org, "purple cup . purple cube .")
+                    boxes = self.groundingdino_predictor.predict_boxes(
+                        color_np_org, "purple cup . purple cube ."
+                    )
                     for box in boxes:
                         print(box.box, box.logits, box.phrase)
                     # ---------- Manual Box Selection + SAM2 Logic ----------
@@ -607,7 +626,7 @@ class PointCloudGenerator:
                                 mousehandler.num_boxes += 1
                                 mousehandler.drawing_box = False
 
-                    #if mousehandler.drawing_box:
+                    # if mousehandler.drawing_box:
                     #    for i in range (mousehandler.num_boxes):
                     #        visualization.draw_box(
                     #            display_frame,
@@ -615,7 +634,7 @@ class PointCloudGenerator:
                     #            mousehandler.box_end_points[i],
                     #        )
                     masks = []
-                    if mousehandler.num_boxes>0:
+                    if mousehandler.num_boxes > 0:
                         color_np_rgb = cv2.cvtColor(color_np, cv2.COLOR_BGR2RGB)
                         boxes = mousehandler.get_boxes()
                         for box in boxes:
@@ -641,7 +660,7 @@ class PointCloudGenerator:
                         logging.info("Box reset. Draw a new one.")
                         mousehandler.reset()
 
-                    if key == 32 and mousehandler.num_boxes>0:
+                    if key == 32 and mousehandler.num_boxes > 0:
                         depth, (H_scaled, W_scaled) = self.stereo_model.run_inference(
                             left_gray, right_gray, self.zed.K_left, self.zed.baseline
                         )
@@ -665,7 +684,8 @@ class PointCloudGenerator:
                 f"An error occurred during mesh reconstruction or saving: {e}"
             )
             return None
-    def silent_mode_multiple_grounding(self, target_names:list[str]):
+
+    def silent_mode_multiple_grounding(self, target_names: list[str]):
         # Target objects
         prompt = ""
         target_boxes = dict()
@@ -691,18 +711,20 @@ class PointCloudGenerator:
         )
 
         named_masks = []
-        # GroundingDINO detection 
+        # GroundingDINO detection
 
         """
         Maybe, maybe, I shouldn't request GroundingDINO to detect all kinds of things at once.
         Maybe we can try to detect things one by one.
         But then it won't be able to know if that things has been detected and recorded before...
         """
-        
+
         boxes = self.groundingdino_predictor.predict_boxes(color_np_org, prompt)
         for box in boxes:
             if box.phrase not in target_boxes:
-                logger.error(f"Unknown Object {box.phrase} generated by GroundingDINO, Failed")
+                logger.error(
+                    f"Unknown Object {box.phrase} generated by GroundingDINO, Failed"
+                )
                 raise ValueError
             if target_boxes[box.phrase] is not None:
                 logger.error(f"More than one {box.phrase} detected")
@@ -725,14 +747,17 @@ class PointCloudGenerator:
             )
             named_masks.append(NamedMask(name=box.phrase, mask=mask))
 
-
         # gen pointcloud
         result_scene_data = generate_pointcloud_multiple_obj_with_name(
-            depth, color_np_org, named_masks, self.zed.K_left, self.scale, self.max_depth
+            depth,
+            color_np_org,
+            named_masks,
+            self.zed.K_left,
+            self.scale,
+            self.max_depth,
         )
         return result_scene_data
 
-        
     def silent_mode(self):
         try:
             # Capture image

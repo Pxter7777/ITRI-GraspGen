@@ -3,6 +3,7 @@ import logging
 from grasp_gen.grasp_server import GraspGenSampler, load_grasp_cfg
 from common_utils.qualification import is_qualified_with_name
 
+
 def get_left_up_and_front(grasp: np.array):
     left = grasp[:3, 0]
     up = grasp[:3, 1]
@@ -72,7 +73,8 @@ class GraspGenerator:
         except KeyboardInterrupt:  # manual stop if too many fail
             logging.info("Manually stopping generating grasps")
             return None
-    def flexible_auto_select_valid_grasp(self, obj: dict, qualifier:str) -> np.array:
+
+    def flexible_auto_select_valid_grasp(self, obj: dict, qualifier: str) -> np.array:
         mass_center = np.mean(obj["points"], axis=0)
         std = np.std(obj["points"], axis=0)
 
@@ -90,8 +92,11 @@ class GraspGenerator:
             grasps = grasps.cpu().numpy()
             grasps[:, 3, 3] = 1
             qualified_grasps = np.array(
-                [grasp for grasp in grasps if is_qualified_with_name(grasp, qualifier, mass_center, std)]
+                [
+                    grasp
+                    for grasp in grasps
+                    if is_qualified_with_name(grasp, qualifier, mass_center, std)
+                ]
             )
             if len(qualified_grasps) > 0:
                 return qualified_grasps[0]
-

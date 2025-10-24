@@ -319,7 +319,6 @@ def main():
 
     fourth_signal = fourth_position + fourth_orientation
 
-
     # home_position = [312.7, -148.5, 403.9]
     # home_orientation = [92.9, 0.0, 90]
     # home_signal = home_position + home_orientation

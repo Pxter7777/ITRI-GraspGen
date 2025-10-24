@@ -9,6 +9,7 @@ from common_utils.graspgen_utils import get_left_up_and_front
 
 logger = logging.getLogger(__name__)
 
+
 def pack_grasp_euler(grasp: np.array):
     position = grasp[:3, 3].tolist()
 
@@ -28,6 +29,7 @@ def pack_grasp_euler(grasp: np.array):
         logging.info(f"Grasp data saved to {tmp.name}")
         return tmp.name
 
+
 def pack_moves(moves: list[dict]):
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".json", delete=False, dir="/tmp"
@@ -35,6 +37,7 @@ def pack_moves(moves: list[dict]):
         json.dump(moves, tmp)
         logger.info(f"Grasp data saved to {tmp.name}")
         return tmp.name
+
 
 def send_cup_grasp_to_robot(grasp: np.array):
     temp_grasp_file = pack_grasp_euler(grasp)
@@ -53,6 +56,7 @@ def send_cup_grasp_to_robot(grasp: np.array):
     subprocess.run(command, check=True)
     os.remove(temp_grasp_file)
     logging.info("quick_grip.py executed successfully and temp file removed.")
+
 
 def send_moves_to_robot(moves: list[dict]):
     temp_moves_file = pack_moves(moves)
