@@ -284,17 +284,11 @@ def generate_pointcloud_multiple_obj_with_name(depth, color_np_org, named_masks:
     projected_points_uv = (K_cam @ points_post_filter.T).T
     projected_points_uv[:, :2] /= projected_points_uv[:, 2:]
 
+    objects_name = [named_mask.name for named_mask in named_masks]
+    objects_points = [[] for _ in named_masks]
+    objects_colors = [[] for _ in named_masks]
     scene_points = []
     scene_colors = []
-    object_infos = []
-
-    for named_mask in named_masks:
-        object_infos.append({
-            "name": named_mask.name,
-            "points": [],
-            "colors": []
-        })
-    #num_objects = len(masks)
 
     H_color, W_color = color_np_org.shape[:2]
 
@@ -304,41 +298,40 @@ def generate_pointcloud_multiple_obj_with_name(depth, color_np_org, named_masks:
             point = points_post_filter[i]
             color = color_np_org[v, u]
 
-            for object_info, named_mask in zip(object_infos, named_masks):
+            for object_points, object_colors, named_mask in zip(objects_points, objects_colors, named_masks):
                 if named_mask.mask[v,u]:
-                    object_info["points"].append(point)
-                    object_info["colors"].append(color)
+                    object_points.append(point)
+                    object_colors.append(color)
                     break
             else:
                 scene_points.append(point)
                 scene_colors.append(color)
-
+    # here
     # objects points parse
-    for object_info in object_infos:
-        if not object_info["points"]:
+    for i in range(len(objects_points)):
+        if not objects_points[i]:
             logging.error(
                 "The selected mask contains no points from the point cloud. Nothing to save."
             )
             raise ValueError("The selected mask contains no points from the point cloud.")
         
-        object_info["points"] = [[z, -x, -y] for x, y, z in object_info["points"]]
-        object_info["points"] = np.array(object_info["points"])
-        object_info["colors"] = np.array(object_info["colors"])
-        if object_info["colors"].size > 0:
-            object_info["colors"] = object_info["colors"][:, ::-1]
+        objects_points[i] = np.array([[z, -x, -y] for x, y, z in objects_points[i]])
+        objects_colors[i] = np.array(objects_colors[i])
+        if objects_colors[i].size > 0:
+            objects_colors[i] = objects_colors[i][:, ::-1]
 
     # scene points
-    scene_points = [[z, -x, -y] for x, y, z in scene_points]
-    scene_colors_arr = np.array(scene_colors)
-    if scene_colors_arr.size > 0:
-        scene_colors_arr = scene_colors_arr[:, ::-1]
+    scene_points = np.array([[z, -x, -y] for x, y, z in scene_points])
+    scene_colors = np.array(object_colors)
+    if scene_colors.size > 0:
+        scene_colors = scene_colors[:, ::-1]
 
     # Final construct
     scene_data = {
-        "objects_infos": object_infos,
+        "object_infos": [{"name": named_mask.name, "points": object_points, "colors": object_colors} for object_points, object_colors, named_mask in zip(objects_points, objects_colors, named_masks)],
         "scene_info": {
-            "pc_color": [np.array(scene_points)],
-            "img_color": [scene_colors_arr],
+            "pc_color": [scene_points],
+            "img_color": [scene_colors],
         },
         "grasp_info": {"grasp_poses": [], "grasp_conf": []},
     }  

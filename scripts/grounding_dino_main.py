@@ -1,7 +1,7 @@
 import argparse
 
 from PointCloud_Generation.pointcloud_generation import PointCloudGenerator
-from PointCloud_Generation.PC_transform import silent_transform, silent_transform_multiple
+from PointCloud_Generation.PC_transform import silent_transform, silent_transform_multiple, silent_transform_multiple_obj_with_name
 from common_utils import config
 from common_utils.graspgen_utils import GraspGenerator
 from common_utils.gripper_utils import send_cup_grasp_to_robot
@@ -107,10 +107,11 @@ def main():
                 continue
             print(scene_data)
             # transform
-            scene_data = silent_transform_multiple(scene_data, args.transform_config)
-            objects_pointcloud = [pcs["pc"] for pcs in transformed_pointcloud["objects_info"]]
+            scene_data = silent_transform_multiple_obj_with_name(scene_data, args.transform_config)
+            #objects_pointcloud = [pcs["pc"] for pcs in transformed_pointcloud["objects_info"]]
+            #target_objects = [obj for obj in scene_data["object_infos"]]
             # GraspGen
-            for object_pointcloud in objects_pointcloud:
+            for obj in scene_data["object_infos"]:
                 grasp = grasp_generator.auto_select_valid_cup_grasp(
                     object_pointcloud
                 )
