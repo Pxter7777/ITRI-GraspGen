@@ -685,6 +685,106 @@ class PointCloudGenerator:
             )
             return None
 
+    def interactive_grounding_test(self, target_names: list[str]):
+        prompt = ""
+        target_boxes = dict()
+
+        for target in target_names:
+            prompt += target + " ."
+            target_boxes[target] = None
+
+        # cv2 init
+        win_name = "image with mask"
+        cv2.namedWindow(win_name)
+        mousehandler = MouseHandler()
+        cv2.setMouseCallback(win_name, mousehandler.select_box)
+        logger.info("Streaming... Draw a box with your mouse.")
+
+        method = "all_in_one"
+        box_threshold = 0.4
+        text_threshold = 0.4
+        while True:
+            try:
+                zed_status, left_image, right_image = self.zed.capture_images()
+            except Exception as e:
+                logger.error("Something went wrong when capturing the image.")
+                raise e
+            if zed_status != sl.ERROR_CODE.SUCCESS:
+                continue  # try again
+            # image captured
+
+            # Convert to numpy arrays
+            # left_gray = cv2.cvtColor(left_image.get_data(), cv2.COLOR_BGRA2GRAY)
+            # right_gray = cv2.cvtColor(
+            #    right_image.get_data(), cv2.COLOR_BGRA2GRAY
+            # )
+            color_np = left_image.get_data()[:, :, :3]  # Drop alpha channel
+            color_np_org = color_np.copy()
+
+            display_frame = color_np.copy()
+
+            # -- grounding dino reference--
+            if method == "all_in_one":
+                boxes = self.groundingdino_predictor.predict_boxes(
+                    color_np_org,
+                    prompt,
+                    box_threshold=box_threshold,
+                    text_threshold=text_threshold,
+                )
+            elif method == "one_by_one":
+                boxes = []
+                for name in target_names:
+                    boxes.extend(
+                        self.groundingdino_predictor.predict_boxes(
+                            color_np_org,
+                            name + " .",
+                            box_threshold=box_threshold,
+                            text_threshold=text_threshold,
+                        )
+                    )
+            else:
+                logger.critical("unknown method")
+                raise ValueError
+
+            # annotate
+            for box in boxes:
+                start_point = (int(box.box[0]), int(box.box[1]))
+                end_point = (int(box.box[2]), int(box.box[3]))
+                cv2.rectangle(display_frame, start_point, end_point, (0, 255, 0), 2)
+                label = f"{box.phrase}: {box.logits:.2f}"
+                cv2.putText(
+                    display_frame,
+                    label,
+                    (start_point[0], start_point[1] - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    (0, 255, 0),
+                    2,
+                )
+
+            # show image
+            cv2.imshow(win_name, display_frame)
+            logger.info(
+                f"box threshold = {box_threshold:.2f}, text threshold = {text_threshold:.2f}, method = {method}"
+            )
+            # block
+            key = cv2.waitKey(0)
+            if key == ord("u"):
+                box_threshold -= 0.05
+            elif key == ord("i"):
+                box_threshold += 0.05
+            elif key == ord("o"):
+                text_threshold -= 0.05
+            elif key == ord("p"):
+                text_threshold += 0.05
+            elif key == ord("a"):
+                method = "all_in_one"
+            elif key == ord("s"):
+                method = "one_by_one"
+            elif key == 27:
+                return None
+            # anykey except for ese will let it do it again.
+
     def silent_mode_multiple_grounding(self, target_names: list[str]):
         # Target objects
         prompt = ""

@@ -57,3 +57,7 @@ ros2 run tm_driver tm_driver robot_ip:=192.168.1.10
 
 #### pointcloud_generation.py
 - Give it two mode, gui or text mode
+
+#### GroundingDINO test
+- Based on the test, using box to cover the metal table can have better result.
+- And about all in one or on by one, all in one is actually better.

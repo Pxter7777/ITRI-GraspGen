@@ -20,10 +20,10 @@ class GroundindDinoPredictor:
             "/home/j300/Third_Party/GroundingDINO/groundingdino/config/GroundingDINO_SwinT_OGC.py",
             "/home/j300/models/GroundingDinoModels/groundingdino_swint_ogc.pth",
         )
-        self.BOX_TRESHOLD = 0.4
-        self.TEXT_TRESHOLD = 0.4
 
-    def predict_boxes(self, image: np.array, text_prompt: str) -> list[DetectedBoxInfo]:
+    def predict_boxes(
+        self, image: np.array, text_prompt: str, box_threshold=0.4, text_threshold=0.4
+    ) -> list[DetectedBoxInfo]:
         transform = T.Compose(
             [
                 T.RandomResize([800], max_size=1333),
@@ -38,8 +38,8 @@ class GroundindDinoPredictor:
             model=self.model,
             image=image_transformed,
             caption=text_prompt,
-            box_threshold=self.BOX_TRESHOLD,
-            text_threshold=self.TEXT_TRESHOLD,
+            box_threshold=box_threshold,
+            text_threshold=text_threshold,
         )
 
         h, w, _ = image.shape
