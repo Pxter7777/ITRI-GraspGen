@@ -154,8 +154,9 @@ def main():
                         )
                         moves = act(action["action"], grasp, action["args"], scene_data)
                     except Exception:
+                        name = action["target_name"]
                         logger.error(
-                            f"Error while generating grasp for {obj['name']}, stopping."
+                            f"Error while generating grasp for {name}, stopping."
                         )
                         break
                 # send the grasp to gripper

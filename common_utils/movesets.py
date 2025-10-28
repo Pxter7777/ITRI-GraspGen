@@ -28,6 +28,7 @@ def grab_and_pour_and_place_back(grasp: np.array, args: list, scene_data:dict) -
     # fetch basic infos
     position = grasp[:3, 3].tolist()
     position = [p * 1000 for p in position]
+    logger.info(position)
     euler_orientation = list(trimesh.transformations.euler_from_matrix(grasp))
     euler_orientation = np.rad2deg(euler_orientation).tolist()
     _, _, front = get_left_up_and_front(grasp)
@@ -40,7 +41,7 @@ def grab_and_pour_and_place_back(grasp: np.array, args: list, scene_data:dict) -
         mass_center = np.mean(obj_points, axis=0)
         mass_center = [p*1000 for p in mass_center]
         #std = np.std(obj_points, axis=0)
-        ready_pour_position = [mass_center[0]-175, mass_center[1]+150, mass_center[2] + 200]
+        ready_pour_position = [mass_center[0]-175, mass_center[1]+150, mass_center[2] + 250]
     ready_pour_pose = ready_pour_position + [90, 0, 90]
     pour_pose = ready_pour_position + [-90, -55, -90]
     before_grasp_position = [p - f * 60 for p, f in zip(position, front, strict=False)]
