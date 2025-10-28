@@ -417,9 +417,9 @@ def generate_pointcloud_multiple_obj_with_name_dict(
                     object_points.append(point)
                     object_colors.append(color)
                     break
-            else:
-                scene_points.append(point)
-                scene_colors.append(color)
+            # add the point into scene no matter what
+            scene_points.append(point)
+            scene_colors.append(color)
     # here
     # objects points parse
     for i in range(len(objects_points)):
