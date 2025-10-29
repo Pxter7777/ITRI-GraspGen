@@ -237,7 +237,7 @@ class TMRobotController(Node):
 
         # 動作指令
         script_to_run = cmd
-        self.get_logger().info(f"正在執行佇列中的腳本: {script_to_run}")
+        self.get_logger().info(f"正在執行佇列中的腳本: {script_to_run} wait_time={wait_time}")
         self._send_script_async(script_to_run, wait_time)
 
     def _send_script_async(self, script: str, wait_time):

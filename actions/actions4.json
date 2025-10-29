@@ -1,9 +1,9 @@
 {
-    "track": ["green cup", "glass cup", "pan"],
+    "track": ["green cup", "orange cup", "pan"],
     "actions":
     [
         {
-            "target_name": "green cup",
+            "target_name": "orange cup",
             "qualifier": "cup_qualifier",
             "action": "grab_and_pour_and_place_back",
             "args": [
@@ -11,7 +11,7 @@
             ]
         },
         {
-            "target_name": "glass cup",
+            "target_name": "green cup",
             "qualifier": "cup_qualifier",
             "action": "grab_and_pour_and_place_back",
             "args": [

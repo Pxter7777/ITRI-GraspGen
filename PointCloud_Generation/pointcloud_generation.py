@@ -441,7 +441,7 @@ def generate_pointcloud_multiple_obj_with_name_dict(
 
     # scene points
     scene_points = np.array([[z, -x, -y] for x, y, z in scene_points])
-    scene_colors = np.array(object_colors)
+    scene_colors = np.array(scene_colors)
     if scene_colors.size > 0:
         scene_colors = scene_colors[:, ::-1]
 

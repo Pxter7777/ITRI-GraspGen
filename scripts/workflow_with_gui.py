@@ -7,7 +7,7 @@ from PointCloud_Generation.PC_transform import (
     silent_transform_multiple_obj_with_name_dict,
 )
 from common_utils import config
-from common_utils.graspgen_utils import GraspGenerator
+from common_utils.graspgen_utils import GraspGeneratorUI
 from common_utils.gripper_utils import send_moves_to_robot
 from common_utils.actions_format_checker import is_actions_format_valid_v1028
 from common_utils.movesets import act
@@ -114,11 +114,12 @@ def main():
     project_root_dir = os.path.dirname(current_file_dir)
     try:
         pc_generator = PointCloudGenerator(args)
-        grasp_generator = GraspGenerator(
+        grasp_generator = GraspGeneratorUI(
             args.gripper_config,
             args.grasp_threshold,
             args.num_grasps,
             args.topk_num_grasps,
+            not args.no_confirm
         )
         while True:
             print("Please provide the <name> of actions to start, or type end to end.")
@@ -163,15 +164,14 @@ def main():
                     moves = act(action["action"], None, action["args"], None)
                 else:
                     try:
-                        obj = scene_data["object_infos"][action["target_name"]]
-                        grasp = grasp_generator.flexible_auto_select_valid_grasp(
-                            obj, action["qualifier"]
+                        grasp = grasp_generator.generate_grasp(
+                            scene_data, action
                         )
                         moves = act(action["action"], grasp, action["args"], scene_data)
-                    except Exception:
+                    except Exception as e:
                         name = action["target_name"]
-                        logger.error(
-                            f"Error while generating grasp for {name}, stopping."
+                        logger.exception(
+                            f"Error while generating grasp for {name}, stopping. {e}"
                         )
                         break
                 # send the grasp to gripper
