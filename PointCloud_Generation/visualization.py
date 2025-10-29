@@ -68,3 +68,11 @@ def visualize_named_box(display_frame: np.array, box: DetectedBoxInfo) -> None:
         2,
     )
     return overlay
+
+def visualize_mask(display_frame, mask):
+    overlay = display_frame.copy()
+    overlay[mask] = config.OVERLAY_COLOR_CV
+    cv2.addWeighted(
+        overlay, config.OVERLAY_ALPHA, display_frame, 1 - config.OVERLAY_ALPHA, 0, display_frame
+    )
+    return display_frame

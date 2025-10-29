@@ -140,9 +140,14 @@ def main():
             scene_data = None
             track_names = [track for track in actions["track"]]
             try:
-                scene_data = pc_generator.silent_mode_multiple_grounding_dict(track_names)
-            except Exception:
+                scene_data = pc_generator.generate_pointcloud(track_names, need_confirm=not args.no_confirm)
+            except ValueError as e:
+                logger.exception(e)
                 continue
+            except Exception as e:
+                logger.exception(f"Unexcpected exception: {e}")
+                continue
+                
             logger.info(scene_data)
             # transform
             scene_data = silent_transform_multiple_obj_with_name_dict(

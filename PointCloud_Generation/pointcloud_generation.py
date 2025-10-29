@@ -9,7 +9,7 @@ import pyzed.sl as sl
 
 from PointCloud_Generation.mouse_handlerv2 import MouseHandler
 from PointCloud_Generation.grounding_dino_utils import GroundindDinoPredictor
-from PointCloud_Generation.visualization import visualize_named_box
+from PointCloud_Generation.visualization import visualize_named_box, visualize_mask
 # Add the project root to sys.path to enable relative imports when run as a script
 current_file_dir = os.path.dirname(os.path.abspath(__file__))
 project_root_dir = os.path.dirname(current_file_dir)
@@ -548,13 +548,15 @@ class PointCloudGenerator:
             for box in boxes:
                 display_frame = visualize_named_box(display_frame, box)
             for named_mask in named_masks:
-                display_frame = visualize_mask(display_frame, mask)
+                display_frame = visualize_mask(display_frame, named_mask.mask)
             cv2.imshow(win_name, display_frame)
             while True:
-                key = cv2.waitKey(0)
                 logger.info("if satisfied, press space and continue.")
+                key = cv2.waitKey(0)
                 if key == 32:
                     break
+                elif key == 27:
+                    raise ValueError("Not satisfied with the generated result.")
 
         # gen pointcloud
         result_scene_data = generate_pointcloud_multiple_obj_with_name_dict(
