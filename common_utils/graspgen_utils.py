@@ -7,7 +7,6 @@ import signal
 import time
 import webbrowser
 import platform
-import torch
 import tkinter as tk
 from threading import Thread
 import queue
@@ -18,16 +17,9 @@ from grasp_gen.utils.meshcat_utils import (
     visualize_grasp,
     visualize_pointcloud,
 )
-from grasp_gen.utils.point_cloud_utils import point_cloud_outlier_removal_with_color
 
 
 logger = logging.getLogger(__name__)
-
-def get_left_up_and_front(grasp: np.array):
-    left = grasp[:3, 0]
-    up = grasp[:3, 1]
-    front = grasp[:3, 2]
-    return left, up, front
 
 
 def is_qualified(grasp: np.array, mass_center, obj_std):
@@ -120,6 +112,7 @@ class GraspGenerator:
             if len(qualified_grasps) > 0:
                 return qualified_grasps[0]
 
+
 def start_meshcat_server():
     """Starts the meshcat-server and registers a cleanup function."""
     print("Starting meshcat-server...")
@@ -135,6 +128,7 @@ def start_meshcat_server():
 
     time.sleep(2)  # Wait for server to start
     return meshcat_server_process
+
 
 def open_meshcat_url(url):
     """Opens the given URL in a web browser."""
@@ -155,6 +149,7 @@ def open_meshcat_url(url):
     except Exception:
         pass  # If opening fails, the user has the URL printed.
 
+
 def get_left_up_and_front(grasp: np.array):
     left = grasp[:3, 0]
     up = grasp[:3, 1]
@@ -165,7 +160,12 @@ def get_left_up_and_front(grasp: np.array):
 class ControlPanel:
     def __init__(
         self,
-        root, vis, grasp_queue, grasps_to_handle_queue, qualifier_name:str, gripper_name
+        root,
+        vis,
+        grasp_queue,
+        grasps_to_handle_queue,
+        qualifier_name: str,
+        gripper_name,
     ):
         self.root = root
         self.vis = vis
@@ -205,26 +205,20 @@ class ControlPanel:
         self.next_button = tk.Button(nav_frame, text=">", command=self.next_grasp)
         self.next_button.pack(side=tk.LEFT, padx=5)
 
-
-    
     def run(self):
         self.root.after(100, self._catch_grasps)
         self.root.mainloop()
 
     def next_grasp(self, event=None):
-        if len(self.current_grasp_pool)==0:
+        if len(self.current_grasp_pool) == 0:
             return
-        self.current_index = (self.current_index + 1) % len(
-            self.current_grasp_pool
-        )
+        self.current_index = (self.current_index + 1) % len(self.current_grasp_pool)
         self._update_grasp_visualization()
 
     def prev_grasp(self, event=None):
-        if len(self.current_grasp_pool)==0:
+        if len(self.current_grasp_pool) == 0:
             return
-        self.current_index = (self.current_index - 1) % len(
-            self.current_grasp_pool
-        )
+        self.current_index = (self.current_index - 1) % len(self.current_grasp_pool)
         self._update_grasp_visualization()
 
     def toggle_grasp_display(self):
@@ -238,16 +232,23 @@ class ControlPanel:
     def _return_grasp_and_destroy(self):
         self.grasp_queue.put(self.current_grasp_pool[self.current_index])
         self.root.destroy()
+
     def _return_None_and_retry(self):
         self.grasp_queue.put(None)
         self._catch_grasps()
+
     def _catch_grasps(self):
         self.qualified_grasps, self.all_grasps = self.grasps_to_handle_queue.get()
-        self.current_grasp_pool = self.all_grasps if self.display_disqualified_var.get() else self.qualified_grasps
+        self.current_grasp_pool = (
+            self.all_grasps
+            if self.display_disqualified_var.get()
+            else self.qualified_grasps
+        )
         self.current_index = 0
         self._update_grasp_visualization()
+
     def _update_grasp_visualization(self):
-        if len(self.current_grasp_pool)==0:
+        if len(self.current_grasp_pool) == 0:
             return
         self.vis["GraspGen"].delete()
 
@@ -269,7 +270,11 @@ class ControlPanel:
                 )
                 left_colors = np.tile([255, 0, 0], (num_points, 1))
                 visualize_pointcloud(
-                    self.vis, f"GraspGen/{j:03d}/left", left_points, left_colors, size=0.005
+                    self.vis,
+                    f"GraspGen/{j:03d}/left",
+                    left_points,
+                    left_colors,
+                    size=0.005,
                 )
 
                 # Up vector (green)
@@ -285,7 +290,11 @@ class ControlPanel:
                 )
                 front_colors = np.tile([0, 0, 255], (num_points, 1))
                 visualize_pointcloud(
-                    self.vis, f"GraspGen/{j:03d}/front", front_points, front_colors, size=0.005
+                    self.vis,
+                    f"GraspGen/{j:03d}/front",
+                    front_points,
+                    front_colors,
+                    size=0.005,
                 )
             visualize_grasp(
                 self.vis,
@@ -295,19 +304,41 @@ class ControlPanel:
                 gripper_name=self.gripper_name,
                 linewidth=2.5 if is_current else 1.5,
             )
-    
-        
 
 
-
-def create_control_panel(vis, grasp_sampler, gripper_name, grasp_threshold, num_grasps, topk_num_grasps, grasp_queue):
+def create_control_panel(
+    vis,
+    grasp_sampler,
+    gripper_name,
+    grasp_threshold,
+    num_grasps,
+    topk_num_grasps,
+    grasp_queue,
+):
     """Creates and runs the tkinter control panel."""
     root = tk.Tk()
-    panel = ControlPanel(root, vis, grasp_sampler, gripper_name, grasp_threshold, num_grasps, topk_num_grasps, grasp_queue)
+    panel = ControlPanel(
+        root,
+        vis,
+        grasp_sampler,
+        gripper_name,
+        grasp_threshold,
+        num_grasps,
+        topk_num_grasps,
+        grasp_queue,
+    )
     panel.run()
 
+
 class GraspGeneratorUI:
-    def __init__(self, gripper_config, grasp_threshold, num_grasps, topk_num_grasps, need_GUI = False):
+    def __init__(
+        self,
+        gripper_config,
+        grasp_threshold,
+        num_grasps,
+        topk_num_grasps,
+        need_GUI=False,
+    ):
         self.grasp_cfg = load_grasp_cfg(gripper_config)
         self.gripper_name = self.grasp_cfg.data.gripper_name
         self.grasp_sampler = GraspGenSampler(self.grasp_cfg)
@@ -320,7 +351,6 @@ class GraspGeneratorUI:
             start_meshcat_server()
             open_meshcat_url("http://127.0.0.1:7000/static/")
             self.vis = create_visualizer()
-    
 
     def _generate_grasps(self) -> tuple[np.array, np.array]:
         obj_name = self.action["target_name"]
@@ -353,8 +383,9 @@ class GraspGeneratorUI:
             logger.info(f"try #{num_try}")
             qualified_grasps, _ = self._generate_grasps()
             if len(qualified_grasps) > 0:
-                return qualified_grasps[0]      
-    def generate_grasp(self, scene_data:dict, action:dict) -> np.array:
+                return qualified_grasps[0]
+
+    def generate_grasp(self, scene_data: dict, action: dict) -> np.array:
         # reload scene_data and action
         self.scene_data = scene_data
         self.action = action
@@ -364,7 +395,7 @@ class GraspGeneratorUI:
             return self._generate_grasp_with_GUI()
         else:
             return self._generate_grasp_silent()
-    
+
     def _generate_grasp_with_GUI(self):
         self._visualize_scene()
         grasp_q = queue.Queue()
@@ -374,7 +405,7 @@ class GraspGeneratorUI:
             args=(grasp_q, grasps_to_handle_queue),
             daemon=True,
         )
-        
+
         gui_thread.start()
         num_try = 0
         while True:
@@ -390,16 +421,22 @@ class GraspGeneratorUI:
     def _create_control_panel(self, grasp_queue, grasps_to_handle_queue):
         """Creates and runs the tkinter control panel."""
         root = tk.Tk()
-        panel = ControlPanel(root, self.vis, grasp_queue, grasps_to_handle_queue, self.action["qualifier"], self.gripper_name)
+        panel = ControlPanel(
+            root,
+            self.vis,
+            grasp_queue,
+            grasps_to_handle_queue,
+            self.action["qualifier"],
+            self.gripper_name,
+        )
         panel.run()
+
     def _visualize_scene(self):
         """Loads scene data, processes point clouds, and visualizes them."""
         self.vis.delete()
         scene_info = self.scene_data["scene_info"]
         xyz_scene = np.array(scene_info["pc_color"])[0]
-        xyz_scene_color = np.array(scene_info["img_color"]).reshape(1, -1, 3)[
-            0, :, :
-        ]
+        xyz_scene_color = np.array(scene_info["img_color"]).reshape(1, -1, 3)[0, :, :]
 
         VIZ_BOUNDS = [[-1.5, -1.25, -0.15], [1.5, 1.25, 2.0]]
         mask_within_bounds = np.all((xyz_scene > VIZ_BOUNDS[0]), 1)
@@ -409,8 +446,6 @@ class GraspGeneratorUI:
         xyz_scene = xyz_scene[mask_within_bounds]
         xyz_scene_color = xyz_scene_color[mask_within_bounds]
 
-        visualize_pointcloud(self.vis, "pc_scene", xyz_scene, xyz_scene_color, size=0.0025)
-
-
-
-
+        visualize_pointcloud(
+            self.vis, "pc_scene", xyz_scene, xyz_scene_color, size=0.0025
+        )

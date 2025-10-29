@@ -119,7 +119,7 @@ def main():
             args.grasp_threshold,
             args.num_grasps,
             args.topk_num_grasps,
-            not args.no_confirm
+            not args.no_confirm,
         )
         while True:
             print("Please provide the <name> of actions to start, or type end to end.")
@@ -164,9 +164,7 @@ def main():
                     moves = act(action["action"], None, action["args"], None)
                 else:
                     try:
-                        grasp = grasp_generator.generate_grasp(
-                            scene_data, action
-                        )
+                        grasp = grasp_generator.generate_grasp(scene_data, action)
                         moves = act(action["action"], grasp, action["args"], scene_data)
                     except Exception as e:
                         name = action["target_name"]
