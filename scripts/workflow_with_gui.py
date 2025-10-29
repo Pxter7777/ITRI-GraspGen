@@ -3,7 +3,9 @@ import argparse
 import logging
 import json
 from PointCloud_Generation.pointcloud_generation import PointCloudGenerator
-from PointCloud_Generation.PC_transform import silent_transform_multiple_obj_with_name_dict
+from PointCloud_Generation.PC_transform import (
+    silent_transform_multiple_obj_with_name_dict,
+)
 from common_utils import config
 from common_utils.graspgen_utils import GraspGenerator
 from common_utils.gripper_utils import send_moves_to_robot
@@ -99,7 +101,7 @@ def parse_args():
     parser.add_argument(
         "--no-confirm",
         action="store_true",
-        help="decide if we need confirm for groundingDINO detect and grasp Generation"
+        help="decide if we need confirm for groundingDINO detect and grasp Generation",
     )
     return parser.parse_args()
 
@@ -124,7 +126,7 @@ def main():
             if text == "end":
                 break
             actions_filepath = os.path.join(project_root_dir, "actions", text + ".json")
-            
+
             actions = None
             try:
                 with open(actions_filepath, "rb") as f:
@@ -138,16 +140,18 @@ def main():
                 continue
             # start to generate pointcloud
             scene_data = None
-            track_names = [track for track in actions["track"]]
+            track_names = list(actions["track"])
             try:
-                scene_data = pc_generator.generate_pointcloud(track_names, need_confirm=not args.no_confirm)
+                scene_data = pc_generator.generate_pointcloud(
+                    track_names, need_confirm=not args.no_confirm
+                )
             except ValueError as e:
                 logger.exception(e)
                 continue
             except Exception as e:
                 logger.exception(f"Unexcpected exception: {e}")
                 continue
-                
+
             logger.info(scene_data)
             # transform
             scene_data = silent_transform_multiple_obj_with_name_dict(
@@ -158,7 +162,7 @@ def main():
                 if action["action"] in ["move_to"]:
                     moves = act(action["action"], None, action["args"], None)
                 else:
-                    try:    
+                    try:
                         obj = scene_data["object_infos"][action["target_name"]]
                         grasp = grasp_generator.flexible_auto_select_valid_grasp(
                             obj, action["qualifier"]

@@ -2,6 +2,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 def is_actions_format_valid(actions) -> bool:
     try:
         if not isinstance(actions, list):
@@ -18,6 +19,8 @@ def is_actions_format_valid(actions) -> bool:
         return True
     except Exception:
         return False
+
+
 def is_actions_format_valid_v1028(actions) -> bool:
     try:
         if not isinstance(actions["track"], list):
@@ -48,7 +51,7 @@ def is_actions_format_valid_v1028(actions) -> bool:
                 if not (isinstance(arg, list) or isinstance(arg, str)):
                     logger.error(arg)
                     return False
-                if isinstance(arg, list) and len(arg)!=3:
+                if isinstance(arg, list) and len(arg) != 3:
                     logger.error(arg)
                     return False
                 if isinstance(arg, str) and arg not in actions["track"]:

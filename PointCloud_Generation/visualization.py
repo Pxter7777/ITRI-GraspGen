@@ -3,6 +3,7 @@ from common_utils import config
 import numpy as np
 from PointCloud_Generation.grounding_dino_utils import DetectedBoxInfo
 
+
 def overlay_mask_on_frame(frame, mask):
     overlay = frame.copy()
     overlay[mask] = config.OVERLAY_COLOR_CV
@@ -52,6 +53,7 @@ def vis_depth(depth, vmax_percent=95):
     depth_vis[depth == np.inf] = [0, 0, 0]
     return depth_vis
 
+
 def visualize_named_box(display_frame: np.array, box: DetectedBoxInfo) -> None:
     overlay = display_frame.copy()
     start_point = (int(box.box[0]), int(box.box[1]))
@@ -69,10 +71,16 @@ def visualize_named_box(display_frame: np.array, box: DetectedBoxInfo) -> None:
     )
     return overlay
 
+
 def visualize_mask(display_frame, mask):
     overlay = display_frame.copy()
     overlay[mask] = config.OVERLAY_COLOR_CV
     cv2.addWeighted(
-        overlay, config.OVERLAY_ALPHA, display_frame, 1 - config.OVERLAY_ALPHA, 0, display_frame
+        overlay,
+        config.OVERLAY_ALPHA,
+        display_frame,
+        1 - config.OVERLAY_ALPHA,
+        0,
+        display_frame,
     )
     return display_frame

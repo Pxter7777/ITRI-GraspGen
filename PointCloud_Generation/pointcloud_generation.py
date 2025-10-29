@@ -10,6 +10,7 @@ import pyzed.sl as sl
 from PointCloud_Generation.mouse_handlerv2 import MouseHandler
 from PointCloud_Generation.grounding_dino_utils import GroundindDinoPredictor
 from PointCloud_Generation.visualization import visualize_named_box, visualize_mask
+
 # Add the project root to sys.path to enable relative imports when run as a script
 current_file_dir = os.path.dirname(os.path.abspath(__file__))
 project_root_dir = os.path.dirname(current_file_dir)
@@ -353,6 +354,8 @@ def generate_pointcloud_multiple_obj_with_name(
         "grasp_info": {"grasp_poses": [], "grasp_conf": []},
     }
     return scene_data
+
+
 def generate_pointcloud_multiple_obj_with_name_dict(
     depth, color_np_org, named_masks: list[NamedMask], K_cam, scale, max_depth
 ):
@@ -445,10 +448,7 @@ def generate_pointcloud_multiple_obj_with_name_dict(
     # Final construct
     scene_data = {
         "object_infos": {
-            named_mask.name:{
-                "points": object_points,
-                "colors": object_colors
-            }
+            named_mask.name: {"points": object_points, "colors": object_colors}
             for object_points, object_colors, named_mask in zip(
                 objects_points, objects_colors, named_masks, strict=False
             )
@@ -460,6 +460,7 @@ def generate_pointcloud_multiple_obj_with_name_dict(
         "grasp_info": {"grasp_poses": [], "grasp_conf": []},
     }
     return scene_data
+
 
 class PointCloudGenerator:
     def __init__(self, args):
@@ -476,6 +477,7 @@ class PointCloudGenerator:
         self.stereo_model = FoundationStereoModel(args)
         self.groundingdino_predictor = GroundindDinoPredictor()
         self.zed = ZedCamera()
+
     def generate_pointcloud(self, target_names: list[str], need_confirm=True):
         # Target objects
         prompt = ""
@@ -525,7 +527,6 @@ class PointCloudGenerator:
             )
             named_masks.append(NamedMask(name=box.phrase, mask=mask))
 
-
         # stereo inference
         left_gray = cv2.cvtColor(left_image.get_data(), cv2.COLOR_BGRA2GRAY)
         right_gray = cv2.cvtColor(right_image.get_data(), cv2.COLOR_BGRA2GRAY)
@@ -533,7 +534,6 @@ class PointCloudGenerator:
             left_gray, right_gray, self.zed.K_left, self.zed.baseline
         )
 
-        
         # GroundingDINO detection
 
         """
@@ -568,6 +568,7 @@ class PointCloudGenerator:
             self.max_depth,
         )
         return result_scene_data
+
     def interactive_gui_mode(self, save_json=False):
         # ---------- Window and Mouse Callback Setup ----------
         win_name = "RGB + Mask | Depth"
@@ -1054,6 +1055,7 @@ class PointCloudGenerator:
             self.max_depth,
         )
         return result_scene_data
+
     def silent_mode_multiple_grounding_dict(self, target_names: list[str]):
         # Target objects
         prompt = ""
@@ -1126,6 +1128,7 @@ class PointCloudGenerator:
             self.max_depth,
         )
         return result_scene_data
+
     def silent_mode(self):
         try:
             # Capture image

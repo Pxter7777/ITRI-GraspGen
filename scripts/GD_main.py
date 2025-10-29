@@ -3,7 +3,9 @@ import argparse
 import logging
 import json
 from PointCloud_Generation.pointcloud_generation import PointCloudGenerator
-from PointCloud_Generation.PC_transform import silent_transform_multiple_obj_with_name_dict
+from PointCloud_Generation.PC_transform import (
+    silent_transform_multiple_obj_with_name_dict,
+)
 from common_utils import config
 from common_utils.graspgen_utils import GraspGenerator
 from common_utils.gripper_utils import send_moves_to_robot
@@ -132,9 +134,11 @@ def main():
                 continue
             # start to generate pointcloud
             scene_data = None
-            track_names = [track for track in actions["track"]]
+            track_names = list(actions["track"])
             try:
-                scene_data = pc_generator.silent_mode_multiple_grounding_dict(track_names)
+                scene_data = pc_generator.silent_mode_multiple_grounding_dict(
+                    track_names
+                )
             except Exception:
                 continue
             logger.info(scene_data)
@@ -147,7 +151,7 @@ def main():
                 if action["action"] in ["move_to"]:
                     moves = act(action["action"], None, action["args"], None)
                 else:
-                    try:    
+                    try:
                         obj = scene_data["object_infos"][action["target_name"]]
                         grasp = grasp_generator.flexible_auto_select_valid_grasp(
                             obj, action["qualifier"]

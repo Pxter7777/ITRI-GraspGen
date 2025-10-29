@@ -629,6 +629,7 @@ def silent_transform_multiple_obj_with_name(
     ]
     return scene_data
 
+
 def silent_transform_multiple_obj_with_name_dict(
     scene_data: dict, config_filename: str
 ) -> dict:
