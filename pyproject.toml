@@ -36,6 +36,7 @@ version = "0.1.0"
 include = ["PointCloud_Generation", "common_utils", "src"]
 
 [tool.pytest.ini_options]
+testpaths = ["tests"]
 filterwarnings = [
     "ignore:Importing from timm.models.layers is deprecated:FutureWarning"
 ]
