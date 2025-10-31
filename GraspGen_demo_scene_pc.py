@@ -163,40 +163,6 @@ class ControlPanel:
         time.sleep(4)
         os.kill(os.getpid(), signal.SIGINT)
 
-    """
-    def save_isaac_grasps(self):
-        if app_state.grasps is not None and app_state.grasp_conf is not None:
-            if self.custom_filename_var.get():
-                filename = self.filename_entry_var.get()
-                if not filename.endswith(".yaml"):
-                    filename += ".yaml"
-            else:
-                input_filename = self.selected_file.get()
-                base_name = os.path.basename(input_filename)
-                timestamp_from_file = os.path.splitext(base_name)[0]
-                filename = f"isaac_grasp_{timestamp_from_file}.yaml"
-
-            output_path = os.path.join("output", filename)
-
-            selected_grasps_indices = app_state.selected_grasps
-            if not selected_grasps_indices:
-                print("No selected grasps to save.")
-                return
-
-            selected_grasps = app_state.grasps[selected_grasps_indices]
-            selected_confs = app_state.grasp_conf[selected_grasps_indices]
-
-            print(f"Saving {len(selected_grasps)} grasps to {output_path}...")
-            save_to_isaac_grasp_format(
-                grasps=selected_grasps,
-                confidences=selected_confs,
-                output_path=output_path,
-            )
-            print("Save complete.")
-        else:
-            print("No grasps available to save.")
-    """
-
     def quickload(self):
         if self.args.filename:
             # Find the full path from json_files that matches the filename

@@ -11,6 +11,9 @@ from collections import deque
 import json
 import os
 import argparse
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def quat_to_euler_zyx_deg(qx, qy, qz, qw):
@@ -237,7 +240,9 @@ class TMRobotController(Node):
 
         # 動作指令
         script_to_run = cmd
-        self.get_logger().info(f"正在執行佇列中的腳本: {script_to_run}")
+        self.get_logger().info(
+            f"正在執行佇列中的腳本: {script_to_run} wait_time={wait_time}"
+        )
         self._send_script_async(script_to_run, wait_time)
 
     def _send_script_async(self, script: str, wait_time):
@@ -248,7 +253,9 @@ class TMRobotController(Node):
         req = SendScript.Request()
         req.id = "auto"
         req.script = script
+        self.get_logger().info("ready to call async")
         future = self.script_cli.call_async(req)
+        self.get_logger().info("called async")
 
         def _done(_):
             try:

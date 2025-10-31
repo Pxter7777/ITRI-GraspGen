@@ -1,6 +1,7 @@
 import cv2
 from common_utils import config
 import numpy as np
+from PointCloud_Generation.grounding_dino_utils import DetectedBoxInfo
 
 
 def overlay_mask_on_frame(frame, mask):
@@ -51,3 +52,35 @@ def vis_depth(depth, vmax_percent=95):
     depth_vis = cv2.applyColorMap(depth_vis, cv2.COLORMAP_JET)
     depth_vis[depth == np.inf] = [0, 0, 0]
     return depth_vis
+
+
+def visualize_named_box(display_frame: np.array, box: DetectedBoxInfo) -> None:
+    overlay = display_frame.copy()
+    start_point = (int(box.box[0]), int(box.box[1]))
+    end_point = (int(box.box[2]), int(box.box[3]))
+    cv2.rectangle(overlay, start_point, end_point, (0, 255, 0), 2)
+    label = f"{box.phrase}: {box.logits:.2f}"
+    cv2.putText(
+        overlay,
+        label,
+        (start_point[0], start_point[1] - 10),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.5,
+        (0, 255, 0),
+        2,
+    )
+    return overlay
+
+
+def visualize_mask(display_frame, mask):
+    overlay = display_frame.copy()
+    overlay[mask] = config.OVERLAY_COLOR_CV
+    cv2.addWeighted(
+        overlay,
+        config.OVERLAY_ALPHA,
+        display_frame,
+        1 - config.OVERLAY_ALPHA,
+        0,
+        display_frame,
+    )
+    return display_frame

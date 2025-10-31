@@ -1,0 +1,32 @@
+{
+    "track": ["green cup", "blue cup", "pan"],
+    "actions":
+    [
+        {
+            "target_name": "green cup",
+            "qualifier": "cup_qualifier",
+            "action": "grab_and_pour_and_place_back",
+            "args": [
+                "pan"
+            ]
+        },
+        {
+            "target_name": "blue cup",
+            "qualifier": "cup_qualifier",
+            "action": "grab_and_pour_and_place_back",
+            "args": [
+                "pan"
+            ]
+        },
+        {
+            "target_name": "blue cup",
+            "qualifier": "cup_qualifier",
+            "action": "move_to",
+            "args": [
+                [326.8, -140.2, 212.6]
+            ]
+        }
+    ]
+    
+    
+}

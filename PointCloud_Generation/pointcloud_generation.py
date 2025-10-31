@@ -9,6 +9,7 @@ import pyzed.sl as sl
 
 from PointCloud_Generation.mouse_handlerv2 import MouseHandler
 from PointCloud_Generation.grounding_dino_utils import GroundindDinoPredictor
+from PointCloud_Generation.visualization import visualize_named_box, visualize_mask
 
 # Add the project root to sys.path to enable relative imports when run as a script
 current_file_dir = os.path.dirname(os.path.abspath(__file__))
@@ -355,6 +356,112 @@ def generate_pointcloud_multiple_obj_with_name(
     return scene_data
 
 
+def generate_pointcloud_multiple_obj_with_name_dict(
+    depth, color_np_org, named_masks: list[NamedMask], K_cam, scale, max_depth
+):
+    logging.info("generating scene and object...")
+
+    K_scaled_cam = K_cam.copy()
+    K_scaled_cam[:2, :] *= scale
+
+    xyz_map = depth2xyzmap(depth, K_scaled_cam)
+    points_in_cam_view = xyz_map.reshape(-1, 3)
+
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(points_in_cam_view)
+    pcd = pcd.remove_non_finite_points()
+
+    points_post_filter = np.asarray(pcd.points)
+
+    if not points_post_filter.size:
+        logging.warning("No valid points in the disparity map to save.")
+        return
+
+    # Filter out points with zero or negative depth to prevent division by zero
+    z_coords = points_post_filter[:, 2]
+    valid_depth_mask = z_coords > 1e-6
+    points_post_filter = points_post_filter[valid_depth_mask]
+
+    if not points_post_filter.size:
+        logging.warning("No valid points after filtering for depth > 0.")
+        return
+
+    valid_depth_mask = points_post_filter[:, 2] < max_depth
+    points_post_filter = points_post_filter[valid_depth_mask]
+    if not points_post_filter.size:
+        logging.warning(
+            f"No points remaining after filtering with max_depth={max_depth}"
+        )
+        return
+
+    # Since the depth map is already in the color camera's frame, no transformation is needed.
+    # We just need to map points to pixels to get their color and check the mask.
+    projected_points_uv = (K_cam @ points_post_filter.T).T
+    projected_points_uv[:, :2] /= projected_points_uv[:, 2:]
+
+    # objects_name = [named_mask.name for named_mask in named_masks]
+    objects_points = [[] for _ in named_masks]
+    objects_colors = [[] for _ in named_masks]
+    scene_points = []
+    scene_colors = []
+
+    H_color, W_color = color_np_org.shape[:2]
+
+    for i in range(len(projected_points_uv)):
+        u, v = int(projected_points_uv[i, 0]), int(projected_points_uv[i, 1])
+        if 0 <= u < W_color and 0 <= v < H_color:
+            point = points_post_filter[i]
+            color = color_np_org[v, u]
+
+            for object_points, object_colors, named_mask in zip(
+                objects_points, objects_colors, named_masks, strict=False
+            ):
+                if named_mask.mask[v, u]:
+                    object_points.append(point)
+                    object_colors.append(color)
+                    break
+            # add the point into scene no matter what
+            scene_points.append(point)
+            scene_colors.append(color)
+    # here
+    # objects points parse
+    for i in range(len(objects_points)):
+        if not objects_points[i]:
+            logging.error(
+                "The selected mask contains no points from the point cloud. Nothing to save."
+            )
+            raise ValueError(
+                "The selected mask contains no points from the point cloud."
+            )
+
+        objects_points[i] = np.array([[z, -x, -y] for x, y, z in objects_points[i]])
+        objects_colors[i] = np.array(objects_colors[i])
+        if objects_colors[i].size > 0:
+            objects_colors[i] = objects_colors[i][:, ::-1]
+
+    # scene points
+    scene_points = np.array([[z, -x, -y] for x, y, z in scene_points])
+    scene_colors = np.array(scene_colors)
+    if scene_colors.size > 0:
+        scene_colors = scene_colors[:, ::-1]
+
+    # Final construct
+    scene_data = {
+        "object_infos": {
+            named_mask.name: {"points": object_points, "colors": object_colors}
+            for object_points, object_colors, named_mask in zip(
+                objects_points, objects_colors, named_masks, strict=False
+            )
+        },
+        "scene_info": {
+            "pc_color": [scene_points],
+            "img_color": [scene_colors],
+        },
+        "grasp_info": {"grasp_poses": [], "grasp_conf": []},
+    }
+    return scene_data
+
+
 class PointCloudGenerator:
     def __init__(self, args):
         # Init
@@ -370,6 +477,97 @@ class PointCloudGenerator:
         self.stereo_model = FoundationStereoModel(args)
         self.groundingdino_predictor = GroundindDinoPredictor()
         self.zed = ZedCamera()
+
+    def generate_pointcloud(self, target_names: list[str], need_confirm=True):
+        # Target objects
+        prompt = ""
+        target_boxes = dict()
+        for target in target_names:
+            prompt += target + " ."
+            target_boxes[target] = None
+
+        # Capture image
+        try:
+            zed_status, left_image, right_image = self.zed.capture_images()
+        except Exception as e:
+            logger.exception(f"error{e}")
+            return RuntimeError
+
+        color_np = left_image.get_data()[:, :, :3]  # Drop alpha channel
+        color_np_org = color_np.copy()
+        display_frame = color_np.copy()
+        # GroundingDINO detection
+        boxes = self.groundingdino_predictor.predict_boxes(color_np_org, prompt)
+        for box in boxes:
+            if box.phrase not in target_boxes:
+                logger.error(
+                    f"Unknown Object {box.phrase} generated by GroundingDINO, Failed"
+                )
+                raise ValueError
+            if target_boxes[box.phrase] is not None:
+                logger.error(f"More than one {box.phrase} detected")
+                raise ValueError
+            target_boxes[box.phrase] = box
+            print(box.box, box.logits, box.phrase)
+        for target_box in target_boxes:
+            if target_boxes[target_box] is None:
+                logger.error(f"Object {target_box} is not detected")
+                raise ValueError
+        boxes = [target_boxes[target_name] for target_name in target_names]
+
+        # SAM2 inference
+        named_masks = []
+        for box in boxes:
+            color_np_rgb = cv2.cvtColor(color_np, cv2.COLOR_BGR2RGB)
+            mask = sam_utils.run_sam2(
+                self.sam_predictor,
+                color_np_rgb,
+                box.box,
+                iterations=self.erosion_iterations,
+            )
+            named_masks.append(NamedMask(name=box.phrase, mask=mask))
+
+        # stereo inference
+        left_gray = cv2.cvtColor(left_image.get_data(), cv2.COLOR_BGRA2GRAY)
+        right_gray = cv2.cvtColor(right_image.get_data(), cv2.COLOR_BGRA2GRAY)
+        depth, (H_scaled, W_scaled) = self.stereo_model.run_inference(
+            left_gray, right_gray, self.zed.K_left, self.zed.baseline
+        )
+
+        # GroundingDINO detection
+
+        """
+        Maybe, maybe, I shouldn't request GroundingDINO to detect all kinds of things at once.
+        Maybe we can try to detect things one by one.
+        But then it won't be able to know if that things has been detected and recorded before...
+        """
+
+        if need_confirm:
+            win_name = "RGB + Mask | Depth"
+            cv2.namedWindow(win_name)
+            for box in boxes:
+                display_frame = visualize_named_box(display_frame, box)
+            for named_mask in named_masks:
+                display_frame = visualize_mask(display_frame, named_mask.mask)
+            cv2.imshow(win_name, display_frame)
+            while True:
+                logger.info("if satisfied, press space and continue.")
+                key = cv2.waitKey(0)
+                if key == 32:
+                    break
+                elif key == 27:
+                    raise ValueError("Not satisfied with the generated result.")
+
+        # gen pointcloud
+        result_scene_data = generate_pointcloud_multiple_obj_with_name_dict(
+            depth,
+            color_np_org,
+            named_masks,
+            self.zed.K_left,
+            self.scale,
+            self.max_depth,
+        )
+        return result_scene_data
 
     def interactive_gui_mode(self, save_json=False):
         # ---------- Window and Mouse Callback Setup ----------
@@ -849,6 +1047,79 @@ class PointCloudGenerator:
 
         # gen pointcloud
         result_scene_data = generate_pointcloud_multiple_obj_with_name(
+            depth,
+            color_np_org,
+            named_masks,
+            self.zed.K_left,
+            self.scale,
+            self.max_depth,
+        )
+        return result_scene_data
+
+    def silent_mode_multiple_grounding_dict(self, target_names: list[str]):
+        # Target objects
+        prompt = ""
+        target_boxes = dict()
+
+        for target in target_names:
+            prompt += target + " ."
+            target_boxes[target] = None
+        # Capture image
+        try:
+            zed_status, left_image, right_image = self.zed.capture_images()
+        except Exception as e:
+            logger.exception(f"error{e}")
+            return RuntimeError
+
+        color_np = left_image.get_data()[:, :, :3]  # Drop alpha channel
+        color_np_org = color_np.copy()
+
+        # stereo inference
+        left_gray = cv2.cvtColor(left_image.get_data(), cv2.COLOR_BGRA2GRAY)
+        right_gray = cv2.cvtColor(right_image.get_data(), cv2.COLOR_BGRA2GRAY)
+        depth, (H_scaled, W_scaled) = self.stereo_model.run_inference(
+            left_gray, right_gray, self.zed.K_left, self.zed.baseline
+        )
+
+        named_masks = []
+        # GroundingDINO detection
+
+        """
+        Maybe, maybe, I shouldn't request GroundingDINO to detect all kinds of things at once.
+        Maybe we can try to detect things one by one.
+        But then it won't be able to know if that things has been detected and recorded before...
+        """
+
+        boxes = self.groundingdino_predictor.predict_boxes(color_np_org, prompt)
+        for box in boxes:
+            if box.phrase not in target_boxes:
+                logger.error(
+                    f"Unknown Object {box.phrase} generated by GroundingDINO, Failed"
+                )
+                raise ValueError
+            if target_boxes[box.phrase] is not None:
+                logger.error(f"More than one {box.phrase} detected")
+                raise ValueError
+            target_boxes[box.phrase] = box
+            print(box.box, box.logits, box.phrase)
+        for target_box in target_boxes:
+            if target_boxes[target_box] is None:
+                logger.error(f"Object {target_box} is not detected")
+                raise ValueError
+        boxes = [target_boxes[target_name] for target_name in target_names]
+        # SAM2 inference
+        for box in boxes:
+            color_np_rgb = cv2.cvtColor(color_np, cv2.COLOR_BGR2RGB)
+            mask = sam_utils.run_sam2(
+                self.sam_predictor,
+                color_np_rgb,
+                box.box,
+                iterations=self.erosion_iterations,
+            )
+            named_masks.append(NamedMask(name=box.phrase, mask=mask))
+
+        # gen pointcloud
+        result_scene_data = generate_pointcloud_multiple_obj_with_name_dict(
             depth,
             color_np_org,
             named_masks,
