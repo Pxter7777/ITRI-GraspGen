@@ -10,8 +10,6 @@ from tm_msgs.srv import SendScript, SetIO
 from tm_msgs.msg import FeedbackState
 from geometry_msgs.msg import PoseStamped
 from collections import deque
-import json
-import os
 import argparse
 import logging
 from socket_communication import NonBlockingJSONReceiver, NonBlockingJSONSender
@@ -54,11 +52,13 @@ def is_two_point_identical(point1: list, point2: list):
     )
     return pos_identical and orient_identical
 
+
 def is_pose_identical(joints1: list, joints2: list):
     pos_identical = all(
         abs(j1 - j2) < 0.1 for j1, j2 in zip(joints1, joints2, strict=False)
     )
     return pos_identical
+
 
 class TMRobotController(Node):
     def __init__(self):
@@ -82,7 +82,7 @@ class TMRobotController(Node):
         self.moving = False
         self.wait_time = 0
         self.current_moving_type = ""
-        self.reached_time = float('inf')
+        self.reached_time = float("inf")
         self.goal_gripper = None
 
     def _capture_command(self):
@@ -137,7 +137,7 @@ class TMRobotController(Node):
     def feedback_callback(self, msg: FeedbackState):
         current_time = time.time()
         self.ee_digital_output = list(msg.ee_digital_output)
-        
+
         # if self.waiting_for_gripper and self.target_ee_output is not None:
         #     if self.ee_digital_output[:3] == self.target_ee_output:
         #         self.get_logger().info(
@@ -146,18 +146,26 @@ class TMRobotController(Node):
         #         self.waiting_for_gripper = False
         #         self.target_ee_output = None
         #         self._start_gripper_wait_timer()
-        
+
         if self.moving:
-            if self.current_moving_type == "arm" and is_pose_identical(msg.joint_pos, self.goal_joints) and self.reached_time > current_time:
+            if (
+                self.current_moving_type == "arm"
+                and is_pose_identical(msg.joint_pos, self.goal_joints)
+                and self.reached_time > current_time
+            ):
                 self.reached_time = current_time
-            elif self.current_moving_type == "gripper" and list(msg.ee_digital_output)[:3] == self.goal_gripper  and self.reached_time > current_time:
+            elif (
+                self.current_moving_type == "gripper"
+                and list(msg.ee_digital_output)[:3] == self.goal_gripper
+                and self.reached_time > current_time
+            ):
                 self.reached_time = current_time
-            
+
             if current_time - self.reached_time > self.wait_time:
-                self.reached_time = float('inf')
+                self.reached_time = float("inf")
                 self.moving = False
                 self.sender.send_data({"message": "Success"})
-        
+
     def cb(self, msg: PoseStamped):
         p = msg.pose.position
         q = msg.pose.orientation
@@ -264,16 +272,19 @@ class TMRobotController(Node):
             self.states_need_to_wait.append(
                 {"position": tcp_values, "time_to_wait": wait_time}
             )
+
     def append_jpp(
         self, joint_values: list, vel=20, acc=20, coord=80, fine=False, wait_time=0.0
     ):
         if len(joint_values) != 6:
             self.get_logger().error("TCP 必須 6 個數字")
             return
-        fine_str = "true" if fine else "false"
-        script = f'PTP("JPP",{joint_values[0]:.2f}, {joint_values[1]:.2f}, {joint_values[2]:.2f}, ' \
-                 f'{joint_values[3]:.2f}, {joint_values[4]:.2f}, {joint_values[5]:.2f},' \
-                 f'20,20,200,true)'
+        # fine_str = "true" if fine else "false"
+        script = (
+            f'PTP("JPP",{joint_values[0]:.2f}, {joint_values[1]:.2f}, {joint_values[2]:.2f}, '
+            f"{joint_values[3]:.2f}, {joint_values[4]:.2f}, {joint_values[5]:.2f},"
+            f"20,20,200,true)"
+        )
         self.tcp_queue.append({"script": script, "wait_time": wait_time})
         if wait_time > 0:
             self.states_need_to_wait.append(
@@ -291,7 +302,7 @@ class TMRobotController(Node):
         item = self.tcp_queue.popleft()
         cmd, wait_time = item["script"], item["wait_time"]
         self._last_send_ts = now
-        #self._busy = True
+        # self._busy = True
 
         # IO 指令
         if isinstance(cmd, str) and cmd.startswith("IO:"):
@@ -360,11 +371,11 @@ def parse_args():
 
 
 def main():
-    args = parse_args()
-    
+    # args = parse_args()
+
     rclpy.init()
     node = TMRobotController()
-    
+
     try:
         node.setup_services()
 

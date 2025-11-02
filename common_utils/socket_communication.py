@@ -1,5 +1,4 @@
 import socket
-import time
 import json
 import logging
 import struct

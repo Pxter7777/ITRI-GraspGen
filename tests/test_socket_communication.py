@@ -135,6 +135,7 @@ def test_Non_to_Non_sendall_first():  # should success
         process.terminate()  # Force kill if it doesn't stop gracefully
     process.join()
 
+
 def test_NonBlockingJSONReceiver_on_NonBlockingJSONReceiver_task():  # should success
     process, data_queue, error_queue = receiver_process(
         port=9876, task_type="non-blocking_task", receiver_type="non-blocking_receiver"
@@ -200,5 +201,5 @@ def test_BlockingJSONReceiver_on_NonBlockingJSONReceiver_task():  # should fail
 
 
 if __name__ == "__main__":
-    test_Non_to_Non()
+    test_Non_to_Non_sendall_first()
     # test_BlockingJSONReceiver_on_NonBlockingJSONReceiver_task()
