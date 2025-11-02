@@ -15,6 +15,9 @@ import os
 import argparse
 import logging
 from socket_communication import NonBlockingJSONReceiver
+
+import numpy as np
+
 logger = logging.getLogger(__name__)
 
 
@@ -51,6 +54,11 @@ def is_two_point_identical(point1: list, point2: list):
     )
     return pos_identical and orient_identical
 
+def is_pose_identical(joints1: list, joints2: list):
+    pos_identical = all(
+        abs(j1 - j2) < 0.1 for j1, j2 in zip(joints1, joints2, strict=False)
+    )
+    return pos_identical
 
 class TMRobotController(Node):
     def __init__(self):
@@ -70,12 +78,26 @@ class TMRobotController(Node):
         self.gripper_poll_sec = 0.10
 
         self.states_need_to_wait = []
+        self.moving = False
+        self.wait_time = 0
+        self.reached_time = 0
 
     def _capture_command(self):
+        if self.moving:
+            return
+
         data = self.receiver.capture_data()
         if data is None:
             return
         print(data)
+        self.moving = True
+        self.wait_time = data["wait_time"]
+        if data["type"] == "arm":
+            joints_values = data["joints_values"]
+            self.goal_joints = joints_values[-1]
+            for joints in joints_values:
+                joints = np.rad2deg(joints)
+                self.append_jpp(joints)
 
     def setup_services(self):
         self.get_logger().info("等待 ROS 2 服務啟動...")
@@ -101,7 +123,8 @@ class TMRobotController(Node):
         self.sub = self.create_subscription(PoseStamped, "/tool_pose", self.cb, 10)
         self.get_logger().info(" subscribe /tool_pose")
 
-    def feedback_callback(self, msg):
+    def feedback_callback(self, msg: FeedbackState):
+        current_time = time.time()
         self.ee_digital_output = list(msg.ee_digital_output)
 
         if self.waiting_for_gripper and self.target_ee_output is not None:
@@ -112,7 +135,13 @@ class TMRobotController(Node):
                 self.waiting_for_gripper = False
                 self.target_ee_output = None
                 self._start_gripper_wait_timer()
-
+        if self.moving:
+            if is_pose_identical(msg.joint_pos, self.goal_joints) and self.reached_time > current_time:
+                self.reached_time = current_time
+            if current_time - self.reached_time > self.wait_time:
+                self.reached_time = float('inf')
+                self.moving = False
+        
     def cb(self, msg: PoseStamped):
         p = msg.pose.position
         q = msg.pose.orientation
@@ -218,6 +247,21 @@ class TMRobotController(Node):
         if wait_time > 0:
             self.states_need_to_wait.append(
                 {"position": tcp_values, "time_to_wait": wait_time}
+            )
+    def append_jpp(
+        self, joint_values: list, vel=20, acc=20, coord=80, fine=False, wait_time=0.0
+    ):
+        if len(joint_values) != 6:
+            self.get_logger().error("TCP 必須 6 個數字")
+            return
+        fine_str = "true" if fine else "false"
+        script = f'PTP("JPP",{joint_values[0]:.2f}, {joint_values[1]:.2f}, {joint_values[2]:.2f}, ' \
+                 f'{joint_values[3]:.2f}, {joint_values[4]:.2f}, {joint_values[5]:.2f},' \
+                 f'20,20,200,true)'
+        self.tcp_queue.append({"script": script, "wait_time": wait_time})
+        if wait_time > 0:
+            self.states_need_to_wait.append(
+                {"position": joint_values, "time_to_wait": wait_time}
             )
 
     def _process_queue(self):
