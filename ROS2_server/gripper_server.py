@@ -14,7 +14,7 @@ import json
 import os
 import argparse
 import logging
-from socket_communication import NonBlockingJSONReceiver
+from socket_communication import NonBlockingJSONReceiver, NonBlockingJSONSender
 
 import numpy as np
 
@@ -64,6 +64,7 @@ class TMRobotController(Node):
     def __init__(self):
         super().__init__("tm_robot_controller")
         self.receiver = NonBlockingJSONReceiver(port=9876)
+        self.sender = NonBlockingJSONSender(port=9877)
         self.script_cli = None
         self.io_cli = None
         self.tcp_queue = deque()
@@ -155,6 +156,7 @@ class TMRobotController(Node):
             if current_time - self.reached_time > self.wait_time:
                 self.reached_time = float('inf')
                 self.moving = False
+                self.sender.send_data({"message": "Success"})
         
     def cb(self, msg: PoseStamped):
         p = msg.pose.position
