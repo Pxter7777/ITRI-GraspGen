@@ -1,14 +1,13 @@
-from common_utils.socket_communication import NonBlockingJSONSender, BlockingJSONReceiver, NonBlockingJSONReceiver
-import pytest
+from common_utils.socket_communication import (
+    NonBlockingJSONSender,
+    BlockingJSONReceiver,
+    NonBlockingJSONReceiver,
+)
 import time
 from multiprocessing import Process, Queue
-import queue
 import logging
-SAMPLE_DATAS = [
-    {"name": "bobby"},
-    [1,2,3,4,5],
-    {"motions": [1,2,3,4,5]}
-]
+
+SAMPLE_DATAS = [{"name": "bobby"}, [1, 2, 3, 4, 5], {"motions": [1, 2, 3, 4, 5]}]
 
 TIMEOUT = 5
 
@@ -18,7 +17,7 @@ logging.basicConfig(
     format="[%(asctime)s][%(name)s][%(levelname)s] %(message)s",
     force=True,
 )
-    
+
 
 def blocking_receiver_loop(port: int, receiver_type: str, data_queue, error_queue):
     receiver = None
@@ -37,8 +36,7 @@ def blocking_receiver_loop(port: int, receiver_type: str, data_queue, error_queu
         if data:
             data_queue.put(data)
     receiver.disconnect()
-            
-        
+
 
 def responsive_receiver_loop(port: int, receiver_type: str, data_queue, error_queue):
     """
@@ -57,26 +55,29 @@ def responsive_receiver_loop(port: int, receiver_type: str, data_queue, error_qu
     start_time = time.time()
     while time.time() - start_time < TIMEOUT:
         frame_start_time = time.time()
-        #logger.debug(f"catching")
+        # logger.debug(f"catching")
         data = receiver.capture_data()
-        #logger.debug(f"catched {data}")
+        # logger.debug(f"catched {data}")
         if data:
             data_queue.put(data)
 
         # Ensure the loop runs at roughly 60 FPS
         frame_duration = time.time() - frame_start_time
         if frame_duration > target_frame_duration:
-            logger.error(f"Error: the receiver is slowing down the process. {frame_duration}")
+            logger.error(
+                f"Error: the receiver is slowing down the process. {frame_duration}"
+            )
             error_queue.put("Error: the receiver is slowing down the process.")
             break
         time.sleep(target_frame_duration - frame_duration)
     receiver.disconnect()
 
-def receiver_process(port:int, task_type: str, receiver_type: str):
+
+def receiver_process(port: int, task_type: str, receiver_type: str):
     """
     A pytest fixture that sets up and tears down a DataReceiver running
     in a separate background process.
-    
+
     Yields:
         tuple: A tuple containing the multiprocessing Queue for results
                and the port number used by the receiver.
@@ -85,16 +86,22 @@ def receiver_process(port:int, task_type: str, receiver_type: str):
     error_queue = Queue()
     # Create and start the receiver process
     if task_type == "non-blocking_task":
-        process = Process(target=responsive_receiver_loop, args=(port, receiver_type, data_queue, error_queue))
+        process = Process(
+            target=responsive_receiver_loop,
+            args=(port, receiver_type, data_queue, error_queue),
+        )
     elif task_type == "blocking_task":
-        process = Process(target=blocking_receiver_loop, args=(port, receiver_type, data_queue, error_queue))
+        process = Process(
+            target=blocking_receiver_loop,
+            args=(port, receiver_type, data_queue, error_queue),
+        )
     process.start()
-    
+
     # Give the process a moment to initialize the socket
     time.sleep(0.5)
-    
+
     return process, data_queue, error_queue
-    
+
     # Teardown: send a termination message and clean up the process
     try:
         # Connect a sender to unblock the receiver's accept() call if it's waiting
@@ -109,67 +116,74 @@ def receiver_process(port:int, task_type: str, receiver_type: str):
     finally:
         process.join(timeout=5)  # Wait for the process to finish
         if process.is_alive():
-            process.terminate() # Force kill if it doesn't stop gracefully
+            process.terminate()  # Force kill if it doesn't stop gracefully
             process.join()
 
 
-
-
-
-
-def test_NonBlockingJSONReceiver_on_NonBlockingJSONReceiver_task(): # should success
-    process, data_queue, error_queue = receiver_process(port=9876, task_type="non-blocking_task", receiver_type="non-blocking_receiver")
+def test_NonBlockingJSONReceiver_on_NonBlockingJSONReceiver_task():  # should success
+    process, data_queue, error_queue = receiver_process(
+        port=9876, task_type="non-blocking_task", receiver_type="non-blocking_receiver"
+    )
     sender = NonBlockingJSONSender(port=9876)
-    
+
     for data in SAMPLE_DATAS:
         time.sleep(0.2)
         sender.send_data(data)
         assert data_queue.get(timeout=3) == data
-    
+
     if process.is_alive():
-        process.terminate() # Force kill if it doesn't stop gracefully
+        process.terminate()  # Force kill if it doesn't stop gracefully
     process.join()
-    
 
 
-def test_NonBlockingJSONReceiver_on_BlockingJSONReceiver_task(): # should fail
-    process, data_queue, error_queue = receiver_process(port=9876, task_type="blocking_task", receiver_type="non-blocking_receiver")
+def test_NonBlockingJSONReceiver_on_BlockingJSONReceiver_task():  # should fail
+    process, data_queue, error_queue = receiver_process(
+        port=9876, task_type="blocking_task", receiver_type="non-blocking_receiver"
+    )
     sender = NonBlockingJSONSender(port=9876)
     sender.send_data(SAMPLE_DATAS[0])
     assert error_queue.get(timeout=3) == "Capture a None data."
     process.join(timeout=5)  # Wait for the process to finish
     if process.is_alive():
-        process.terminate() # Force kill if it doesn't stop gracefully
+        process.terminate()  # Force kill if it doesn't stop gracefully
     process.join()
-    
-def test_BlockingJSONReceiver_on_BlockingJSONReceiver_task(): # should success
-    process, data_queue, error_queue = receiver_process(port=9876, task_type="blocking_task", receiver_type="blocking_receiver")
+
+
+def test_BlockingJSONReceiver_on_BlockingJSONReceiver_task():  # should success
+    process, data_queue, error_queue = receiver_process(
+        port=9876, task_type="blocking_task", receiver_type="blocking_receiver"
+    )
     sender = NonBlockingJSONSender(port=9876)
 
     for data in SAMPLE_DATAS:
         time.sleep(0.2)
         sender.send_data(data)
         assert data_queue.get(timeout=3) == data
-    
-    #process.join(timeout=5)  # Wait for the process to finish
+
+    # process.join(timeout=5)  # Wait for the process to finish
     if process.is_alive():
-        process.terminate() # Force kill if it doesn't stop gracefully
+        process.terminate()  # Force kill if it doesn't stop gracefully
     process.join()
 
-def test_BlockingJSONReceiver_on_NonBlockingJSONReceiver_task(): # should fail
-    process, data_queue, error_queue = receiver_process(port=9876, task_type="non-blocking_task", receiver_type="blocking_receiver")
+
+def test_BlockingJSONReceiver_on_NonBlockingJSONReceiver_task():  # should fail
+    process, data_queue, error_queue = receiver_process(
+        port=9876, task_type="non-blocking_task", receiver_type="blocking_receiver"
+    )
     sender = NonBlockingJSONSender(port=9876)
-    
+
     sender.send_data(SAMPLE_DATAS[0])
 
-    assert error_queue.get(timeout=3) == "Error: the receiver is slowing down the process."
-    
+    assert (
+        error_queue.get(timeout=3) == "Error: the receiver is slowing down the process."
+    )
+
     process.join(timeout=5)  # Wait for the process to finish
     if process.is_alive():
-        process.terminate() # Force kill if it doesn't stop gracefully
+        process.terminate()  # Force kill if it doesn't stop gracefully
     process.join()
 
 
 if __name__ == "__main__":
     test_NonBlockingJSONReceiver_on_NonBlockingJSONReceiver_task()
-    #test_BlockingJSONReceiver_on_NonBlockingJSONReceiver_task()
+    # test_BlockingJSONReceiver_on_NonBlockingJSONReceiver_task()

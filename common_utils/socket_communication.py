@@ -9,43 +9,36 @@ logger = logging.getLogger(__name__)
 
 SAMPLE_DATA = {
     "track": ["green cup", "blue cup", "pan"],
-    "actions":
-    [
+    "actions": [
         {
             "target_name": "green cup",
             "qualifier": "cup_qualifier",
             "action": "grab_and_pour_and_place_back",
-            "args": [
-                "pan"
-            ]
+            "args": ["pan"],
         },
         {
             "target_name": "blue cup",
             "qualifier": "cup_qualifier",
             "action": "grab_and_pour_and_place_back",
-            "args": [
-                "pan"
-            ]
+            "args": ["pan"],
         },
         {
             "target_name": "blue cup",
             "qualifier": "cup_qualifier",
             "action": "move_to",
-            "args": [
-                [326.8, -140.2, 212.6]
-            ]
-        }
-    ]
-    
-    
+            "args": [[326.8, -140.2, 212.6]],
+        },
+    ],
 }
+
 
 class NonBlockingJSONSender:
     """
     A class to manage connection and sending goals to the robot bridge.
     Connects automatically upon instantiation.
     """
-    def __init__(self, host='localhost', port=9870):
+
+    def __init__(self, host="localhost", port=9870):
         self.host = host
         self.port = port
         self.socket = None
@@ -66,7 +59,9 @@ class NonBlockingJSONSender:
             logger.info(f"Sender connected to receiver at {self.host}:{self.port}")
             return True
         except ConnectionRefusedError:
-            logger.exception(f"Connection failed. Is the bridge.py script running on {self.host}:{self.port}?")
+            logger.exception(
+                f"Connection failed. Is the bridge.py script running on {self.host}:{self.port}?"
+            )
             self.socket = None
             return False
         except Exception as e:
@@ -94,14 +89,14 @@ class NonBlockingJSONSender:
             if not self._connect_on_init():  # Try to reconnect
                 return False
         if not (isinstance(data, dict) or isinstance(data, list)):
-            logger.error(f"data is not a dict or a list")
+            logger.error("data is not a dict or a list")
             return False
-        
+
         signal_str = json.dumps(data)
         try:
             logger.debug(f"Sending signal: {signal_str}")
             # Encode the string to bytes and send it
-            self.socket.sendall(signal_str.encode('utf-8'))
+            self.socket.sendall(signal_str.encode("utf-8"))
             logger.info("Sent!")
             return True
         except BrokenPipeError:
@@ -114,12 +109,14 @@ class NonBlockingJSONSender:
             logger.exception(f"An error occurred while sending: {e}")
             return False
 
+
 class NonBlockingJSONReceiver:
     """
     A class to manage connection and receive dict.
     Connects automatically upon instantiation.
     """
-    def __init__(self, host='localhost', port=9870):
+
+    def __init__(self, host="localhost", port=9870):
         self.host = host
         self.port = port
         self.socket = None
@@ -135,7 +132,6 @@ class NonBlockingJSONReceiver:
             self.disconnect()
 
         try:
-            
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.socket.setblocking(False)
@@ -146,7 +142,7 @@ class NonBlockingJSONReceiver:
             logger.info(f"Receiver starts listening at {self.host}:{self.port}")
             return True
         except ConnectionRefusedError:
-            logger.exception(f"Receiver connection failed.")
+            logger.exception("Receiver connection failed.")
             self.socket = None
             return False
         except Exception as e:
@@ -168,27 +164,31 @@ class NonBlockingJSONReceiver:
                 self.conn.setblocking(False)
             data = self.conn.recv(1024)
             if not data:
-                logger.warning("detected sender disconnected, attempt to re-accept connection")
+                logger.warning(
+                    "detected sender disconnected, attempt to re-accept connection"
+                )
                 self.conn.close()
                 self.conn = None
                 return self.capture_data()
-            data_str = data.decode('utf-8').strip()
-            data_loaded = json.loads(data_str) 
+            data_str = data.decode("utf-8").strip()
+            data_loaded = json.loads(data_str)
             return data_loaded
-        except BlockingIOError as e:
-            #logger.exception(e)
-            #logger.info("Nothing Captured, return None.")
+        except BlockingIOError:
+            # logger.exception(e)
+            # logger.info("Nothing Captured, return None.")
             return None
         except Exception as e:
-            logger.exception(f'Socket server error: {e}')
-            time.sleep(1) # Avoid busy-looping on error
+            logger.exception(f"Socket server error: {e}")
+            time.sleep(1)  # Avoid busy-looping on error
+
 
 class BlockingJSONReceiver:
     """
     A class to manage connection and receive dict.
     Connects automatically upon instantiation.
     """
-    def __init__(self, host='localhost', port=9870):
+
+    def __init__(self, host="localhost", port=9870):
         self.host = host
         self.port = port
         self.socket = None
@@ -204,7 +204,6 @@ class BlockingJSONReceiver:
             self.disconnect()
 
         try:
-            
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.socket.bind((self.host, self.port))
@@ -214,7 +213,7 @@ class BlockingJSONReceiver:
             logger.info(f"Receiver starts listening at {self.host}:{self.port}")
             return True
         except ConnectionRefusedError:
-            logger.exception(f"Receiver connection failed.")
+            logger.exception("Receiver connection failed.")
             self.socket = None
             return False
         except Exception as e:
@@ -235,13 +234,15 @@ class BlockingJSONReceiver:
                 self.conn, _ = self.socket.accept()
             data = self.conn.recv(1024)
             if not data:
-                logger.warning("detected sender disconnected, attempt to re-accept connection")
+                logger.warning(
+                    "detected sender disconnected, attempt to re-accept connection"
+                )
                 self.conn.close()
                 self.conn = None
                 return self.capture_data()
-            data_str = data.decode('utf-8').strip()
-            data_loaded = json.loads(data_str) 
+            data_str = data.decode("utf-8").strip()
+            data_loaded = json.loads(data_str)
             return data_loaded
         except Exception as e:
-            logger.exception(f'Socket server error: {e}')
-            time.sleep(1) # Avoid busy-looping on error
+            logger.exception(f"Socket server error: {e}")
+            time.sleep(1)  # Avoid busy-looping on error
