@@ -40,7 +40,7 @@ SAMPLE_DATA = {
     
 }
 
-class DataSender:
+class NonBlockingJSONSender:
     """
     A class to manage connection and sending goals to the robot bridge.
     Connects automatically upon instantiation.
@@ -93,8 +93,8 @@ class DataSender:
             logger.warning("Connection not established. Attempting to reconnect.")
             if not self._connect_on_init():  # Try to reconnect
                 return False
-        if not isinstance(data, dict):
-            logger.error(f"data is not a dict")
+        if not (isinstance(data, dict) or isinstance(data, list)):
+            logger.error(f"data is not a dict or a list")
             return False
         
         signal_str = json.dumps(data)
@@ -113,7 +113,135 @@ class DataSender:
         except Exception as e:
             logger.exception(f"An error occurred while sending: {e}")
             return False
-        
+
+class NonBlockingJSONReceiver:
+    """
+    A class to manage connection and receive dict.
+    Connects automatically upon instantiation.
+    """
+    def __init__(self, host='localhost', port=9870):
+        self.host = host
+        self.port = port
+        self.socket = None
+        self._connect_on_init()  # Attempt connection during initialization
+
+    def _connect_on_init(self):
+        """
+        Internal method to establish connection. Used during init and for re-connection.
+        Returns True on success, False otherwise.
+        """
+        if self.socket:
+            # Already connected or socket object exists, close it first to ensure a fresh connection
+            self.disconnect()
+
+        try:
+            
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.socket.setblocking(False)
+            self.socket.bind((self.host, self.port))
+            self.socket.listen()
+
+            self.conn = None
+            logger.info(f"Receiver starts listening at {self.host}:{self.port}")
+            return True
+        except ConnectionRefusedError:
+            logger.exception(f"Receiver connection failed.")
+            self.socket = None
+            return False
+        except Exception as e:
+            logger.exception(f"An error occurred during connection: {e}")
+            self.socket = None
+            return False
+
+    def disconnect(self):
+        if self.socket:
+            self.socket.close()
+            self.socket = None
+            logger.info("receiver disconnected")
+
+    def capture_data(self):
+        try:
+            # Decode the received bytes into a string, and split by comma
+            if self.conn is None:
+                self.conn, _ = self.socket.accept()
+            data = self.conn.recv(1024)
+            if not data:
+                logger.warning("detected sender disconnected, attempt to re-accept connection")
+                self.conn = None
+                return self.capture_data()
+            data_str = data.decode('utf-8').strip()
+            data_loaded = json.loads(data_str) 
+            return data_loaded
+        except BlockingIOError:
+            logger.info("Nothing Captured, return None.")
+            return None
+        except Exception as e:
+            logger.exception(f'Socket server error: {e}')
+            time.sleep(1) # Avoid busy-looping on error
+
+class BlockingJSONReceiver:
+    """
+    A class to manage connection and receive dict.
+    Connects automatically upon instantiation.
+    """
+    def __init__(self, host='localhost', port=9870):
+        self.host = host
+        self.port = port
+        self.socket = None
+        self._connect_on_init()  # Attempt connection during initialization
+
+    def _connect_on_init(self):
+        """
+        Internal method to establish connection. Used during init and for re-connection.
+        Returns True on success, False otherwise.
+        """
+        if self.socket:
+            # Already connected or socket object exists, close it first to ensure a fresh connection
+            self.disconnect()
+
+        try:
+            
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.socket.bind((self.host, self.port))
+            self.socket.listen()
+
+            self.conn = None
+            logger.info(f"Receiver starts listening at {self.host}:{self.port}")
+            return True
+        except ConnectionRefusedError:
+            logger.exception(f"Receiver connection failed.")
+            self.socket = None
+            return False
+        except Exception as e:
+            logger.exception(f"An error occurred during connection: {e}")
+            self.socket = None
+            return False
+
+    def disconnect(self):
+        if self.socket:
+            self.socket.close()
+            self.socket = None
+            logger.info("receiver disconnected")
+
+    def capture_data(self):
+        try:
+            # Decode the received bytes into a string, and split by comma
+            if self.conn is None:
+                self.conn, _ = self.socket.accept()
+            data = self.conn.recv(1024)
+            if not data:
+                logger.warning("detected sender disconnected, attempt to re-accept connection")
+                self.conn = None
+                return self.capture_data()
+            data_str = data.decode('utf-8').strip()
+            data_loaded = json.loads(data_str) 
+            return data_loaded
+        except Exception as e:
+            logger.exception(f'Socket server error: {e}')
+            time.sleep(1) # Avoid busy-looping on error
+
 class DataReceiver:
     """
     A class to manage connection and receive dict.
