@@ -22,6 +22,17 @@ data2 = {"type": "arm", "wait_time": 0.0,
         [0.0, -0.3, 2.4, 1.0, -1.5, 3.0],
     ]
 }
+data3 = {"type": "gripper", "wait_time": 2.0,
+    "grip_type": "close"         
+}
+data4 = {"type": "gripper", "wait_time": 2.0,
+    "grip_type": "open"         
+}
 
+
+sender.send_data(data1)
+sender.send_data(data2)
+sender.send_data(data3)
+sender.send_data(data4)
 sender.send_data(data1)
 sender.send_data(data2)

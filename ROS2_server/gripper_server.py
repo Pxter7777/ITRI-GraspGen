@@ -80,7 +80,9 @@ class TMRobotController(Node):
         self.states_need_to_wait = []
         self.moving = False
         self.wait_time = 0
-        self.reached_time = 0
+        self.current_moving_type = ""
+        self.reached_time = float('inf')
+        self.goal_gripper = None
 
     def _capture_command(self):
         if self.moving:
@@ -92,12 +94,20 @@ class TMRobotController(Node):
         print(data)
         self.moving = True
         self.wait_time = data["wait_time"]
+        self.current_moving_type = data["type"]
         if data["type"] == "arm":
             joints_values = data["joints_values"]
             self.goal_joints = joints_values[-1]
             for joints in joints_values:
                 joints = np.rad2deg(joints)
                 self.append_jpp(joints)
+        elif data["type"] == "gripper":
+            if data["grip_type"] == "close":
+                self.goal_gripper = [1, 0, 0]
+                self.append_gripper_states([1, 0, 0])
+            elif data["grip_type"] == "open":
+                self.goal_gripper = [0, 0, 1]
+                self.append_gripper_states([0, 0, 1])
 
     def setup_services(self):
         self.get_logger().info("等待 ROS 2 服務啟動...")
@@ -126,18 +136,22 @@ class TMRobotController(Node):
     def feedback_callback(self, msg: FeedbackState):
         current_time = time.time()
         self.ee_digital_output = list(msg.ee_digital_output)
-
-        if self.waiting_for_gripper and self.target_ee_output is not None:
-            if self.ee_digital_output[:3] == self.target_ee_output:
-                self.get_logger().info(
-                    f"🔄 夾爪狀態達成: {self.ee_digital_output}，開始等待 6 秒"
-                )
-                self.waiting_for_gripper = False
-                self.target_ee_output = None
-                self._start_gripper_wait_timer()
+        
+        # if self.waiting_for_gripper and self.target_ee_output is not None:
+        #     if self.ee_digital_output[:3] == self.target_ee_output:
+        #         self.get_logger().info(
+        #             f"🔄 夾爪狀態達成: {self.ee_digital_output}，開始等待 6 秒"
+        #         )
+        #         self.waiting_for_gripper = False
+        #         self.target_ee_output = None
+        #         self._start_gripper_wait_timer()
+        
         if self.moving:
-            if is_pose_identical(msg.joint_pos, self.goal_joints) and self.reached_time > current_time:
+            if self.current_moving_type == "arm" and is_pose_identical(msg.joint_pos, self.goal_joints) and self.reached_time > current_time:
                 self.reached_time = current_time
+            elif self.current_moving_type == "gripper" and list(msg.ee_digital_output)[:3] == self.goal_gripper  and self.reached_time > current_time:
+                self.reached_time = current_time
+            
             if current_time - self.reached_time > self.wait_time:
                 self.reached_time = float('inf')
                 self.moving = False
@@ -275,7 +289,7 @@ class TMRobotController(Node):
         item = self.tcp_queue.popleft()
         cmd, wait_time = item["script"], item["wait_time"]
         self._last_send_ts = now
-        self._busy = True
+        #self._busy = True
 
         # IO 指令
         if isinstance(cmd, str) and cmd.startswith("IO:"):
