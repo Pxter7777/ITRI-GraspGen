@@ -122,6 +122,7 @@ def test_NonBlockingJSONReceiver_on_NonBlockingJSONReceiver_task(): # should suc
     sender = NonBlockingJSONSender(port=9876)
     
     for data in SAMPLE_DATAS:
+        time.sleep(0.2)
         sender.send_data(data)
         assert data_queue.get(timeout=3) == data
     
@@ -146,6 +147,7 @@ def test_BlockingJSONReceiver_on_BlockingJSONReceiver_task(): # should success
     sender = NonBlockingJSONSender(port=9876)
 
     for data in SAMPLE_DATAS:
+        time.sleep(0.2)
         sender.send_data(data)
         assert data_queue.get(timeout=3) == data
     
@@ -169,5 +171,5 @@ def test_BlockingJSONReceiver_on_NonBlockingJSONReceiver_task(): # should fail
 
 
 if __name__ == "__main__":
-    test_BlockingJSONReceiver_on_BlockingJSONReceiver_task()
+    test_NonBlockingJSONReceiver_on_NonBlockingJSONReceiver_task()
     #test_BlockingJSONReceiver_on_NonBlockingJSONReceiver_task()
