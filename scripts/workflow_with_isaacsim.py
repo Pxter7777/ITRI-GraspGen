@@ -10,7 +10,8 @@ from common_utils import config
 from common_utils.graspgen_utils import GraspGeneratorUI
 from common_utils.gripper_utils import send_moves_to_robot
 from common_utils.actions_format_checker import is_actions_format_valid_v1028
-from common_utils.movesets import act
+from common_utils.movesets import act_with_name
+from common_utils.socket_communication import NonBlockingJSONSender, NonBlockingJSONReceiver, BlockingJSONReceiver
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -113,6 +114,8 @@ def main():
     current_file_dir = os.path.dirname(os.path.abspath(__file__))
     project_root_dir = os.path.dirname(current_file_dir)
     try:
+        sender = NonBlockingJSONSender(port = 9878)
+        receiever = BlockingJSONReceiver(port = 9879)
         pc_generator = PointCloudGenerator(args)
         grasp_generator = GraspGeneratorUI(
             args.gripper_config,
@@ -160,28 +163,37 @@ def main():
             )
             # GraspGen
             for action in actions["actions"]:
-                if action["action"] in ["move_to"]:
-                    moves = act(action["action"], None, action["args"], None)
-                else:
-                    try:
-                        while True:
-                            grasp = grasp_generator.generate_grasp(scene_data, action)
-                            moves = act(action["action"], grasp, action["args"], scene_data)
-                            # send to isaacsim to try
-                            # wait for isaacsim's good news
-                            #if success, break
-                    except Exception as e:
-                        name = action["target_name"]
-                        logger.exception(
-                            f"Error while generating grasp for {name}, stopping. {e}"
-                        )
-                        break
-                # send the grasp to gripper
                 try:
-                    send_moves_to_robot(moves)
-                except KeyboardInterrupt:
-                    logger.info("Manual stopping gripper.")
+                    if action["action"] in ["move_to_curobo"]:
+                        full_act = act_with_name(action["action"], None, action["args"], scene_data)
+                        if response["messaage"] == "Success":
+                            continue
+                        elif response["messaage"] == "Fail":
+                            break
+                    while True:
+                        grasp = grasp_generator.generate_grasp(scene_data, action)
+                        full_act = act_with_name(action["action"], action["target_name"], grasp, action["args"], scene_data)
+                        sender.send_data(full_act)
+                        # wait for isaacsim's good news
+                        response = receiever.capture_data()
+                        if response["message"] == "Success":
+                            logger.warning("Success")
+                            break
+                        elif response["message"] == "Fail":
+                            logger.warning("failed")
+                            continue
+                except Exception as e:
+                    name = action["target_name"]
+                    logger.exception(
+                        f"Error while generating grasp for {name}, stopping. {e}"
+                    )
                     break
+                # send the grasp to gripper
+                # try:
+                #     send_moves_to_robot(moves)
+                # except KeyboardInterrupt:
+                #     logger.info("Manual stopping gripper.")
+                #     break
     finally:
         logger.info("turning off zed camera")
         pc_generator.close()
