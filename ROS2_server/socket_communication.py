@@ -2,6 +2,7 @@ import socket
 import time
 import json
 import logging
+import struct
 # Some example joint configurations to send
 
 logger = logging.getLogger(__name__)
@@ -92,11 +93,13 @@ class NonBlockingJSONSender:
             logger.error("data is not a dict or a list")
             return False
 
-        signal_str = json.dumps(data)
+        message_bytes = json.dumps(data).encode("utf-8")
+        header = struct.pack(">I", len(message_bytes))
+
         try:
-            logger.debug(f"Sending signal: {signal_str}")
+            logger.debug(f"Sending signal: {data}")
             # Encode the string to bytes and send it
-            self.socket.sendall(signal_str.encode("utf-8"))
+            self.socket.sendall(header + message_bytes)
             logger.info("Sent!")
             return True
         except BrokenPipeError:
@@ -120,6 +123,9 @@ class NonBlockingJSONReceiver:
         self.host = host
         self.port = port
         self.socket = None
+        self.conn = None
+        self.buffer = b""
+        self.msg_len = None
         self._connect_on_init()  # Attempt connection during initialization
 
     def _connect_on_init(self):
@@ -158,28 +164,48 @@ class NonBlockingJSONReceiver:
 
     def capture_data(self):
         try:
-            # Decode the received bytes into a string, and split by comma
             if self.conn is None:
-                self.conn, _ = self.socket.accept()
+                self.conn, addr = self.socket.accept()
                 self.conn.setblocking(False)
-            data = self.conn.recv(1024)
+                self.buffer = b""
+                self.msg_len = None
+                logger.info(f"Accepted connection from {addr}")
+
+            data = self.conn.recv(4096)
             if not data:
-                logger.warning(
-                    "detected sender disconnected, attempt to re-accept connection"
-                )
+                logger.warning("Sender disconnected.")
                 self.conn.close()
                 self.conn = None
-                return self.capture_data()
-            data_str = data.decode("utf-8").strip()
-            data_loaded = json.loads(data_str)
-            return data_loaded
+                return None
+            self.buffer += data
         except BlockingIOError:
-            # logger.exception(e)
-            # logger.info("Nothing Captured, return None.")
-            return None
+            pass  # No data available
         except Exception as e:
-            logger.exception(f"Socket server error: {e}")
-            time.sleep(1)  # Avoid busy-looping on error
+            logger.exception(f"Socket server error on recv: {e}")
+            if self.conn:
+                self.conn.close()
+            self.conn = None
+            return None
+
+        # Process buffer for a complete message
+        if self.msg_len is None:
+            if len(self.buffer) >= 4:
+                self.msg_len = struct.unpack(">I", self.buffer[:4])[0]
+                self.buffer = self.buffer[4:]
+            else:
+                return None  # Not enough data for header
+
+        if len(self.buffer) >= self.msg_len:
+            message_bytes = self.buffer[: self.msg_len]
+            self.buffer = self.buffer[self.msg_len :]
+            self.msg_len = None  # Reset for next message
+            try:
+                return json.loads(message_bytes.decode("utf-8"))
+            except json.JSONDecodeError as e:
+                logger.exception(f"JSON decode error: {e}")
+                return None
+
+        return None  # Not enough data for full message
 
 
 class BlockingJSONReceiver:
@@ -192,6 +218,7 @@ class BlockingJSONReceiver:
         self.host = host
         self.port = port
         self.socket = None
+        self.conn = None
         self._connect_on_init()  # Attempt connection during initialization
 
     def _connect_on_init(self):
@@ -227,22 +254,48 @@ class BlockingJSONReceiver:
             self.socket = None
             logger.info("receiver disconnected")
 
+    def _read_blocking(self, n):
+        """Helper to read exactly n bytes from a blocking socket."""
+        data = b""
+        while len(data) < n:
+            packet = self.conn.recv(n - len(data))
+            if not packet:
+                return None
+            data += packet
+        return data
+
     def capture_data(self):
         try:
-            # Decode the received bytes into a string, and split by comma
             if self.conn is None:
-                self.conn, _ = self.socket.accept()
-            data = self.conn.recv(1024)
-            if not data:
-                logger.warning(
-                    "detected sender disconnected, attempt to re-accept connection"
-                )
+                self.conn, addr = self.socket.accept()
+                logger.info(f"Accepted connection from {addr}")
+
+            header_data = self._read_blocking(4)
+            if not header_data:
+                logger.warning("Sender disconnected. Re-accepting... ")
                 self.conn.close()
                 self.conn = None
-                return self.capture_data()
-            data_str = data.decode("utf-8").strip()
-            data_loaded = json.loads(data_str)
-            return data_loaded
+                return self.capture_data()  # Wait for new connection
+
+            msg_len = struct.unpack(">I", header_data)[0]
+
+            message_bytes = self._read_blocking(msg_len)
+            if not message_bytes:
+                logger.warning("Sender disconnected. Re-accepting... ")
+                self.conn.close()
+                self.conn = None
+                return self.capture_data()  # Wait for new connection
+
+            return json.loads(message_bytes.decode("utf-8"))
+        except (json.JSONDecodeError, struct.error) as e:
+            logger.exception(f"Data format error: {e}")
+            if self.conn:
+                self.conn.close()
+            self.conn = None
+            return None
         except Exception as e:
             logger.exception(f"Socket server error: {e}")
-            time.sleep(1)  # Avoid busy-looping on error
+            if self.conn:
+                self.conn.close()
+            self.conn = None
+            return None

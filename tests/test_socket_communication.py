@@ -120,6 +120,21 @@ def receiver_process(port: int, task_type: str, receiver_type: str):
             process.join()
 
 
+def test_Non_to_Non_sendall_first():  # should success
+    process, data_queue, error_queue = receiver_process(
+        port=9876, task_type="non-blocking_task", receiver_type="non-blocking_receiver"
+    )
+    sender = NonBlockingJSONSender(port=9876)
+
+    for data in SAMPLE_DATAS:
+        sender.send_data(data)
+    for data in SAMPLE_DATAS:
+        assert data_queue.get(timeout=3) == data
+
+    if process.is_alive():
+        process.terminate()  # Force kill if it doesn't stop gracefully
+    process.join()
+
 def test_NonBlockingJSONReceiver_on_NonBlockingJSONReceiver_task():  # should success
     process, data_queue, error_queue = receiver_process(
         port=9876, task_type="non-blocking_task", receiver_type="non-blocking_receiver"
@@ -185,5 +200,5 @@ def test_BlockingJSONReceiver_on_NonBlockingJSONReceiver_task():  # should fail
 
 
 if __name__ == "__main__":
-    test_NonBlockingJSONReceiver_on_NonBlockingJSONReceiver_task()
+    test_Non_to_Non()
     # test_BlockingJSONReceiver_on_NonBlockingJSONReceiver_task()
