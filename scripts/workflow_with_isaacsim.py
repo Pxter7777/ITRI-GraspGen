@@ -8,10 +8,9 @@ from PointCloud_Generation.PC_transform import (
 )
 from common_utils import config
 from common_utils.graspgen_utils import GraspGeneratorUI
-from common_utils.gripper_utils import send_moves_to_robot
 from common_utils.actions_format_checker import is_actions_format_valid_v1028
 from common_utils.movesets import act_with_name
-from common_utils.socket_communication import NonBlockingJSONSender, NonBlockingJSONReceiver, BlockingJSONReceiver
+from common_utils.socket_communication import NonBlockingJSONSender, BlockingJSONReceiver
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -166,6 +165,8 @@ def main():
                 try:
                     if action["action"] in ["move_to_curobo"]:
                         full_act = act_with_name(action["action"], None, action["args"], scene_data)
+                        sender.send_data(full_act)
+                        response = receiever.capture_data()
                         if response["message"] == "Success":
                             continue
                         elif response["message"] == "Fail":
