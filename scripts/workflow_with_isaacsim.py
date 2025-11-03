@@ -10,7 +10,10 @@ from common_utils import config
 from common_utils.graspgen_utils import GraspGeneratorUI
 from common_utils.actions_format_checker import is_actions_format_valid_v1028
 from common_utils.movesets import act_with_name
-from common_utils.socket_communication import NonBlockingJSONSender, BlockingJSONReceiver
+from common_utils.socket_communication import (
+    NonBlockingJSONSender,
+    BlockingJSONReceiver,
+)
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -113,8 +116,8 @@ def main():
     current_file_dir = os.path.dirname(os.path.abspath(__file__))
     project_root_dir = os.path.dirname(current_file_dir)
     try:
-        sender = NonBlockingJSONSender(port = 9878)
-        receiever = BlockingJSONReceiver(port = 9879)
+        sender = NonBlockingJSONSender(port=9878)
+        receiever = BlockingJSONReceiver(port=9879)
         pc_generator = PointCloudGenerator(args)
         grasp_generator = GraspGeneratorUI(
             args.gripper_config,
@@ -164,7 +167,9 @@ def main():
             for action in actions["actions"]:
                 try:
                     if action["action"] in ["move_to_curobo"]:
-                        full_act = act_with_name(action["action"], None, action["args"], scene_data)
+                        full_act = act_with_name(
+                            action["action"], None, action["args"], scene_data
+                        )
                         sender.send_data(full_act)
                         response = receiever.capture_data()
                         if response["message"] == "Success":
@@ -173,7 +178,13 @@ def main():
                             break
                     while True:
                         grasp = grasp_generator.generate_grasp(scene_data, action)
-                        full_act = act_with_name(action["action"], action["target_name"], grasp, action["args"], scene_data)
+                        full_act = act_with_name(
+                            action["action"],
+                            action["target_name"],
+                            grasp,
+                            action["args"],
+                            scene_data,
+                        )
                         sender.send_data(full_act)
                         # wait for isaacsim's good news
                         response = receiever.capture_data()

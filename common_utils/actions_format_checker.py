@@ -51,7 +51,7 @@ def is_actions_format_valid_v1028(actions) -> bool:
                 if not (isinstance(arg, list) or isinstance(arg, str)):
                     logger.error(arg)
                     return False
-                if isinstance(arg, list) and not (len(arg)==3 or len(arg)==6):
+                if isinstance(arg, list) and not (len(arg) == 3 or len(arg) == 6):
                     logger.error(arg)
                     return False
                 if isinstance(arg, str) and arg not in actions["track"]:
