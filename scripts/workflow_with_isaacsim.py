@@ -166,9 +166,9 @@ def main():
                 try:
                     if action["action"] in ["move_to_curobo"]:
                         full_act = act_with_name(action["action"], None, action["args"], scene_data)
-                        if response["messaage"] == "Success":
+                        if response["message"] == "Success":
                             continue
-                        elif response["messaage"] == "Fail":
+                        elif response["message"] == "Fail":
                             break
                     while True:
                         grasp = grasp_generator.generate_grasp(scene_data, action)
