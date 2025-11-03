@@ -1,23 +1,24 @@
 {
-    "track": ["green cup", "blue cup", "pan"],
+    "track": ["orange cup", "purple cube", "pan"],
     "actions":
     [
         {
-            "target_name": "blue cup",
-            "qualifier": "cup_qualifier",
-            "action": "grab_and_pour_and_place_back",
+            "target_name": "purple cube",
+            "qualifier": "small_cube_qualifier",
+            "action": "grab_and_drop",
             "args": [
                 "pan"
             ]
         },
         {
-            "target_name": "green cup",
+            "target_name": "orange cup",
             "qualifier": "cup_qualifier",
             "action": "grab_and_pour_and_place_back",
             "args": [
                 "pan"
             ]
         },
+        
         {
             "target_name": "glass cup",
             "qualifier": "cup_qualifier",

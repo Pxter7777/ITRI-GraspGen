@@ -199,7 +199,7 @@ def grab_and_pour_and_place_back_curobo(
     return full_act
 
 
-def grab_and_drop(grasp: np.array, args: list) -> list[dict]:
+def grab_and_drop(grasp: np.array, args: list, scene_data: dict) -> list[dict]:
     moves = []
     # fetch basic infos
     position = grasp[:3, 3].tolist()

@@ -66,7 +66,7 @@ def parse_args():
     parser.add_argument(
         "--transform-config",
         type=str,
-        default="demo6.json",
+        default="sim1.json",
         help="transform-config",
     )
     parser.add_argument(
