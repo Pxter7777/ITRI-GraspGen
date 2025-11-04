@@ -29,6 +29,8 @@ data2 = {
         [0.0, -0.3, 2.4, 1.0, -1.5, 3.0],
     ],
 }
+
+
 def linear_interpolate(start_pose, end_pose, num_steps):
     interpolated_poses = []
     if num_steps <= 1:
@@ -62,7 +64,7 @@ data6 = {
 data3 = {"type": "gripper", "wait_time": 2.0, "grip_type": "close"}
 data4 = {"type": "gripper", "wait_time": 2.0, "grip_type": "open"}
 datalist = [data5, data6, data5, data6]
-#datalist = [data1, data2, data1, data2]
+# datalist = [data1, data2, data1, data2]
 wait_for_response = False
 while True:
     if len(datalist) == 0:

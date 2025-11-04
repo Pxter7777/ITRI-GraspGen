@@ -58,7 +58,10 @@ def is_pose_identical(joints1: list, joints2: list):
         abs(j1 - j2) < 0.1 for j1, j2 in zip(joints1, joints2, strict=False)
     )
     return pos_identical
-successs=0
+
+
+successs = 0
+
 
 class TMRobotController(Node):
     def __init__(self):
@@ -99,14 +102,19 @@ class TMRobotController(Node):
         self.current_moving_type = data["type"]
         if data["type"] == "arm":
             self.goal_joints = data["joints_values"][-1]
-            joints_values_degree = [np.rad2deg(joints) for joints in data["joints_values"]]
-            goal_degree = joints_values_degree.pop() # remove the goal
+            joints_values_degree = [
+                np.rad2deg(joints) for joints in data["joints_values"]
+            ]
+            goal_degree = joints_values_degree.pop()  # remove the goal
             accepted_joints = []
             for joints in joints_values_degree:
                 if len(accepted_joints) == 0:
                     accepted_joints.append(joints)
                     continue
-                if any(abs(j1 - j2) > 4 for j1, j2 in zip(joints, accepted_joints[-1])):
+                if any(
+                    abs(j1 - j2) > 4
+                    for j1, j2 in zip(joints, accepted_joints[-1], strict=False)
+                ):
                     accepted_joints.append(joints)
             for joints in accepted_joints:
                 self.append_jpp(joints)
