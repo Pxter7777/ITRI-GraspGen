@@ -116,10 +116,12 @@ def grab_and_pour_and_place_back_curobo(
         if target_name != obj_name:
             obstacles.append(
                 {
-                    "mass_center": list(np.mean(
-                        scene_data["object_infos"][obj_name]["points"], axis=0
-                    )),
-                    "std": list(np.std(scene_data["object_infos"][obj_name]["points"], axis=0)),
+                    "mass_center": list(
+                        np.mean(scene_data["object_infos"][obj_name]["points"], axis=0)
+                    ),
+                    "std": list(
+                        np.std(scene_data["object_infos"][obj_name]["points"], axis=0)
+                    ),
                 }
             )
     moves = []
@@ -265,8 +267,12 @@ def move_to_curobo(
     for obj_name in scene_data["object_infos"]:
         obstacles.append(
             {
-                "mass_center": list(np.mean(scene_data["object_infos"][obj_name]["points"], axis=0)),
-                "std": list(np.std(scene_data["object_infos"][obj_name]["points"], axis=0)),
+                "mass_center": list(
+                    np.mean(scene_data["object_infos"][obj_name]["points"], axis=0)
+                ),
+                "std": list(
+                    np.std(scene_data["object_infos"][obj_name]["points"], axis=0)
+                ),
             }
         )
     moves = []

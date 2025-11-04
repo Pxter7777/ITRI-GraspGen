@@ -105,7 +105,7 @@ class NonBlockingJSONSender:
                 # If the socket is readable, it might be closed.
                 # A recv with MSG_PEEK will not remove data from buffer.
                 # If it returns b'', the peer has closed the connection.
-                if self.socket.recv(1, socket.MSG_PEEK) == b'':
+                if self.socket.recv(1, socket.MSG_PEEK) == b"":
                     logger.warning("Receiver has closed the connection.")
                     raise BrokenPipeError("Connection closed by peer")
         except BrokenPipeError:
@@ -117,7 +117,6 @@ class NonBlockingJSONSender:
         except Exception as e:
             logger.exception(f"An error occurred while checking socket status: {e}")
             return False
-
 
         if not (isinstance(data, dict) or isinstance(data, list)):
             logger.error("data is not a dict or a list")

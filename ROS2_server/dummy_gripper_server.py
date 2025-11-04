@@ -2,7 +2,7 @@
 """
 Original gripper_server's behavior:
     gripper_server accept signals from isaac sim script, run it, and responds {"message": "Success"} back to isaacsim script when the actual robot reaches the goal. (if wait_time is not 0.0, it will delay the response.)
-This script aims to imitate that behavior, only that all signal will only process for a fixed time, and also delay the wait_time, before the response {"message": "Success"} 
+This script aims to imitate that behavior, only that all signal will only process for a fixed time, and also delay the wait_time, before the response {"message": "Success"}
 """
 
 import time
@@ -30,6 +30,7 @@ while True:
             time.sleep(2.0)
         time.sleep(data["wait_time"])
     except KeyError as e:
-        logger.exception(f"{e}, key error, please make sure the signal format is correct.")
+        logger.exception(
+            f"{e}, key error, please make sure the signal format is correct."
+        )
     sender.send_data({"message": "Success"})
-
