@@ -108,7 +108,103 @@ def grab_and_pour_and_place_back(
     return moves
 
 
-def grab_and_drop(grasp: np.array, args: list) -> list[dict]:
+def grab_and_pour_and_place_back_curobo(
+    target_name: str, grasp: np.array, args: list, scene_data: dict
+) -> dict:
+    obstacles = []
+    for obj_name in scene_data["object_infos"]:
+        if target_name != obj_name:
+            obstacles.append(
+                {
+                    "mass_center": np.mean(
+                        scene_data["object_infos"][obj_name]["points"]
+                    ),
+                    "std": np.std(scene_data["object_infos"][obj_name]["points"]),
+                }
+            )
+    moves = []
+    # fetch basic infos
+    position = grasp[:3, 3].tolist()
+    logger.debug(position)
+    quaternion_orientation = list(trimesh.transformations.quaternion_from_matrix(grasp))
+    _, _, front = get_left_up_and_front(grasp)
+    front = front.tolist()
+    # specific fixed poses
+    if isinstance(args[0], list):
+        ready_pour_position = args[0]
+    elif isinstance(args[0], str):
+        obj_points = scene_data["object_infos"][args[0]]["points"]
+        mass_center = np.mean(obj_points, axis=0)
+        # std = np.std(obj_points, axis=0)
+        ready_pour_position = [
+            mass_center[0] - 0.175,
+            mass_center[1] + 0.150,
+            mass_center[2] + 0.250,
+        ]
+    ready_pour_pose = ready_pour_position + [0.5, 0.5, 0.5, 0.5]
+    pour_pose = ready_pour_position + [-0.271, 0.653, -0.271, 0.653]
+    before_grasp_position = [
+        p - f * 0.060 for p, f in zip(position, front, strict=False)
+    ]
+    grasp_position = [p + f * 0.060 for p, f in zip(position, front, strict=False)]
+    after_grasp_position = grasp_position[:2] + [grasp_position[2] + 0.250]
+
+    release_position = grasp_position[:2] + [grasp_position[2] + 0.005]
+    after_release_position = before_grasp_position
+    # moves.append({"type": "move_arm", "goal": HOME_SIGNAL,"wait_time": 0.0})
+    moves.append(
+        {
+            "type": "arm",
+            "goal": before_grasp_position + quaternion_orientation,
+            "wait_time": 0.0,
+        }
+    )
+    moves.append(
+        {
+            "type": "arm",
+            "goal": grasp_position + quaternion_orientation,
+            "wait_time": 0.0,
+        }
+    )
+    moves.append({"type": "gripper", "grip_type": "close", "wait_time": 2.0})
+    moves.append(
+        {
+            "type": "arm",
+            "goal": after_grasp_position + quaternion_orientation,
+            "wait_time": 0.0,
+        }
+    )
+    moves.append({"type": "arm", "goal": ready_pour_pose, "wait_time": 0.0})
+    moves.append({"type": "arm", "goal": pour_pose, "wait_time": 1.0})
+    moves.append({"type": "arm", "goal": ready_pour_pose, "wait_time": 0.0})
+    moves.append(
+        {
+            "type": "arm",
+            "goal": after_grasp_position + quaternion_orientation,
+            "wait_time": 0.0,
+        }
+    )
+    moves.append(
+        {
+            "type": "arm",
+            "goal": release_position + quaternion_orientation,
+            "wait_time": 0.0,
+        }
+    )
+    moves.append({"type": "gripper", "grip_type": "open", "wait_time": 2.0})
+    moves.append(
+        {
+            "type": "arm",
+            "goal": after_release_position + quaternion_orientation,
+            "wait_time": 0.0,
+        }
+    )
+
+    full_act = {"moves": moves, "obstacles": obstacles}
+    return full_act
+
+
+def grab_and_drop(grasp: np.array, args: list, scene_data: dict) -> list[dict]:
     moves = []
     # fetch basic infos
     position = grasp[:3, 3].tolist()
@@ -161,10 +257,30 @@ def move_to(grasp: np.array, args: list, scene_data: dict) -> list[dict]:
     return moves
 
 
+def move_to_curobo(
+    target_name: str, grasp: np.array, args: list, scene_data: dict
+) -> list[dict]:
+    pose = args[0] + [0.5, 0.5, 0.5, 0.5]
+    obstacles = []
+    for obj_name in scene_data["object_infos"]:
+        obstacles.append(
+            {
+                "mass_center": np.mean(scene_data["object_infos"][obj_name]["points"]),
+                "std": np.std(scene_data["object_infos"][obj_name]["points"]),
+            }
+        )
+    moves = []
+    moves.append({"type": "arm", "goal": pose, "wait_time": 0.0})
+    full_act = {"moves": moves, "obstacles": obstacles}
+    return full_act
+
+
 action_dict = {
     "grab_and_pour_and_place_back": grab_and_pour_and_place_back,
+    "grab_and_pour_and_place_back_curobo": grab_and_pour_and_place_back_curobo,
     "grab_and_drop": grab_and_drop,
     "move_to": move_to,
+    "move_to_curobo": move_to_curobo,
 }
 
 
@@ -173,3 +289,12 @@ def act(action: str, grasp: np.array, args: list, scene_data: dict) -> list[dict
         logger.error(f"There is no such action: {action}")
     action_method = action_dict[action]
     return action_method(grasp, args, scene_data)
+
+
+def act_with_name(
+    action: str, target_name: str, grasp: np.array, args: list, scene_data: dict
+) -> list[dict]:
+    if action not in action_dict:
+        logger.error(f"There is no such action: {action}")
+    action_method = action_dict[action]
+    return action_method(target_name, grasp, args, scene_data)

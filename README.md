@@ -61,3 +61,6 @@ ros2 run tm_driver tm_driver robot_ip:=192.168.1.10
 #### GroundingDINO test
 - Based on the test, using box to cover the metal table can have better result.
 - And about all in one or on by one, all in one is actually better.
+
+## Known Issues:
+- Manual_Transform_PC will fail if meshcat-server ports get messy.

@@ -33,9 +33,10 @@ name = "GenPointCloud"
 version = "0.1.0"
 
 [tool.setuptools.packages.find]
-include = ["PointCloud_Generation", "common_utils", "src"]
+include = ["PointCloud_Generation", "common_utils", "src", "ROS2_server"]
 
 [tool.pytest.ini_options]
+testpaths = ["tests"]
 filterwarnings = [
     "ignore:Importing from timm.models.layers is deprecated:FutureWarning"
 ]

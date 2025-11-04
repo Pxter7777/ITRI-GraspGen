@@ -5,7 +5,7 @@
         {
             "target_name": "blue cup",
             "qualifier": "cup_qualifier",
-            "action": "grab_and_pour_and_place_back",
+            "action": "grab_and_pour_and_place_back_curobo",
             "args": [
                 "pan"
             ]
@@ -13,7 +13,7 @@
         {
             "target_name": "green cup",
             "qualifier": "cup_qualifier",
-            "action": "grab_and_pour_and_place_back",
+            "action": "grab_and_pour_and_place_back_curobo",
             "args": [
                 "pan"
             ]
@@ -21,9 +21,9 @@
         {
             "target_name": "glass cup",
             "qualifier": "cup_qualifier",
-            "action": "move_to",
+            "action": "move_to_curobo",
             "args": [
-                [326.8, -140.2, 212.6]
+                [0.3268, -0.1402, 0.2126]
             ]
         }
     ]
