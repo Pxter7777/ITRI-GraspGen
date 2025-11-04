@@ -14,6 +14,7 @@ from common_utils.socket_communication import (
     NonBlockingJSONSender,
     BlockingJSONReceiver,
 )
+from common_utils.common_utils import save_json
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -106,6 +107,11 @@ def parse_args():
         action="store_true",
         help="decide if we need confirm for groundingDINO detect and grasp Generation",
     )
+    parser.add_argument(
+        "--save-fullact",
+        action="store_true",
+        help="save the fullact",
+    )
     return parser.parse_args()
 
 
@@ -170,6 +176,8 @@ def main():
                         full_act = act_with_name(
                             action["action"], None, action["args"], scene_data
                         )
+                        if args.save_fullact:
+                            save_json("fullact", "fullact", full_act)
                         sender.send_data(full_act)
                         response = receiever.capture_data()
                         if response["message"] == "Success":
@@ -185,6 +193,8 @@ def main():
                             action["args"],
                             scene_data,
                         )
+                        if args.save_fullact:
+                            save_json("fullact", "fullact_", full_act)
                         sender.send_data(full_act)
                         # wait for isaacsim's good news
                         response = receiever.capture_data()
