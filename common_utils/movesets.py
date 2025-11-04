@@ -141,8 +141,8 @@ def grab_and_pour_and_place_back_curobo(
             mass_center[1] + 0.150,
             mass_center[2] + 0.250,
         ]
-    ready_pour_pose = ready_pour_position + [1.0, 0.0, 0.0, 0.0]
-    pour_pose = ready_pour_position + [0.924, 0.383, 0.0, 0.0]
+    ready_pour_pose = ready_pour_position + [0.5, 0.5, 0.5, 0.5]
+    pour_pose = ready_pour_position + [-0.271, 0.653, -0.271, 0.653]
     before_grasp_position = [
         p - f * 0.060 for p, f in zip(position, front, strict=False)
     ]
@@ -179,14 +179,14 @@ def grab_and_pour_and_place_back_curobo(
     moves.append({"type": "arm", "goal": ready_pour_pose, "wait_time": 0.0})
     moves.append(
         {
-            "type": "move_arm",
+            "type": "arm",
             "goal": after_grasp_position + quaternion_orientation,
             "wait_time": 0.0,
         }
     )
     moves.append(
         {
-            "type": "move_arm",
+            "type": "arm",
             "goal": release_position + quaternion_orientation,
             "wait_time": 0.0,
         }
@@ -194,7 +194,7 @@ def grab_and_pour_and_place_back_curobo(
     moves.append({"type": "gripper", "grip_type": "open", "wait_time": 2.0})
     moves.append(
         {
-            "type": "move_arm",
+            "type": "arm",
             "goal": after_release_position + quaternion_orientation,
             "wait_time": 0.0,
         }
@@ -260,7 +260,7 @@ def move_to(grasp: np.array, args: list, scene_data: dict) -> list[dict]:
 def move_to_curobo(
     target_name: str, grasp: np.array, args: list, scene_data: dict
 ) -> list[dict]:
-    pose = args[0] + [1.0, 0.0, 0.0, 0.0]
+    pose = args[0] + [0.5, 0.5, 0.5, 0.5]
     obstacles = []
     for obj_name in scene_data["object_infos"]:
         obstacles.append(

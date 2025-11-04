@@ -58,7 +58,7 @@ def is_pose_identical(joints1: list, joints2: list):
         abs(j1 - j2) < 0.1 for j1, j2 in zip(joints1, joints2, strict=False)
     )
     return pos_identical
-
+successs=0
 
 class TMRobotController(Node):
     def __init__(self):
@@ -69,12 +69,12 @@ class TMRobotController(Node):
         self.io_cli = None
         self.tcp_queue = deque()
         self._busy = False
-        self._min_send_interval = 0.20
+        self._min_send_interval = 0.00
         self._last_send_ts = 0.0
 
         self.no_retry_on_fail = True
         self.clear_queue_on_fail = False
-        self._queue_timer = self.create_timer(0.05, self._process_queue)
+        self._queue_timer = self.create_timer(0.005, self._process_queue)
         self._capture_timer = self.create_timer(0.05, self._capture_command)
         self.gripper_poll_sec = 0.10
 
@@ -92,16 +92,25 @@ class TMRobotController(Node):
         data = self.receiver.capture_data()
         if data is None:
             return
+        print("received new data")
         print(data)
         self.moving = True
         self.wait_time = data["wait_time"]
         self.current_moving_type = data["type"]
         if data["type"] == "arm":
-            joints_values = data["joints_values"]
-            self.goal_joints = joints_values[-1]
-            for joints in joints_values:
-                joints = np.rad2deg(joints)
+            self.goal_joints = data["joints_values"][-1]
+            joints_values_degree = [np.rad2deg(joints) for joints in data["joints_values"]]
+            goal_degree = joints_values_degree.pop() # remove the goal
+            accepted_joints = []
+            for joints in joints_values_degree:
+                if len(accepted_joints) == 0:
+                    accepted_joints.append(joints)
+                    continue
+                if any(abs(j1 - j2) > 4 for j1, j2 in zip(joints, accepted_joints[-1])):
+                    accepted_joints.append(joints)
+            for joints in accepted_joints:
                 self.append_jpp(joints)
+            self.append_jpp(goal_degree)
         elif data["type"] == "gripper":
             if data["grip_type"] == "close":
                 self.goal_gripper = [1, 0, 0]
@@ -164,7 +173,11 @@ class TMRobotController(Node):
             if current_time - self.reached_time > self.wait_time:
                 self.reached_time = float("inf")
                 self.moving = False
+                print("sending successfulness")
                 self.sender.send_data({"message": "Success"})
+                global successs
+                successs += 1
+                print(successs)
 
     def cb(self, msg: PoseStamped):
         p = msg.pose.position
@@ -283,7 +296,7 @@ class TMRobotController(Node):
         script = (
             f'PTP("JPP",{joint_values[0]:.2f}, {joint_values[1]:.2f}, {joint_values[2]:.2f}, '
             f"{joint_values[3]:.2f}, {joint_values[4]:.2f}, {joint_values[5]:.2f},"
-            f"20,20,200,true)"
+            f"40,20,100,true)"
         )
         self.tcp_queue.append({"script": script, "wait_time": wait_time})
         if wait_time > 0:

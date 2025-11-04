@@ -23,7 +23,7 @@
             "qualifier": "cup_qualifier",
             "action": "move_to_curobo",
             "args": [
-                [326.8, -140.2, 212.6]
+                [0.3268, -0.1402, 0.2126]
             ]
         }
     ]
