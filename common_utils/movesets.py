@@ -141,7 +141,8 @@ def grab_and_pour_and_place_back_curobo(
         ready_pour_position = [
             mass_center[0] - 0.175,
             mass_center[1] + 0.150,
-            mass_center[2] + 0.250,
+            # mass_center[2] + 0.250,
+            mass_center[2] + 0.150,
         ]
     ready_pour_pose = ready_pour_position + [0.5, 0.5, 0.5, 0.5]
     pour_pose = ready_pour_position + [-0.271, 0.653, -0.271, 0.653]
@@ -168,24 +169,24 @@ def grab_and_pour_and_place_back_curobo(
             "wait_time": 0.0,
         }
     )
-    moves.append({"type": "gripper", "grip_type": "close", "wait_time": 2.0})
-    moves.append(
-        {
-            "type": "arm",
-            "goal": after_grasp_position + quaternion_orientation,
-            "wait_time": 0.0,
-        }
-    )
+    moves.append({"type": "gripper", "grip_type": "close", "wait_time": 1.0})
+    # moves.append(
+    #     {
+    #         "type": "arm",
+    #         "goal": after_grasp_position + quaternion_orientation,
+    #         "wait_time": 0.0,
+    #     }
+    # )
     moves.append({"type": "arm", "goal": ready_pour_pose, "wait_time": 0.0})
     moves.append({"type": "arm", "goal": pour_pose, "wait_time": 1.0})
     moves.append({"type": "arm", "goal": ready_pour_pose, "wait_time": 0.0})
-    moves.append(
-        {
-            "type": "arm",
-            "goal": after_grasp_position + quaternion_orientation,
-            "wait_time": 0.0,
-        }
-    )
+    # moves.append(
+    #     {
+    #         "type": "arm",
+    #         "goal": after_grasp_position + quaternion_orientation,
+    #         "wait_time": 0.0,
+    #     }
+    # )
     moves.append(
         {
             "type": "arm",
@@ -193,7 +194,7 @@ def grab_and_pour_and_place_back_curobo(
             "wait_time": 0.0,
         }
     )
-    moves.append({"type": "gripper", "grip_type": "open", "wait_time": 2.0})
+    moves.append({"type": "gripper", "grip_type": "open", "wait_time": 1.0})
     moves.append(
         {
             "type": "arm",

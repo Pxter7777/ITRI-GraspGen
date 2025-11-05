@@ -59,7 +59,7 @@ def parse_args():
     parser.add_argument(
         "--erosion_iterations",
         type=int,
-        default=0,  # can be 6
+        default=1,  # can be 6
         help="Number of erosion iterations for the SAM mask.",
     )
     parser.add_argument(
