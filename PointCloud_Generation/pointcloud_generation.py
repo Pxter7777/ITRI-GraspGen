@@ -1,4 +1,3 @@
-import os
 import sys
 import torch
 import cv2
@@ -13,20 +12,19 @@ from PointCloud_Generation.grounding_dino_utils import GroundindDinoPredictor
 from PointCloud_Generation.visualization import visualize_named_box, visualize_mask
 
 # Add the project root to sys.path to enable relative imports when run as a script
-current_file_dir = os.path.dirname(os.path.abspath(__file__))
-project_root_dir = os.path.dirname(current_file_dir)
-if project_root_dir not in sys.path:
-    sys.path.insert(0, project_root_dir)
-THIRD_PARTY_DIR = os.path.expanduser("~/Third_Party")
-if THIRD_PARTY_DIR not in sys.path:
-    sys.path.insert(0, THIRD_PARTY_DIR)
+# current_file_dir = os.path.dirname(os.path.abspath(__file__))
+# project_root_dir = os.path.dirname(current_file_dir)
+# if project_root_dir not in sys.path:
+#     sys.path.insert(0, project_root_dir)
+# THIRD_PARTY_DIR = os.path.expanduser("~/Third_Party")
+# if THIRD_PARTY_DIR not in sys.path:
+#     sys.path.insert(0, THIRD_PARTY_DIR)
 from PointCloud_Generation import mouse_handler  # noqa: E402
 from PointCloud_Generation import visualization  # noqa: E402
 from PointCloud_Generation import sam_utils  # noqa: E402
 from PointCloud_Generation.stereo_utils import FoundationStereoModel  # noqa: E402
 from PointCloud_Generation.zed_utils import ZedCamera  # noqa: E402
-from PointCloud_Generation.yolo_inference import YOLOv5Detector  # noqa: E402
-from common_utils import config  # noqa: E402
+# from PointCloud_Generation.yolo_inference import YOLOv5Detector  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -483,7 +481,7 @@ class PointCloudGenerator:
         self.max_depth = args.max_depth
         self.scale = args.scale
         # This part could take a while, to load all these three models
-        self.yolo_detector = YOLOv5Detector(model_path=config.YOLO_CHECKPOINT, conf=0.4)
+        # self.yolo_detector = YOLOv5Detector(model_path=config.YOLO_CHECKPOINT, conf=0.4)
         self.sam_predictor = sam_utils.load_sam_model()
         self.stereo_model = FoundationStereoModel(args)
         self.groundingdino_predictor = GroundindDinoPredictor()

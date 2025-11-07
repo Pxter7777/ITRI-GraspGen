@@ -1,0 +1,12 @@
+[submodule "Third_Party/sam2"]
+	path = Third_Party/sam2
+	url = git@github.com:facebookresearch/sam2.git
+[submodule "Third_Party/FoundationStereo"]
+	path = Third_Party/FoundationStereo
+	url = git@github.com:NVlabs/FoundationStereo.git
+[submodule "Third_Party/GroundingDINO"]
+	path = Third_Party/GroundingDINO
+	url = git@github.com:IDEA-Research/GroundingDINO.git
+[submodule "Third_Party/GraspGen"]
+	path = Third_Party/GraspGen
+	url = git@github.com:NVlabs/GraspGen.git
