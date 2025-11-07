@@ -397,7 +397,7 @@ class GraspGeneratorUI:
             return self._generate_grasp_silent()
 
     def _generate_grasp_with_GUI(self):
-        self._visualize_scene()
+        self._visualize_target()
         grasp_q = queue.Queue()
         grasps_to_handle_queue = queue.Queue()
         gui_thread = Thread(
@@ -449,3 +449,10 @@ class GraspGeneratorUI:
         visualize_pointcloud(
             self.vis, "pc_scene", xyz_scene, xyz_scene_color, size=0.0025
         )
+
+    def _visualize_target(self):
+        obj_pc = self.scene_data["object_infos"][self.action["target_name"]]["points"]
+        obj_pc_color = self.scene_data["object_infos"][self.action["target_name"]][
+            "colors"
+        ]
+        visualize_pointcloud(self.vis, "pc_obj", obj_pc, obj_pc_color, size=0.005)

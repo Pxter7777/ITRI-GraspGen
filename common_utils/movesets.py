@@ -116,10 +116,12 @@ def grab_and_pour_and_place_back_curobo(
         if target_name != obj_name:
             obstacles.append(
                 {
-                    "mass_center": np.mean(
-                        scene_data["object_infos"][obj_name]["points"]
+                    "mass_center": list(
+                        np.mean(scene_data["object_infos"][obj_name]["points"], axis=0)
                     ),
-                    "std": np.std(scene_data["object_infos"][obj_name]["points"]),
+                    "std": list(
+                        np.std(scene_data["object_infos"][obj_name]["points"], axis=0)
+                    ),
                 }
             )
     moves = []
@@ -139,15 +141,16 @@ def grab_and_pour_and_place_back_curobo(
         ready_pour_position = [
             mass_center[0] - 0.175,
             mass_center[1] + 0.150,
-            mass_center[2] + 0.250,
+            # mass_center[2] + 0.250,
+            mass_center[2] + 0.150,
         ]
     ready_pour_pose = ready_pour_position + [0.5, 0.5, 0.5, 0.5]
     pour_pose = ready_pour_position + [-0.271, 0.653, -0.271, 0.653]
     before_grasp_position = [
-        p - f * 0.060 for p, f in zip(position, front, strict=False)
+        p - f * 0.100 for p, f in zip(position, front, strict=False)
     ]
     grasp_position = [p + f * 0.060 for p, f in zip(position, front, strict=False)]
-    after_grasp_position = grasp_position[:2] + [grasp_position[2] + 0.250]
+    # after_grasp_position = grasp_position[:2] + [grasp_position[2] + 0.250]
 
     release_position = grasp_position[:2] + [grasp_position[2] + 0.005]
     after_release_position = before_grasp_position
@@ -166,24 +169,24 @@ def grab_and_pour_and_place_back_curobo(
             "wait_time": 0.0,
         }
     )
-    moves.append({"type": "gripper", "grip_type": "close", "wait_time": 2.0})
-    moves.append(
-        {
-            "type": "arm",
-            "goal": after_grasp_position + quaternion_orientation,
-            "wait_time": 0.0,
-        }
-    )
+    moves.append({"type": "gripper", "grip_type": "close", "wait_time": 1.0})
+    # moves.append(
+    #     {
+    #         "type": "arm",
+    #         "goal": after_grasp_position + quaternion_orientation,
+    #         "wait_time": 0.0,
+    #     }
+    # )
     moves.append({"type": "arm", "goal": ready_pour_pose, "wait_time": 0.0})
     moves.append({"type": "arm", "goal": pour_pose, "wait_time": 1.0})
     moves.append({"type": "arm", "goal": ready_pour_pose, "wait_time": 0.0})
-    moves.append(
-        {
-            "type": "arm",
-            "goal": after_grasp_position + quaternion_orientation,
-            "wait_time": 0.0,
-        }
-    )
+    # moves.append(
+    #     {
+    #         "type": "arm",
+    #         "goal": after_grasp_position + quaternion_orientation,
+    #         "wait_time": 0.0,
+    #     }
+    # )
     moves.append(
         {
             "type": "arm",
@@ -191,7 +194,7 @@ def grab_and_pour_and_place_back_curobo(
             "wait_time": 0.0,
         }
     )
-    moves.append({"type": "gripper", "grip_type": "open", "wait_time": 2.0})
+    moves.append({"type": "gripper", "grip_type": "open", "wait_time": 1.0})
     moves.append(
         {
             "type": "arm",
@@ -265,8 +268,12 @@ def move_to_curobo(
     for obj_name in scene_data["object_infos"]:
         obstacles.append(
             {
-                "mass_center": np.mean(scene_data["object_infos"][obj_name]["points"]),
-                "std": np.std(scene_data["object_infos"][obj_name]["points"]),
+                "mass_center": list(
+                    np.mean(scene_data["object_infos"][obj_name]["points"], axis=0)
+                ),
+                "std": list(
+                    np.std(scene_data["object_infos"][obj_name]["points"], axis=0)
+                ),
             }
         )
     moves = []

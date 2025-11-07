@@ -200,6 +200,31 @@ def test_BlockingJSONReceiver_on_NonBlockingJSONReceiver_task():  # should fail
     process.join()
 
 
+def test_send_to_disconnected_NonBlockingJSONReceiver():
+    process, data_queue, error_queue = receiver_process(
+        port=9876, task_type="non-blocking_task", receiver_type="non-blocking_receiver"
+    )
+    sender = NonBlockingJSONSender(port=9876)
+
+    for data in SAMPLE_DATAS:
+        time.sleep(0.2)
+        sender.send_data(data)
+        assert data_queue.get(timeout=3) == data
+    # kill the receiver process and starts a new one.
+    if process.is_alive():
+        process.terminate()
+    process.join()
+    process, data_queue, error_queue = receiver_process(
+        port=9876, task_type="non-blocking_task", receiver_type="non-blocking_receiver"
+    )
+    for data in SAMPLE_DATAS:
+        time.sleep(0.2)
+        sender.send_data(data)
+        assert data_queue.get(timeout=3) == data
+    if process.is_alive():
+        process.terminate()  # Force kill if it doesn't stop gracefully
+    process.join()
+
+
 if __name__ == "__main__":
-    test_Non_to_Non_sendall_first()
-    # test_BlockingJSONReceiver_on_NonBlockingJSONReceiver_task()
+    test_send_to_disconnected_NonBlockingJSONReceiver()

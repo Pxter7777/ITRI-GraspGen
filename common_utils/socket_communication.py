@@ -2,6 +2,7 @@ import socket
 import json
 import logging
 import struct
+import select
 # Some example joint configurations to send
 
 logger = logging.getLogger(__name__)
@@ -78,6 +79,14 @@ class NonBlockingJSONSender:
             self.socket = None
             logger.warning("Sender disconnected")
 
+    def reconnect(self) -> bool:
+        """
+        Closes the current connection and establishes a new one.
+        """
+        logger.info("Attempting to reconnect sender...")
+        self.disconnect()
+        return self._connect_on_init()
+
     def send_data(self, data: dict) -> bool:
         """
         Sends a single joint position goal to the robot bridge.
@@ -86,8 +95,29 @@ class NonBlockingJSONSender:
         """
         if not self.socket:
             logger.warning("Connection not established. Attempting to reconnect.")
-            if not self._connect_on_init():  # Try to reconnect
+            if not self.reconnect():
                 return False
+
+        # Check if the socket is still alive before sending
+        try:
+            ready_to_read, _, _ = select.select([self.socket], [], [], 0)
+            if ready_to_read:
+                # If the socket is readable, it might be closed.
+                # A recv with MSG_PEEK will not remove data from buffer.
+                # If it returns b'', the peer has closed the connection.
+                if self.socket.recv(1, socket.MSG_PEEK) == b"":
+                    logger.warning("Receiver has closed the connection.")
+                    raise BrokenPipeError("Connection closed by peer")
+        except BrokenPipeError:
+            logger.warning("Connection lost. Attempting to reconnect and resend.")
+            if self.reconnect():
+                return self.send_data(data)  # Retry sending
+            else:
+                return False
+        except Exception as e:
+            logger.exception(f"An error occurred while checking socket status: {e}")
+            return False
+
         if not (isinstance(data, dict) or isinstance(data, list)):
             logger.error("data is not a dict or a list")
             return False
@@ -97,14 +127,12 @@ class NonBlockingJSONSender:
 
         try:
             logger.debug(f"Sending signal: {data}")
-            # Encode the string to bytes and send it
             self.socket.sendall(header + message_bytes)
             logger.info("Sent!")
             return True
         except BrokenPipeError:
-            logger.exception("Connection lost while sending. Attempting to reconnect.")
-            self.disconnect()
-            if self._connect_on_init():  # Try to reconnect
+            logger.warning("Connection lost while sending. Attempting to reconnect.")
+            if self.reconnect():  # Try to reconnect
                 return self.send_data(data)  # Retry sending
             return False
         except Exception as e:
