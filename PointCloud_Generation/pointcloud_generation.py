@@ -13,13 +13,13 @@ from PointCloud_Generation.grounding_dino_utils import GroundindDinoPredictor
 from PointCloud_Generation.visualization import visualize_named_box, visualize_mask
 
 # Add the project root to sys.path to enable relative imports when run as a script
-current_file_dir = os.path.dirname(os.path.abspath(__file__))
-project_root_dir = os.path.dirname(current_file_dir)
-if project_root_dir not in sys.path:
-    sys.path.insert(0, project_root_dir)
-THIRD_PARTY_DIR = os.path.expanduser("~/Third_Party")
-if THIRD_PARTY_DIR not in sys.path:
-    sys.path.insert(0, THIRD_PARTY_DIR)
+# current_file_dir = os.path.dirname(os.path.abspath(__file__))
+# project_root_dir = os.path.dirname(current_file_dir)
+# if project_root_dir not in sys.path:
+#     sys.path.insert(0, project_root_dir)
+# THIRD_PARTY_DIR = os.path.expanduser("~/Third_Party")
+# if THIRD_PARTY_DIR not in sys.path:
+#     sys.path.insert(0, THIRD_PARTY_DIR)
 from PointCloud_Generation import mouse_handler  # noqa: E402
 from PointCloud_Generation import visualization  # noqa: E402
 from PointCloud_Generation import sam_utils  # noqa: E402

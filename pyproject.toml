@@ -31,7 +31,7 @@ extend-immutable-calls = ["fastapi.Depends", "fastapi.security.HTTPBasic"]
 
 
 [tool.setuptools.packages.find]
-include = ["PointCloud_Generation", "common_utils", "src", "ROS2_server"]
+include = ["PointCloud_Generation", "common_utils", "src", "ROS2_server", "Third_Party"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
