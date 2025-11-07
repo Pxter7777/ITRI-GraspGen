@@ -112,10 +112,10 @@ torchvision = [
     { index = "pytorch-cu121", marker = "sys_platform == 'linux'" },
 ]
 
-sam-2 = { path = "/home/j300/Third_Party/sam2", editable = false }
-groundingdino = { path = "/home/j300/Third_Party/GroundingDINO", editable = true }
-grasp_gen = { path = "/home/j300/Third_Party/GraspGen", editable = true }
-pointnet2_ops = { path = "/home/j300/Third_Party/GraspGen/pointnet2_ops", editable = true }
+sam-2 = { path = "./Third_Party/sam2", editable = false }
+groundingdino = { path = "./Third_Party/GroundingDINO", editable = true }
+grasp_gen = { path = "./Third_Party/GraspGen", editable = true }
+pointnet2_ops = { path = "./Third_Party/GraspGen/pointnet2_ops", editable = true }
 
 [[tool.uv.index]]
 name = "pytorch-cu121"

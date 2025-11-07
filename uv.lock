@@ -596,7 +596,7 @@ name = "embreex"
 version = "2.17.7.post7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "numpy" },
+    { name = "numpy", marker = "platform_machine != 'aarch64' or sys_platform != 'linux'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/bd/f5/222bae96165a6bd8c855ba434124daeb8aa4f4b021266ee13f2b485cb873/embreex-2.17.7.post7-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:8154ab34c7d6c3db01b988a83dbccb1feeb3f5d743c2ce0c34cfcc10d5472f22", size = 10739699, upload-time = "2025-10-22T20:07:22.354Z" },
@@ -801,7 +801,7 @@ wheels = [
 [[package]]
 name = "grasp-gen"
 version = "1.0.0"
-source = { editable = "../Third_Party/GraspGen" }
+source = { editable = "Third_Party/GraspGen" }
 dependencies = [
     { name = "addict" },
     { name = "diffusers" },
@@ -858,7 +858,7 @@ requires-dist = [
 [[package]]
 name = "groundingdino"
 version = "0.1.0"
-source = { editable = "../Third_Party/GroundingDINO" }
+source = { editable = "Third_Party/GroundingDINO" }
 dependencies = [
     { name = "addict" },
     { name = "numpy" },
@@ -1216,8 +1216,8 @@ requires-dist = [
     { name = "flash-attn" },
     { name = "gdown" },
     { name = "gitpython", specifier = ">=3.1.45" },
-    { name = "grasp-gen", editable = "../Third_Party/GraspGen" },
-    { name = "groundingdino", editable = "../Third_Party/GroundingDINO" },
+    { name = "grasp-gen", editable = "Third_Party/GraspGen" },
+    { name = "groundingdino", editable = "Third_Party/GroundingDINO" },
     { name = "huggingface-hub" },
     { name = "imageio" },
     { name = "imgaug" },
@@ -1233,7 +1233,7 @@ requires-dist = [
     { name = "opencv-contrib-python" },
     { name = "opencv-python", specifier = ">=4.7.0" },
     { name = "pip" },
-    { name = "pointnet2-ops", editable = "../Third_Party/GraspGen/pointnet2_ops" },
+    { name = "pointnet2-ops", editable = "Third_Party/GraspGen/pointnet2_ops" },
     { name = "pye57" },
     { name = "pyopengl-accelerate" },
     { name = "pyrealsense2" },
@@ -1241,7 +1241,7 @@ requires-dist = [
     { name = "pyzed", marker = "extra == 'localextras'" },
     { name = "ruamel-yaml" },
     { name = "ruff" },
-    { name = "sam-2", directory = "../Third_Party/sam2" },
+    { name = "sam-2", directory = "Third_Party/sam2" },
     { name = "scikit-image" },
     { name = "scikit-learn" },
     { name = "scipy" },
@@ -2010,7 +2010,7 @@ name = "nvidia-cudnn-cu12"
 version = "9.1.0.70"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cublas-cu12", marker = "sys_platform == 'linux'" },
+    { name = "nvidia-cublas-cu12", marker = "platform_machine != 'aarch64' and sys_platform == 'linux'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9f/fd/713452cd72343f682b1c7b9321e23829f00b842ceaedcda96e742ea0b0b3/nvidia_cudnn_cu12-9.1.0.70-py3-none-manylinux2014_x86_64.whl", hash = "sha256:165764f44ef8c61fcdfdfdbe769d687e06374059fbb388b6c89ecb0e28793a6f", size = 664752741, upload-time = "2024-04-22T15:24:15.253Z" },
@@ -2037,9 +2037,9 @@ name = "nvidia-cusolver-cu12"
 version = "11.4.5.107"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cublas-cu12", marker = "sys_platform == 'linux'" },
-    { name = "nvidia-cusparse-cu12", marker = "sys_platform == 'linux'" },
-    { name = "nvidia-nvjitlink-cu12", marker = "sys_platform == 'linux'" },
+    { name = "nvidia-cublas-cu12", marker = "platform_machine != 'aarch64' and sys_platform == 'linux'" },
+    { name = "nvidia-cusparse-cu12", marker = "platform_machine != 'aarch64' and sys_platform == 'linux'" },
+    { name = "nvidia-nvjitlink-cu12", marker = "platform_machine != 'aarch64' and sys_platform == 'linux'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/bc/1d/8de1e5c67099015c834315e333911273a8c6aaba78923dd1d1e25fc5f217/nvidia_cusolver_cu12-11.4.5.107-py3-none-manylinux1_x86_64.whl", hash = "sha256:8a7ec542f0412294b15072fa7dab71d31334014a69f953004ea7a118206fe0dd", size = 124161928, upload-time = "2023-04-19T15:51:25.781Z" },
@@ -2050,7 +2050,7 @@ name = "nvidia-cusparse-cu12"
 version = "12.1.0.106"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12", marker = "sys_platform == 'linux'" },
+    { name = "nvidia-nvjitlink-cu12", marker = "platform_machine != 'aarch64' and sys_platform == 'linux'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/65/5b/cfaeebf25cd9fdec14338ccb16f6b2c4c7fa9163aefcf057d86b9cc248bb/nvidia_cusparse_cu12-12.1.0.106-py3-none-manylinux1_x86_64.whl", hash = "sha256:f3b50f42cf363f86ab21f720998517a659a48131e8d538dc02f8768237bd884c", size = 195958278, upload-time = "2023-04-19T15:51:49.939Z" },
@@ -2344,7 +2344,7 @@ wheels = [
 [[package]]
 name = "pointnet2-ops"
 version = "3.0.0"
-source = { editable = "../Third_Party/GraspGen/pointnet2_ops" }
+source = { editable = "Third_Party/GraspGen/pointnet2_ops" }
 dependencies = [
     { name = "torch", version = "2.5.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux'" },
     { name = "torch", version = "2.5.1+cu121", source = { registry = "https://download.pytorch.org/whl/cu121" }, marker = "sys_platform == 'linux'" },
@@ -3072,7 +3072,7 @@ wheels = [
 [[package]]
 name = "sam-2"
 version = "1.0"
-source = { directory = "../Third_Party/sam2" }
+source = { directory = "Third_Party/sam2" }
 dependencies = [
     { name = "hydra-core" },
     { name = "iopath" },
@@ -3845,7 +3845,7 @@ name = "triton"
 version = "3.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "filelock", marker = "sys_platform == 'linux'" },
+    { name = "filelock", marker = "platform_machine != 'aarch64' and sys_platform == 'linux'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/86/17/d9a5cf4fcf46291856d1e90762e36cbabd2a56c7265da0d1d9508c8e3943/triton-3.1.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0f34f6e7885d1bf0eaaf7ba875a5f0ce6f3c13ba98f9503651c1e6dc6757ed5c", size = 209506424, upload-time = "2024-10-14T16:05:42.337Z" },
