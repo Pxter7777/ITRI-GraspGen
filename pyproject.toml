@@ -28,9 +28,7 @@ ignore = [
 # Allow default arguments like, e.g., `data: List[str] = fastapi.Query(None)`.
 extend-immutable-calls = ["fastapi.Depends", "fastapi.security.HTTPBasic"]
 
-[project]
-name = "GenPointCloud"
-version = "0.1.0"
+
 
 [tool.setuptools.packages.find]
 include = ["PointCloud_Generation", "common_utils", "src", "ROS2_server"]
@@ -40,3 +38,128 @@ testpaths = ["tests"]
 filterwarnings = [
     "ignore:Importing from timm.models.layers is deprecated:FutureWarning"
 ]
+
+[build-system]
+requires = [
+    "setuptools>=61.0",
+    "torch>=2.5.1",
+    "wheel"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ITRI-GraspGen"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = "==3.11.14"
+dependencies = [
+    "torch==2.5.1",
+    "torchvision==0.20.1",
+    "torchaudio==2.5.1",
+	"pip",
+    "scikit-image",
+    "omegaconf",
+    "opencv-contrib-python",
+    "imgaug",
+    "ninja",
+    "timm",
+    "albumentations",
+    "jupyterlab",
+    "scipy",
+    "joblib",
+    "scikit-learn",
+    "ruamel.yaml",
+    "trimesh",
+    "pyyaml",
+    "imageio",
+    "open3d",
+    "transformations",
+    "einops",
+    "gdown",
+    "nodejs",
+    "huggingface-hub",
+    "pyrealsense2",
+    "ultralytics",
+    "pye57",
+    "ruff",
+    "flash-attn",
+    "matplotlib>=3.9.1",
+    "jupyter>=1.0.0",
+    "opencv-python>=4.7.0",
+    "eva-decord>=0.6.1",
+	# "pyzed @ file:///home/j300/GenPointCloud/pyzed-5.0-cp311-cp311-linux_x86_64.whl", for legal reason, I think I shouldn't add this .whl into my repo
+	"seaborn",
+	"torch_scatter",
+    "sam-2",
+    "groundingdino",
+    "grasp_gen",
+    "pointnet2_ops",
+    "cython>=3.2.0",
+    "numpy>=2.3.4",
+    "gitpython>=3.1.45",
+    "PyOpenGL-accelerate"
+]
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu121", marker = "sys_platform == 'linux'" },
+]
+torchaudio = [
+    { index = "pytorch-cu121", marker = "sys_platform == 'linux'" },
+]
+torchvision = [
+    { index = "pytorch-cu121", marker = "sys_platform == 'linux'" },
+]
+
+sam-2 = { path = "/home/j300/Third_Party/sam2", editable = false }
+groundingdino = { path = "/home/j300/Third_Party/GroundingDINO", editable = true }
+grasp_gen = { path = "/home/j300/Third_Party/GraspGen", editable = true }
+pointnet2_ops = { path = "/home/j300/Third_Party/GraspGen/pointnet2_ops", editable = true }
+
+[[tool.uv.index]]
+name = "pytorch-cu121"
+url = "https://download.pytorch.org/whl/cu121"
+explicit = true
+
+
+
+[tool.uv.extra-build-dependencies]
+flash-attn = ["torch==2.5.1"]
+groundingdino = ["torch==2.5.1"]
+pointnet2_ops = ["torch==2.5.1"]
+torch-scatter = ["torch==2.5.1"]
+
+[[tool.uv.dependency-metadata]]
+name = "grasp-gen"
+version = "1.0.0"
+requires-dist = [
+    # "pickle5", ignore it for now.
+    "h5py",
+    "hydra-core",
+    "matplotlib",
+    "meshcat",
+    # "numpy==1.26.4", too low, used ours
+    "webdataset",
+    "scikit-learn",
+    "scipy",
+    "tensorboard",
+    "trimesh==4.5.3",
+    "transformers",
+	"pyrender",
+    "tensordict",
+    "diffusers==0.11.1",
+    "timm==1.0.15",
+    "huggingface-hub==0.25.2",
+    "PyOpenGL==3.1.0",
+    "addict",
+    "spconv-cu120",
+    "yapf==0.40.1",
+    "tensorboardx",
+    "sharedarray",
+    "torch-geometric",
+    "yourdfpy==0.0.56"
+]
+
+[project.optional-dependencies]
+localextras = ["pyzed"]
