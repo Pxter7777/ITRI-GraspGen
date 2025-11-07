@@ -150,7 +150,7 @@ def grab_and_pour_and_place_back_curobo(
         p - f * 0.100 for p, f in zip(position, front, strict=False)
     ]
     grasp_position = [p + f * 0.060 for p, f in zip(position, front, strict=False)]
-    after_grasp_position = grasp_position[:2] + [grasp_position[2] + 0.250]
+    # after_grasp_position = grasp_position[:2] + [grasp_position[2] + 0.250]
 
     release_position = grasp_position[:2] + [grasp_position[2] + 0.005]
     after_release_position = before_grasp_position

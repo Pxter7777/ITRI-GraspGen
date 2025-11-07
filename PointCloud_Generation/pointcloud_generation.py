@@ -439,11 +439,12 @@ def generate_pointcloud_multiple_obj_with_name_dict(
         objects_colors[i] = np.array(objects_colors[i])
         if objects_colors[i].size > 0:
             objects_colors[i] = objects_colors[i][:, ::-1]
-        
+
         ## remove outliers
         objects_points[i], _, objects_colors[i], _ = (
             point_cloud_outlier_removal_with_color(
-                torch.from_numpy(objects_points[i]), torch.from_numpy(objects_colors[i].copy())
+                torch.from_numpy(objects_points[i]),
+                torch.from_numpy(objects_colors[i].copy()),
             )
         )
         objects_points[i] = objects_points[i].cpu().numpy()

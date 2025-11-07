@@ -20,7 +20,7 @@ try:
     )
     with open(filepath, "rb") as f:
         data1 = json.load(f)
-    
+
     filepath = os.path.join(
         project_root_dir, "data_for_test", "fullact", "fullact_20251104_201027.json"
     )
