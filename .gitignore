@@ -7,4 +7,6 @@ __pycache__/
 GenPointCloud.egg-info/
 ITRI_GraspGen.egg-info/
 Third_Party/pyzed-5.0-cp311-cp311-linux_x86_64.whl
+models/*
 !.gitkeep
+!models/Download_models_guide.md

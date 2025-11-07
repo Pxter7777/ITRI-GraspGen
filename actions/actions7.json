@@ -1,0 +1,24 @@
+{
+    "track": ["blue cup"],
+    "actions":
+    [
+        {
+            "target_name": "blue cup",
+            "qualifier": "cup_qualifier",
+            "action": "grab_and_pour_and_place_back_curobo",
+            "args": [
+                [0.3268, -0.1402, 0.2126]
+            ]
+        },
+        {
+            "target_name": "glass cup",
+            "qualifier": "cup_qualifier",
+            "action": "move_to_curobo",
+            "args": [
+                [0.3268, -0.1402, 0.2126]
+            ]
+        }
+    ]
+    
+    
+}

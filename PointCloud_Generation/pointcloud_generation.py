@@ -25,7 +25,7 @@ from PointCloud_Generation import visualization  # noqa: E402
 from PointCloud_Generation import sam_utils  # noqa: E402
 from PointCloud_Generation.stereo_utils import FoundationStereoModel  # noqa: E402
 from PointCloud_Generation.zed_utils import ZedCamera  # noqa: E402
-from PointCloud_Generation.yolo_inference import YOLOv5Detector  # noqa: E402
+# from PointCloud_Generation.yolo_inference import YOLOv5Detector  # noqa: E402
 from common_utils import config  # noqa: E402
 
 logger = logging.getLogger(__name__)
@@ -483,7 +483,7 @@ class PointCloudGenerator:
         self.max_depth = args.max_depth
         self.scale = args.scale
         # This part could take a while, to load all these three models
-        self.yolo_detector = YOLOv5Detector(model_path=config.YOLO_CHECKPOINT, conf=0.4)
+        # self.yolo_detector = YOLOv5Detector(model_path=config.YOLO_CHECKPOINT, conf=0.4)
         self.sam_predictor = sam_utils.load_sam_model()
         self.stereo_model = FoundationStereoModel(args)
         self.groundingdino_predictor = GroundindDinoPredictor()

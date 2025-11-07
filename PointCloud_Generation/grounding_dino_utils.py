@@ -5,7 +5,7 @@ from PIL import Image
 import torch
 import groundingdino.datasets.transforms as T
 from torchvision.ops import box_convert
-
+from common_utils import config
 
 class DetectedBoxInfo:
     def __init__(self, box, phrase, logits):
@@ -17,8 +17,8 @@ class DetectedBoxInfo:
 class GroundindDinoPredictor:
     def __init__(self):
         self.model = load_model(
-            "/home/j300/Third_Party/GroundingDINO/groundingdino/config/GroundingDINO_SwinT_OGC.py",
-            "/home/j300/models/GroundingDinoModels/groundingdino_swint_ogc.pth",
+            config.GROUNDINGDINO_CFG,
+            config.GROUNDINGDINO_CKPT,
         )
 
     def predict_boxes(
