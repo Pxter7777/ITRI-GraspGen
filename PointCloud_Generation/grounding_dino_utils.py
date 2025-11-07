@@ -7,6 +7,7 @@ import groundingdino.datasets.transforms as T
 from torchvision.ops import box_convert
 from common_utils import config
 
+
 class DetectedBoxInfo:
     def __init__(self, box, phrase, logits):
         self.box = box  # match pixel format like in pointcloud_generation.py

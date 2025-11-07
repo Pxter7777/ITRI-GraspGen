@@ -1,6 +1,8 @@
 # referenced from https://github.com/AUTOMATIC1111/stable-diffusion-webui/blob/82a973c04367123ae98bd9abdf80d9eda9b910e2/pyproject.toml
 [tool.ruff]
-
+exclude = [
+    "Third_Party"
+]
 target-version = "py311"
 
 [tool.ruff.lint]

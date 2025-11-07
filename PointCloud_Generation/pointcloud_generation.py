@@ -1,4 +1,3 @@
-import os
 import sys
 import torch
 import cv2
@@ -26,7 +25,6 @@ from PointCloud_Generation import sam_utils  # noqa: E402
 from PointCloud_Generation.stereo_utils import FoundationStereoModel  # noqa: E402
 from PointCloud_Generation.zed_utils import ZedCamera  # noqa: E402
 # from PointCloud_Generation.yolo_inference import YOLOv5Detector  # noqa: E402
-from common_utils import config  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

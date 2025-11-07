@@ -17,8 +17,17 @@ GRIPPER_CFG = os.path.join(
 )
 GRASPGEN_SCENE_DIR = os.path.join(".", "output")
 
-GROUNDINGDINO_CFG = os.path.join(project_root_dir, "Third_Party", "GroundingDINO", "groundingdino", "config", "GroundingDINO_SwinT_OGC.py")
-GROUNDINGDINO_CKPT = os.path.join(MODELS_DIR, "GroundingDinoModels", "groundingdino_swint_ogc.pth")
+GROUNDINGDINO_CFG = os.path.join(
+    project_root_dir,
+    "Third_Party",
+    "GroundingDINO",
+    "groundingdino",
+    "config",
+    "GroundingDINO_SwinT_OGC.py",
+)
+GROUNDINGDINO_CKPT = os.path.join(
+    MODELS_DIR, "GroundingDinoModels", "groundingdino_swint_ogc.pth"
+)
 
 # ------------------- Other Config -------------------
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
