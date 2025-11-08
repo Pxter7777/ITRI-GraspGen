@@ -485,7 +485,7 @@ class PointCloudGenerator:
         self.sam_predictor = sam_utils.load_sam_model()
         self.stereo_model = FoundationStereoModel(args)
         self.groundingdino_predictor = GroundindDinoPredictor()
-        self.zed = ZedCamera()
+        self.zed = ZedCamera(args.use_png)
 
     def generate_pointcloud(self, target_names: list[str], need_confirm=True):
         # Target objects
@@ -535,7 +535,22 @@ class PointCloudGenerator:
                 iterations=self.erosion_iterations,
             )
             named_masks.append(NamedMask(name=box.phrase, mask=mask))
-
+        # remove later, keep it here because I don't have zed camera info
+        if need_confirm:
+            win_name = "RGB + Mask | Depth"
+            cv2.namedWindow(win_name)
+            for box in boxes:
+                display_frame = visualize_named_box(display_frame, box)
+            for named_mask in named_masks:
+                display_frame = visualize_mask(display_frame, named_mask.mask)
+            cv2.imshow(win_name, display_frame)
+            while True:
+                logger.info("if satisfied, press space and continue.")
+                key = cv2.waitKey(0)
+                if key == 32:
+                    break
+                elif key == 27:
+                    raise ValueError("Not satisfied with the generated result.")
         # stereo inference
         left_gray = cv2.cvtColor(left_image.get_data(), cv2.COLOR_BGRA2GRAY)
         right_gray = cv2.cvtColor(right_image.get_data(), cv2.COLOR_BGRA2GRAY)
