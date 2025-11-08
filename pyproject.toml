@@ -44,7 +44,6 @@ filterwarnings = [
 [build-system]
 requires = [
     "setuptools>=61.0",
-    "torch>=2.5.1",
     "wheel"
 ]
 build-backend = "setuptools.build_meta"
@@ -164,4 +163,4 @@ requires-dist = [
 ]
 
 [project.optional-dependencies]
-localextras = ["pyzed"]
+localextras = ["pyzed"] # this doesn't work at all.
