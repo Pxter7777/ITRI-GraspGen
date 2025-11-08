@@ -113,6 +113,12 @@ def parse_args():
         action="store_true",
         help="save the fullact",
     )
+    parser.add_argument(
+        "--use-png",
+        type=str,
+        default="1",
+        help="Use exisiting images at sample_data/zed_images instead of the real zed camera",
+    )
     return parser.parse_args()
 
 

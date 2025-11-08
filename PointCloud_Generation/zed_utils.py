@@ -1,11 +1,12 @@
 import pyzed.sl as sl
 import numpy as np
-
+import os
+import cv2
 
 class ZedCamera:
     """A class to interface with a ZED camera."""
 
-    def __init__(self) -> None:
+    def __init__(self, use_png="") -> None:
         """Initializes the ZedCamera object."""
         self.baseline: float
         self.camera: sl.Camera
@@ -15,8 +16,14 @@ class ZedCamera:
         self.H: int
         self.left_image = sl.Mat()
         self.right_image = sl.Mat()
-
-        self.initialize_zed()
+        self.image_path = None
+        if use_png == "":
+            print("use_png is empty-*+--------------")
+            self.initialize_zed()
+        else:
+            current_file_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root_dir = os.path.dirname(current_file_dir)
+            self.image_path = os.path.join(project_root_dir, "sample_data/zed_images/", use_png)
 
     def initialize_zed(self) -> None:
         """Initializes the ZED camera and sets camera parameters."""
@@ -57,6 +64,18 @@ class ZedCamera:
         self.ext_ir1_to_color = np.identity(4)
 
     def capture_images(self) -> tuple[sl.ERROR_CODE, sl.Mat, sl.Mat]:
+        if self.image_path is not None: # use existing png instead of the actual camera, for test purpose
+            left_image_path = os.path.join(self.image_path, "left.png")
+            right_image_path = os.path.join(self.image_path, "right.png")
+            left_image_np = cv2.imread(left_image_path)
+            right_image_np = cv2.imread(right_image_path)
+            h, w = left_image_np .shape[:2]
+            left_mat = sl.Mat(w, h, sl.MAT_TYPE.U8_C3, sl.MEM.CPU)
+            right_mat = sl.Mat(w, h, sl.MAT_TYPE.U8_C3, sl.MEM.CPU)
+            np.copyto(left_mat.get_data(), left_image_np)
+            np.copyto(right_mat.get_data(), right_image_np)
+            return sl.ERROR_CODE.SUCCESS, left_mat, right_mat
+    
         """Captures left and right images from the ZED camera."""
         status = self.camera.grab()
         if status == sl.ERROR_CODE.SUCCESS:
