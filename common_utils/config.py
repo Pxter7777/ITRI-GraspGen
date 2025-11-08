@@ -26,7 +26,7 @@ GROUNDINGDINO_CFG = os.path.join(
     "GroundingDINO_SwinT_OGC.py",
 )
 GROUNDINGDINO_CKPT = os.path.join(
-    MODELS_DIR, "GroundingDinoModels", "groundingdino_swint_ogc.pth"
+    MODELS_DIR, "GroundingDINOModels", "groundingdino_swint_ogc.pth"
 )
 
 # ------------------- Other Config -------------------
