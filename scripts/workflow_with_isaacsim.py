@@ -116,7 +116,7 @@ def parse_args():
     parser.add_argument(
         "--use-png",
         type=str,
-        default="1",
+        default="",
         help="Use exisiting images at sample_data/zed_images instead of the real zed camera",
     )
     return parser.parse_args()
