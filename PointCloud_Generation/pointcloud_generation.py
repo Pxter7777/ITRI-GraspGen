@@ -485,7 +485,7 @@ class PointCloudGenerator:
         self.sam_predictor = sam_utils.load_sam_model()
         self.stereo_model = FoundationStereoModel(args)
         self.groundingdino_predictor = GroundindDinoPredictor()
-        self.zed = ZedCamera()
+        self.zed = ZedCamera(args.use_png)
 
     def generate_pointcloud(self, target_names: list[str], need_confirm=True):
         # Target objects

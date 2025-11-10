@@ -2,7 +2,7 @@ output/*
 old_output/*
 picked/*
 transform_config/*
-PointCloud_Generation/transform_config/*
+# PointCloud_Generation/transform_config/*
 __pycache__/
 GenPointCloud.egg-info/
 ITRI_GraspGen.egg-info/
@@ -10,3 +10,4 @@ Third_Party/pyzed-5.0-cp311-cp311-linux_x86_64.whl
 models/*
 !.gitkeep
 !models/Download_models_guide.md
+# sample_data/
