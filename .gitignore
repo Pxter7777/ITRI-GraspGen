@@ -2,7 +2,7 @@ output/*
 old_output/*
 picked/*
 transform_config/*
-PointCloud_Generation/transform_config/*
+# PointCloud_Generation/transform_config/*
 __pycache__/
 GenPointCloud.egg-info/
 ITRI_GraspGen.egg-info/
