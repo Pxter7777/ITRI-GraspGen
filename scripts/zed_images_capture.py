@@ -11,6 +11,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 def main():
     zed = ZedCamera()
     try:
@@ -27,21 +28,19 @@ def main():
             os.makedirs(save_dir, exist_ok=True)
             cv2.imwrite(os.path.join(save_dir, "left.png"), left_image.get_data())
             cv2.imwrite(os.path.join(save_dir, "right.png"), right_image.get_data())
-            
+
             # ZED INFO
-            camera_data = {
-                "K_left": zed.K_left.tolist(),
-                "baseline": zed.baseline
-            }
+            camera_data = {"K_left": zed.K_left.tolist(), "baseline": zed.baseline}
             json_path = os.path.join(save_dir, "zed_info.json")
-            
+
             with open(json_path, "w") as f:
                 json.dump(camera_data, f, indent=4)
 
             logger.info(f"Images saved to {save_dir}")
     finally:
         logger.info("Closing ZED...")
-        zed.close()   
+        zed.close()
+
 
 if __name__ == "__main__":
     main()

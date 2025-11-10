@@ -4,6 +4,7 @@ import os
 import cv2
 import json
 
+
 class ZedCamera:
     """A class to interface with a ZED camera."""
 
@@ -17,7 +18,7 @@ class ZedCamera:
         self.H: int
         self.left_image = sl.Mat()
         self.right_image = sl.Mat()
-        self.png_dir = None 
+        self.png_dir = None
         if use_png == "":
             print("use_png is empty-*+--------------")
             self.initialize_zed()
@@ -61,17 +62,20 @@ class ZedCamera:
         )
 
         self.ext_ir1_to_color = np.identity(4)
+
     def initialize_zed_using_existing_png(self, use_png) -> None:
         current_file_dir = os.path.dirname(os.path.abspath(__file__))
         project_root_dir = os.path.dirname(current_file_dir)
-        self.png_dir = os.path.join(project_root_dir, "sample_data/zed_images/", use_png)
+        self.png_dir = os.path.join(
+            project_root_dir, "sample_data/zed_images/", use_png
+        )
         self.baseline = 0
         self.K_left = 0
         left_image_path = os.path.join(self.png_dir, "left.png")
         right_image_path = os.path.join(self.png_dir, "right.png")
         left_image_np = cv2.imread(left_image_path)
         right_image_np = cv2.imread(right_image_path)
-        h, w = left_image_np .shape[:2]
+        h, w = left_image_np.shape[:2]
         self.left_image = sl.Mat(w, h, sl.MAT_TYPE.U8_C3, sl.MEM.CPU)
         self.right_image = sl.Mat(w, h, sl.MAT_TYPE.U8_C3, sl.MEM.CPU)
         np.copyto(self.left_image.get_data(), left_image_np)
@@ -82,11 +86,12 @@ class ZedCamera:
         self.K_left = np.array(camera_data["K_left"])
         self.baseline = camera_data["baseline"]
 
-        
     def capture_images(self) -> tuple[sl.ERROR_CODE, sl.Mat, sl.Mat]:
-        if self.png_dir is not None: # use existing png instead of the actual camera, for test purpose
+        if (
+            self.png_dir is not None
+        ):  # use existing png instead of the actual camera, for test purpose
             return sl.ERROR_CODE.SUCCESS, self.left_image, self.right_image
-    
+
         """Captures left and right images from the ZED camera."""
         status = self.camera.grab()
         if status == sl.ERROR_CODE.SUCCESS:
