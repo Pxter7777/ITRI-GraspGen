@@ -456,7 +456,6 @@ def generate_pointcloud_multiple_obj_with_name_dict(
         removed_colors = removed_colors.cpu().numpy()
         scene_points = np.vstack((scene_points, removed_points))
         scene_colors = np.vstack((scene_colors, removed_colors))
-    
 
     # Final construct
     scene_data = {

@@ -51,6 +51,7 @@ def is_qualified(grasp: np.array, mass_center, obj_std):
         return False
     return True
 
+
 def flip_grasp(grasp: np.ndarray) -> np.ndarray:
     """
     Flips a grasp by rotating it 180 degrees around its approach (front) axis.
@@ -75,6 +76,7 @@ def flip_upside_down_grasps(grasps: np.ndarray) -> np.ndarray:
             _grasp = flip_grasp(_grasp)
         flipped_grasps.append(_grasp)
     return np.array(flipped_grasps)
+
 
 class GraspGenerator:
     def __init__(self, gripper_config, grasp_threshold, num_grasps, topk_num_grasps):
@@ -274,7 +276,9 @@ class ControlPanel:
         self._catch_grasps()
 
     def _catch_grasps(self):
-        self.all_grasps, self.custom_filter_mask, self.collision_free_mask = self.grasps_to_handle_queue.get()
+        self.all_grasps, self.custom_filter_mask, self.collision_free_mask = (
+            self.grasps_to_handle_queue.get()
+        )
         self.toggle_grasp_display()
 
     def _update_grasp_visualization(self):
@@ -370,12 +374,12 @@ class GraspGeneratorUI:
         need_GUI=False,
     ):
         self.grasp_cfg = load_grasp_cfg(gripper_config)
-        self.gripper_name:str = self.grasp_cfg.data.gripper_name
+        self.gripper_name: str = self.grasp_cfg.data.gripper_name
         self.grasp_sampler = GraspGenSampler(self.grasp_cfg)
-        self.grasp_threshold:float = grasp_threshold
-        self.num_grasps:int = num_grasps
-        self.topk_num_grasps:int = topk_num_grasps
-        self.need_GUI:bool = need_GUI
+        self.grasp_threshold: float = grasp_threshold
+        self.num_grasps: int = num_grasps
+        self.topk_num_grasps: int = topk_num_grasps
+        self.need_GUI: bool = need_GUI
         self.scene_data: dict
         ## Main init starts here
         if self.need_GUI:
@@ -405,22 +409,21 @@ class GraspGeneratorUI:
                 for grasp in grasps
             ]
         )
-        collision_free_mask = np.array(
-            [
-                True
-                for grasp in grasps
-            ]
-        )
-        
+        collision_free_mask = np.array([True for grasp in grasps])
+
         gripper_info = get_gripper_info(self.gripper_name)
         gripper_collision_mesh = gripper_info.collision_mesh
 
         # extract xyz_scene
-        full_pc_key = "pc_color" if "pc_color" in self.scene_data["scene_info"] else "full_pc"
+        full_pc_key = (
+            "pc_color" if "pc_color" in self.scene_data["scene_info"] else "full_pc"
+        )
         xyz_scene = np.array(self.scene_data["scene_info"][full_pc_key])[0]
         for obj_name in self.scene_data["object_infos"]:
             if obj_name != self.action["target_name"]:
-                xyz_scene = np.vstack((xyz_scene, self.scene_data["object_infos"][obj_name]["points"]))
+                xyz_scene = np.vstack(
+                    (xyz_scene, self.scene_data["object_infos"][obj_name]["points"])
+                )
         # VIZ_BOUNDS
         VIZ_BOUNDS = [[-1.5, -1.25, -0.15], [1.5, 1.25, 2.0]]
         mask_within_bounds = np.all((xyz_scene > VIZ_BOUNDS[0]), 1)
@@ -430,9 +433,7 @@ class GraspGeneratorUI:
         xyz_scene = xyz_scene[mask_within_bounds]
         # Downsample scene point cloud for faster collision checking
         if len(xyz_scene) > 8192:
-            indices = np.random.choice(
-                len(xyz_scene), 8192, replace=False
-            )
+            indices = np.random.choice(len(xyz_scene), 8192, replace=False)
             xyz_scene_downsampled = xyz_scene[indices]
             print(
                 f"Downsampled scene point cloud from {len(xyz_scene)} to {len(xyz_scene_downsampled)} points"
@@ -455,7 +456,9 @@ class GraspGeneratorUI:
         while True:
             num_try += 1
             logger.info(f"try #{num_try}")
-            all_grasps, custom_filter_mask, collision_free_mask = self._generate_grasps()
+            all_grasps, custom_filter_mask, collision_free_mask = (
+                self._generate_grasps()
+            )
             qualified_grasps = all_grasps[custom_filter_mask & collision_free_mask]
             if len(qualified_grasps) > 0:
                 return qualified_grasps[0]
@@ -485,9 +488,13 @@ class GraspGeneratorUI:
         num_try = 0
         while True:
             num_try += 1
-            all_grasps, custom_filter_mask, collision_free_mask = self._generate_grasps()
+            all_grasps, custom_filter_mask, collision_free_mask = (
+                self._generate_grasps()
+            )
             # send to panel
-            grasps_to_handle_queue.put((all_grasps, custom_filter_mask, collision_free_mask))
+            grasps_to_handle_queue.put(
+                (all_grasps, custom_filter_mask, collision_free_mask)
+            )
             # wait panel to respond
             selected_grasp = grasp_q.get()
             if selected_grasp is not None:
@@ -514,8 +521,12 @@ class GraspGeneratorUI:
         xyz_scene_color = np.array(scene_info["img_color"]).reshape(1, -1, 3)[0, :, :]
 
         for obj_name in self.scene_data["object_infos"]:
-            xyz_scene = np.vstack((xyz_scene, self.scene_data["object_infos"][obj_name]["points"]))
-            xyz_scene_color = np.vstack((xyz_scene_color, self.scene_data["object_infos"][obj_name]["colors"]))
+            xyz_scene = np.vstack(
+                (xyz_scene, self.scene_data["object_infos"][obj_name]["points"])
+            )
+            xyz_scene_color = np.vstack(
+                (xyz_scene_color, self.scene_data["object_infos"][obj_name]["colors"])
+            )
 
         VIZ_BOUNDS = [[-1.5, -1.25, -0.15], [1.5, 1.25, 2.0]]
         mask_within_bounds = np.all((xyz_scene > VIZ_BOUNDS[0]), 1)
@@ -535,4 +546,3 @@ class GraspGeneratorUI:
             "colors"
         ]
         visualize_pointcloud(self.vis, "pc_obj", obj_pc, obj_pc_color, size=0.005)
-    
