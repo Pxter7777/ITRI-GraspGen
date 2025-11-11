@@ -14,7 +14,7 @@ resolution-markers = [
 [[manifest.dependency-metadata]]
 name = "grasp-gen"
 version = "1.0.0"
-requires-dist = ["h5py", "hydra-core", "matplotlib", "meshcat", "webdataset", "scikit-learn", "scipy", "tensorboard", "trimesh==4.5.3", "transformers", "pyrender", "tensordict", "diffusers==0.11.1", "timm==1.0.15", "huggingface-hub==0.25.2", "pyopengl==3.1.0", "addict", "spconv-cu120", "yapf==0.40.1", "tensorboardx", "sharedarray", "torch-geometric", "yourdfpy==0.0.56"]
+requires-dist = ["h5py", "hydra-core", "matplotlib", "meshcat", "webdataset", "scikit-learn", "scipy", "tensorboard", "trimesh==4.5.3", "transformers", "pyrender", "tensordict", "diffusers==0.11.1", "timm==1.0.15", "huggingface-hub==0.25.2", "pyopengl==3.1.0", "addict", "spconv-cu121", "yapf==0.40.1", "tensorboardx", "sharedarray", "torch-geometric", "yourdfpy==0.0.56"]
 
 [[package]]
 name = "absl-py"
@@ -459,18 +459,19 @@ wheels = [
 ]
 
 [[package]]
-name = "cumm-cu120"
-version = "0.4.11"
+name = "cumm-cu121"
+version = "0.7.11"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fire" },
     { name = "numpy" },
     { name = "pccm" },
     { name = "pybind11" },
+    { name = "sympy" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b8/d6/60c89adcd2f85ffae16e7105b67fbe3b78b3199747951b9fb6e7ab2792e2/cumm_cu120-0.4.11-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8bb81d0211975cc2bbeaedc0176884b2289bd8839568c5390f96fe3fe1a4bdf8", size = 26217950, upload-time = "2023-08-09T03:42:59.416Z" },
-    { url = "https://files.pythonhosted.org/packages/eb/e7/4a1648ce4914099cf266b12a1dd4fa11d6d90a9cac6d8be270a89dc5e2bd/cumm_cu120-0.4.11-cp311-cp311-win_amd64.whl", hash = "sha256:102de4ed3544c165f59aba2b29f8a4a213f21a9f31baa46556fd1f669378ea2c", size = 1157527, upload-time = "2023-08-09T03:17:15.411Z" },
+    { url = "https://files.pythonhosted.org/packages/40/b7/a3be8c9c455f82b56bf3e3016f5f42a28a979c211af2a6c39e2cc01e50fa/cumm_cu121-0.7.11-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b32de45ab4647d47075936cb29ff9fdc0c7974990c0dfbd8f2fe0443b28c0ee1", size = 26576461, upload-time = "2024-12-15T13:57:57.943Z" },
+    { url = "https://files.pythonhosted.org/packages/1c/e5/fa36749a2f2d3a9309808f3c7c8f1ea8a99391317f794c7968f09951d3d6/cumm_cu121-0.7.11-cp311-cp311-win_amd64.whl", hash = "sha256:a695e3c789eab674c8806167d0636352a39c3feecae3c58c56b541f0b4ce4412", size = 1221874, upload-time = "2024-12-15T13:44:59.678Z" },
 ]
 
 [[package]]
@@ -815,7 +816,7 @@ dependencies = [
     { name = "scikit-learn" },
     { name = "scipy" },
     { name = "sharedarray" },
-    { name = "spconv-cu120" },
+    { name = "spconv-cu121" },
     { name = "tensorboard" },
     { name = "tensorboardx" },
     { name = "tensordict" },
@@ -842,7 +843,7 @@ requires-dist = [
     { name = "scikit-learn" },
     { name = "scipy" },
     { name = "sharedarray" },
-    { name = "spconv-cu120" },
+    { name = "spconv-cu121" },
     { name = "tensorboard" },
     { name = "tensorboardx" },
     { name = "tensordict" },
@@ -3353,20 +3354,20 @@ wheels = [
 ]
 
 [[package]]
-name = "spconv-cu120"
-version = "2.3.6"
+name = "spconv-cu121"
+version = "2.3.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ccimport" },
-    { name = "cumm-cu120" },
+    { name = "cumm-cu121" },
     { name = "fire" },
     { name = "numpy" },
     { name = "pccm" },
     { name = "pybind11" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/42/2a/d3322bdcf3bcd2b31386106ce90dece2aa6e4ddf665c075240e6958e4bd9/spconv_cu120-2.3.6-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f9e116962e9777558a96101a5d9252db5d46845ad5e5b32f473594984dfee983", size = 76338536, upload-time = "2023-04-19T17:02:50.77Z" },
-    { url = "https://files.pythonhosted.org/packages/40/95/230a20847213930a0300f87c795116f4e44a12c9b98a82a81e50a9bdd871/spconv_cu120-2.3.6-cp311-cp311-win_amd64.whl", hash = "sha256:645e27a722d2d215916abac7c99a86c65006501e820c4183f0122940ec0ab4e5", size = 74601166, upload-time = "2023-04-19T20:23:58.856Z" },
+    { url = "https://files.pythonhosted.org/packages/b3/68/737391103484d5abd7fe3685e1826fb08b63d66b21af2de4f53b92d40d2c/spconv_cu121-2.3.8-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:1740699b947465adfa4c4237c11213c5b18abda7ef1925da6f73fa1ba3c83f8b", size = 76344312, upload-time = "2024-12-15T17:17:43.752Z" },
+    { url = "https://files.pythonhosted.org/packages/cc/05/c07db9bf205e7bcea9dbb81ac76c4ad7181f65a36bef7c4933f609f2cacf/spconv_cu121-2.3.8-cp311-cp311-win_amd64.whl", hash = "sha256:817c453e202d61c0bdf77447422bea1066ccb6e5929f200bb5d8aafdc1c74fb3", size = 74656688, upload-time = "2024-12-15T17:49:18.675Z" },
 ]
 
 [[package]]
