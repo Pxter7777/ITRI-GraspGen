@@ -11,12 +11,14 @@ import tkinter as tk
 from threading import Thread
 import queue
 from grasp_gen.grasp_server import GraspGenSampler, load_grasp_cfg
+from grasp_gen.robot import get_gripper_info
 from common_utils.qualification import is_qualified_with_name
 from grasp_gen.utils.meshcat_utils import (
     create_visualizer,
     visualize_grasp,
     visualize_pointcloud,
 )
+from grasp_gen.utils.point_cloud_utils import filter_colliding_grasps
 
 
 logger = logging.getLogger(__name__)
@@ -188,18 +190,18 @@ class ControlPanel:
         vis,
         grasp_queue,
         grasps_to_handle_queue,
-        qualifier_name: str,
         gripper_name,
     ):
         self.root = root
         self.vis = vis
-        self.qualifier_name = qualifier_name
         self.gripper_name = gripper_name
         self.grasp_queue = grasp_queue
         self.grasps_to_handle_queue = grasps_to_handle_queue
         self.root.title("Control Panel")
 
-        self.display_disqualified_var = tk.BooleanVar(value=False)
+        self.apply_custom_filter_var = tk.BooleanVar(value=True)
+        self.apply_collision_filter_var = tk.BooleanVar(value=True)
+
         # select_button
         select_button = tk.Button(
             self.root, text="Select Grasp", command=self._return_grasp_and_destroy
@@ -211,13 +213,21 @@ class ControlPanel:
         )
         retry_button.pack(padx=20, pady=5)
 
-        self.display_disqualified_checkbox = tk.Checkbutton(
+        self.apply_custom_filter_checkbox = tk.Checkbutton(
             self.root,
-            text="Display Disqualified Grasps",
-            var=self.display_disqualified_var,
+            text="Apply Custom Filter",
+            var=self.apply_custom_filter_var,
             command=self.toggle_grasp_display,
         )
-        self.display_disqualified_checkbox.pack(pady=5)
+        self.apply_custom_filter_checkbox.pack(pady=5)
+
+        self.apply_collision_filter_checkbox = tk.Checkbutton(
+            self.root,
+            text="Apply Collision Filter",
+            var=self.apply_collision_filter_var,
+            command=self.toggle_grasp_display,
+        )
+        self.apply_collision_filter_checkbox.pack(pady=5)
 
         # Grasp navigation frame
         nav_frame = tk.Frame(self.root)
@@ -246,11 +256,13 @@ class ControlPanel:
         self._update_grasp_visualization()
 
     def toggle_grasp_display(self):
-        if self.display_disqualified_var.get():
-            self.current_grasp_pool = self.all_grasps
-        else:
-            self.current_grasp_pool = self.qualified_grasps
+        grasps_mask = np.array([True for grasp in self.all_grasps])
+        if self.apply_custom_filter_var.get():
+            grasps_mask = grasps_mask & self.custom_filter_mask
+        if self.apply_collision_filter_var.get():
+            grasps_mask = grasps_mask & self.collision_free_mask
         self.current_index = 0
+        self.current_grasp_pool = self.all_grasps[grasps_mask]
         self._update_grasp_visualization()
 
     def _return_grasp_and_destroy(self):
@@ -262,14 +274,8 @@ class ControlPanel:
         self._catch_grasps()
 
     def _catch_grasps(self):
-        self.qualified_grasps, self.all_grasps = self.grasps_to_handle_queue.get()
-        self.current_grasp_pool = (
-            self.all_grasps
-            if self.display_disqualified_var.get()
-            else self.qualified_grasps
-        )
-        self.current_index = 0
-        self._update_grasp_visualization()
+        self.all_grasps, self.custom_filter_mask, self.collision_free_mask = self.grasps_to_handle_queue.get()
+        self.toggle_grasp_display()
 
     def _update_grasp_visualization(self):
         if len(self.current_grasp_pool) == 0:
@@ -364,12 +370,13 @@ class GraspGeneratorUI:
         need_GUI=False,
     ):
         self.grasp_cfg = load_grasp_cfg(gripper_config)
-        self.gripper_name = self.grasp_cfg.data.gripper_name
+        self.gripper_name:str = self.grasp_cfg.data.gripper_name
         self.grasp_sampler = GraspGenSampler(self.grasp_cfg)
-        self.grasp_threshold = grasp_threshold
-        self.num_grasps = num_grasps
-        self.topk_num_grasps = topk_num_grasps
-        self.need_GUI = need_GUI
+        self.grasp_threshold:float = grasp_threshold
+        self.num_grasps:int = num_grasps
+        self.topk_num_grasps:int = topk_num_grasps
+        self.need_GUI:bool = need_GUI
+        self.scene_data: dict
         ## Main init starts here
         if self.need_GUI:
             start_meshcat_server()
@@ -392,21 +399,64 @@ class GraspGeneratorUI:
         grasps = grasps.cpu().numpy()
         grasps[:, 3, 3] = 1
         grasps = flip_upside_down_grasps(grasps)
-        qualified_grasps = np.array(
+        custom_filter_mask = np.array(
             [
-                grasp
+                is_qualified_with_name(grasp, qualifier_name, mass_center, std)
                 for grasp in grasps
-                if is_qualified_with_name(grasp, qualifier_name, mass_center, std)
             ]
         )
-        return qualified_grasps, grasps
+        collision_free_mask = np.array(
+            [
+                True
+                for grasp in grasps
+            ]
+        )
+        
+        gripper_info = get_gripper_info(self.gripper_name)
+        gripper_collision_mesh = gripper_info.collision_mesh
+
+        # extract xyz_scene
+        full_pc_key = "pc_color" if "pc_color" in self.scene_data["scene_info"] else "full_pc"
+        xyz_scene = np.array(self.scene_data["scene_info"][full_pc_key])[0]
+        for obj_name in self.scene_data["object_infos"]:
+            if obj_name != self.action["target_name"]:
+                xyz_scene = np.vstack((xyz_scene, self.scene_data["object_infos"][obj_name]["points"]))
+        # VIZ_BOUNDS
+        VIZ_BOUNDS = [[-1.5, -1.25, -0.15], [1.5, 1.25, 2.0]]
+        mask_within_bounds = np.all((xyz_scene > VIZ_BOUNDS[0]), 1)
+        mask_within_bounds = np.logical_and(
+            mask_within_bounds, np.all((xyz_scene < VIZ_BOUNDS[1]), 1)
+        )
+        xyz_scene = xyz_scene[mask_within_bounds]
+        # Downsample scene point cloud for faster collision checking
+        if len(xyz_scene) > 8192:
+            indices = np.random.choice(
+                len(xyz_scene), 8192, replace=False
+            )
+            xyz_scene_downsampled = xyz_scene[indices]
+            print(
+                f"Downsampled scene point cloud from {len(xyz_scene)} to {len(xyz_scene_downsampled)} points"
+            )
+        else:
+            xyz_scene_downsampled = xyz_scene
+            print(
+                f"Scene point cloud has {len(xyz_scene)} points (no downsampling needed)"
+            )
+        collision_free_mask = filter_colliding_grasps(
+            scene_pc=xyz_scene_downsampled,
+            grasp_poses=grasps,
+            gripper_collision_mesh=gripper_collision_mesh,
+            collision_threshold=0.03,
+        )
+        return grasps, custom_filter_mask, collision_free_mask
 
     def _generate_grasp_silent(self) -> np.array:
         num_try = 0
         while True:
             num_try += 1
             logger.info(f"try #{num_try}")
-            qualified_grasps, _ = self._generate_grasps()
+            all_grasps, custom_filter_mask, collision_free_mask = self._generate_grasps()
+            qualified_grasps = all_grasps[custom_filter_mask & collision_free_mask]
             if len(qualified_grasps) > 0:
                 return qualified_grasps[0]
 
@@ -422,7 +472,7 @@ class GraspGeneratorUI:
             return self._generate_grasp_silent()
 
     def _generate_grasp_with_GUI(self):
-        self._visualize_target()
+        self._visualize_scene()
         grasp_q = queue.Queue()
         grasps_to_handle_queue = queue.Queue()
         gui_thread = Thread(
@@ -435,9 +485,9 @@ class GraspGeneratorUI:
         num_try = 0
         while True:
             num_try += 1
-            qualified_grasps, all_grasps = self._generate_grasps()
+            all_grasps, custom_filter_mask, collision_free_mask = self._generate_grasps()
             # send to panel
-            grasps_to_handle_queue.put((qualified_grasps, all_grasps))
+            grasps_to_handle_queue.put((all_grasps, custom_filter_mask, collision_free_mask))
             # wait panel to respond
             selected_grasp = grasp_q.get()
             if selected_grasp is not None:
@@ -451,17 +501,21 @@ class GraspGeneratorUI:
             self.vis,
             grasp_queue,
             grasps_to_handle_queue,
-            self.action["qualifier"],
+            # self.action["qualifier"],
             self.gripper_name,
         )
         panel.run()
 
     def _visualize_scene(self):
         """Loads scene data, processes point clouds, and visualizes them."""
-        self.vis.delete()
+        # self.vis.delete()
         scene_info = self.scene_data["scene_info"]
         xyz_scene = np.array(scene_info["pc_color"])[0]
         xyz_scene_color = np.array(scene_info["img_color"]).reshape(1, -1, 3)[0, :, :]
+
+        for obj_name in self.scene_data["object_infos"]:
+            xyz_scene = np.vstack((xyz_scene, self.scene_data["object_infos"][obj_name]["points"]))
+            xyz_scene_color = np.vstack((xyz_scene_color, self.scene_data["object_infos"][obj_name]["colors"]))
 
         VIZ_BOUNDS = [[-1.5, -1.25, -0.15], [1.5, 1.25, 2.0]]
         mask_within_bounds = np.all((xyz_scene > VIZ_BOUNDS[0]), 1)
@@ -481,3 +535,4 @@ class GraspGeneratorUI:
             "colors"
         ]
         visualize_pointcloud(self.vis, "pc_obj", obj_pc, obj_pc_color, size=0.005)
+    
