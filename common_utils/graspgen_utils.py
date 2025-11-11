@@ -49,6 +49,30 @@ def is_qualified(grasp: np.array, mass_center, obj_std):
         return False
     return True
 
+def flip_grasp(grasp: np.ndarray) -> np.ndarray:
+    """
+    Flips a grasp by rotating it 180 degrees around its approach (front) axis.
+    This negates the 'left' and 'up' vectors.
+    """
+    flipped_grasp = grasp.copy()
+    # Negate the left and up vectors (first two columns of rotation matrix)
+    flipped_grasp[:3, 0] = -grasp[:3, 0]
+    flipped_grasp[:3, 1] = -grasp[:3, 1]
+    return flipped_grasp
+
+
+def flip_upside_down_grasps(grasps: np.ndarray) -> np.ndarray:
+    """
+    Flips grasps that are "upside down" (up vector's y-component is negative).
+    """
+    flipped_grasps = []
+    for grasp in grasps:
+        _grasp = grasp.copy()
+        _, up, _ = get_left_up_and_front(_grasp)
+        if up[1] < 0:
+            _grasp = flip_grasp(_grasp)
+        flipped_grasps.append(_grasp)
+    return np.array(flipped_grasps)
 
 class GraspGenerator:
     def __init__(self, gripper_config, grasp_threshold, num_grasps, topk_num_grasps):
