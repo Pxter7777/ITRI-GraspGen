@@ -99,7 +99,9 @@ dependencies = [
     "cython>=3.2.0",
     "numpy>=2.3.4",
     "gitpython>=3.1.45",
-    "PyOpenGL-accelerate"
+    "PyOpenGL-accelerate",
+    "pytest",
+    "pytest-mock"
 ]
 
 [tool.uv.sources]
