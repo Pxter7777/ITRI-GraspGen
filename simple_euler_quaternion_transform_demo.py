@@ -27,7 +27,7 @@ grasp = np.array(vec)
 
 quaternion = list(trimesh.transformations.quaternion_from_matrix(grasp))
 euler = list(trimesh.transformations.euler_from_matrix(grasp))
-print(f"Quaternion: {quaternion}, Euler: {euler}")
+print(f"Quaternion--: {quaternion}, Euler: {euler}")
 left, up, front = get_left_up_and_front(grasp)
 print(left, up, front)
 euler_orientation = np.rad2deg(euler).tolist()
