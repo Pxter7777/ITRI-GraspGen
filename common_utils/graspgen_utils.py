@@ -69,7 +69,7 @@ def flip_upside_down_grasps(grasps: np.ndarray) -> np.ndarray:
     for grasp in grasps:
         _grasp = grasp.copy()
         _, up, _ = get_left_up_and_front(_grasp)
-        if up[1] < 0:
+        if up[2] < 0:
             _grasp = flip_grasp(_grasp)
         flipped_grasps.append(_grasp)
     return np.array(flipped_grasps)
@@ -391,6 +391,7 @@ class GraspGeneratorUI:
         )
         grasps = grasps.cpu().numpy()
         grasps[:, 3, 3] = 1
+        grasps = flip_upside_down_grasps(grasps)
         qualified_grasps = np.array(
             [
                 grasp
