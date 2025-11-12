@@ -292,7 +292,7 @@ class ControlPanel:
             color = [0, 185, 0]  # Default color for non-selected grasps
             if is_current:
                 color = [255, 0, 0]  # Highlight color for current grasp
-                print(grasp)
+                logger.debug(f"Grasp:\n{grasp}")
                 left, up, front = get_left_up_and_front(grasp)
                 origin = grasp[:3, 3]
                 vector_length = 0.1
@@ -421,9 +421,11 @@ class GraspGeneratorUI:
         xyz_scene = np.array(self.scene_data["scene_info"][full_pc_key])[0]
         for obj_name in self.scene_data["object_infos"]:
             if obj_name != self.action["target_name"]:
+                logger.debug(f"Scene points before: {xyz_scene.shape[0]}")
                 xyz_scene = np.vstack(
                     (xyz_scene, self.scene_data["object_infos"][obj_name]["points"])
                 )
+                logger.debug(f"Scene points after: {xyz_scene.shape[0]}")
         # VIZ_BOUNDS
         VIZ_BOUNDS = [[-1.5, -1.25, -0.15], [1.5, 1.25, 2.0]]
         mask_within_bounds = np.all((xyz_scene > VIZ_BOUNDS[0]), 1)
@@ -435,12 +437,12 @@ class GraspGeneratorUI:
         if len(xyz_scene) > 8192:
             indices = np.random.choice(len(xyz_scene), 8192, replace=False)
             xyz_scene_downsampled = xyz_scene[indices]
-            print(
+            logger.debug(
                 f"Downsampled scene point cloud from {len(xyz_scene)} to {len(xyz_scene_downsampled)} points"
             )
         else:
             xyz_scene_downsampled = xyz_scene
-            print(
+            logger.debug(
                 f"Scene point cloud has {len(xyz_scene)} points (no downsampling needed)"
             )
         collision_free_mask = filter_colliding_grasps(
