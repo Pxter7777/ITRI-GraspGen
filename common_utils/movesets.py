@@ -274,9 +274,9 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
             q_z_rotation, q_base
         ).tolist()
         if angle_diff < 0:  # Clockwise
-            pour_angle = np.deg2rad(135)
+            pour_angle = np.deg2rad(45)
         else:  # Counter-clockwise
-            pour_angle = - np.deg2rad(135)
+            pour_angle = - np.deg2rad(45)
         # apply pour_angle on ready_pour_rotation using vector[mass_center[0], mass_center[1], 0] as axis:
         pour_axis = np.array([ready_pour_position[0], ready_pour_position[1], 0])
         axis_norm = np.linalg.norm(pour_axis)
@@ -285,8 +285,14 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
             q_pour = trimesh.transformations.quaternion_about_axis(
                 pour_angle, pour_axis
             )
-            pour_rotation = trimesh.transformations.quaternion_multiply(
+            pour_rotation1 = trimesh.transformations.quaternion_multiply(
                 q_pour, np.array(ready_pour_rotation)
+            ).tolist()
+            pour_rotation2 = trimesh.transformations.quaternion_multiply(
+                q_pour, np.array(pour_rotation1)
+            ).tolist()
+            pour_rotation3 = trimesh.transformations.quaternion_multiply(
+                q_pour, np.array(pour_rotation2)
             ).tolist()
         else:
             # Axis is zero, cannot determine pour direction. Fallback to a default pour.
@@ -294,7 +300,9 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
             #pour_rotation = [-0.271, 0.653, -0.271, 0.653]
 
     ready_pour_pose = ready_pour_position + ready_pour_rotation
-    pour_pose = ready_pour_position + pour_rotation
+    pour_pose1 = ready_pour_position + pour_rotation1
+    pour_pose2 = ready_pour_position + pour_rotation2
+    pour_pose3 = ready_pour_position + pour_rotation3
     
     # after_grasp_position = grasp_position[:2] + [grasp_position[2] + 0.250]
 
@@ -324,8 +332,12 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
     #     }
     # )
     moves.append({"type": "arm", "goal": ready_pour_pose, "wait_time": 0.0})
-    moves.append({"type": "arm", "goal": pour_pose, "wait_time": 1.0, "constraint": [0,0,0,1,1,1]})
-    moves.append({"type": "arm", "goal": ready_pour_pose, "wait_time": 0.0, "constraint": [0,0,0,1,1,1]})
+    moves.append({"type": "arm", "goal": pour_pose1, "wait_time": 0.0})
+    moves.append({"type": "arm", "goal": pour_pose2, "wait_time": 0.0})
+    moves.append({"type": "arm", "goal": pour_pose3, "wait_time": 1.0})
+    moves.append({"type": "arm", "goal": pour_pose2, "wait_time": 0.0})
+    moves.append({"type": "arm", "goal": pour_pose1, "wait_time": 0.0})
+    moves.append({"type": "arm", "goal": ready_pour_pose, "wait_time": 0.0})
     # moves.append(
     #     {
     #         "type": "arm",
