@@ -269,9 +269,15 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
         q_z_rotation = trimesh.transformations.quaternion_about_axis(
             goal_angle, [0, 0, 1]
         )
+        q_y_rotation = trimesh.transformations.quaternion_about_axis(
+            -np.arcsin(front[2]), [0, 1, 0]
+        )
         q_base = np.array([0.5, 0.5, 0.5, 0.5])
+        q_base_tilt = trimesh.transformations.quaternion_multiply(
+            q_y_rotation, q_base
+        ).tolist()
         ready_pour_rotation = trimesh.transformations.quaternion_multiply(
-            q_z_rotation, q_base
+            q_z_rotation, q_base_tilt
         ).tolist()
         if angle_diff < 0:  # Clockwise
             pour_angle = np.deg2rad(45)
