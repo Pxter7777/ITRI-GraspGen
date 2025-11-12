@@ -249,7 +249,7 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
         target_angle = np.arctan2(mass_center[1], mass_center[0])
 
         # compute radius using mass_center[0] and mass_center[1]
-        radius = np.linalg.norm(mass_center[:2]) - 0.10
+        radius = np.linalg.norm(mass_center[:2]) - 0.20
 
         angle_diff = target_angle - grasp_angle
         if angle_diff > np.pi:
@@ -258,13 +258,13 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
             angle_diff += 2 * np.pi
 
         if angle_diff < 0:  # Clockwise
-            goal_angle = target_angle + np.deg2rad(5)
+            goal_angle = target_angle + np.deg2rad(10)
         else:  # Counter-clockwise
-            goal_angle = target_angle - np.deg2rad(5)
+            goal_angle = target_angle - np.deg2rad(10)
         ready_pour_position = [
             radius * np.cos(goal_angle),
             radius * np.sin(goal_angle),
-            mass_center[2] + 0.250,
+            mass_center[2] + 0.200,
         ]
         q_z_rotation = trimesh.transformations.quaternion_about_axis(
             goal_angle, [0, 0, 1]
@@ -324,8 +324,8 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
     #     }
     # )
     moves.append({"type": "arm", "goal": ready_pour_pose, "wait_time": 0.0})
-    moves.append({"type": "arm", "goal": pour_pose, "wait_time": 1.0})
-    moves.append({"type": "arm", "goal": ready_pour_pose, "wait_time": 0.0})
+    moves.append({"type": "arm", "goal": pour_pose, "wait_time": 1.0, "constraint": [0,0,0,1,1,1]})
+    moves.append({"type": "arm", "goal": ready_pour_pose, "wait_time": 0.0, "constraint": [0,0,0,1,1,1]})
     # moves.append(
     #     {
     #         "type": "arm",
