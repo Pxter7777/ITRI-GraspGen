@@ -179,7 +179,7 @@ def main():
             # GraspGen
             for action in actions["actions"]:
                 try:
-                    if action["action"] in ["move_to_curobo"]:
+                    if action["action"] in ["move_to_curobo", "joints_rad_move_to_curobo"]:
                         full_act = act_with_name(
                             action["action"], None, None, action["args"], scene_data
                         )

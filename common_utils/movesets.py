@@ -427,6 +427,28 @@ def move_to_curobo(
     full_act = {"moves": moves, "obstacles": obstacles}
     return full_act
 
+def joints_rad_move_to_curobo(
+    target_name: str, grasp: np.array, args: list, scene_data: dict
+) -> list[dict]:
+    joints_goal = args[0]
+    obstacles = []
+    for obj_name in scene_data["object_infos"]:
+        obstacles.append(
+            {
+                "mass_center": list(
+                    np.mean(scene_data["object_infos"][obj_name]["points"], axis=0)
+                ),
+                "std": list(
+                    np.std(scene_data["object_infos"][obj_name]["points"], axis=0)
+                ),
+            }
+        )
+    moves = []
+    moves.append({"type": "arm", "joints_goal": joints_goal, "wait_time": 0.0})
+    full_act = {"moves": moves, "obstacles": obstacles}
+    return full_act
+    
+
 
 action_dict = {
     "grab_and_pour_and_place_back": grab_and_pour_and_place_back,
@@ -434,6 +456,7 @@ action_dict = {
     "grab_and_drop": grab_and_drop,
     "move_to": move_to,
     "move_to_curobo": move_to_curobo,
+    "joints_rad_move_to_curobo": joints_rad_move_to_curobo,
 }
 
 
