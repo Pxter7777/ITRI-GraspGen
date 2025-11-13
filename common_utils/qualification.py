@@ -32,6 +32,8 @@ def cup_qualifier(grasp: np.array, mass_center, obj_std):
     if position[2] < mass_center[2] - obj_std[2] * 1.5:  # too low
         return False
     return True
+
+
 def small_cup_qualifier(grasp: np.array, mass_center, obj_std):
     position = grasp[:3, 3].tolist()
     left, up, front = get_left_up_and_front(grasp)
@@ -52,7 +54,7 @@ def small_cup_qualifier(grasp: np.array, mass_center, obj_std):
     #     return False
     # if position[2] < mass_center[2] - obj_std[2] * 1.5:  # too low
     #     return False
-    return True #
+    return True  #
 
 
 def small_cube_qualifier(grasp: np.array, mass_center, obj_std):

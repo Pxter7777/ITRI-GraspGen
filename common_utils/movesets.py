@@ -107,6 +107,7 @@ def grab_and_pour_and_place_back(
     # moves.append({"type": "move_arm", "goal": HOME_SIGNAL, "wait_time": 0.0})
     return moves
 
+
 def grab_and_pour_and_place_back_curobo(
     target_name: str, grasp: np.array, args: list, scene_data: dict
 ) -> dict:
@@ -240,7 +241,7 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
     if isinstance(args[0], list):
         ready_pour_position = args[0]
         ready_pour_rotation = [0.5, 0.5, 0.5, 0.5]
-        pour_rotation = [-0.271, 0.653, -0.271, 0.653]
+        # pour_rotation = [-0.271, 0.653, -0.271, 0.653]
     elif isinstance(args[0], str):
         obj_points = scene_data["object_infos"][args[0]]["points"]
         mass_center = np.mean(obj_points, axis=0)
@@ -282,7 +283,7 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
         if angle_diff < 0:  # Clockwise
             pour_angle = np.deg2rad(45)
         else:  # Counter-clockwise
-            pour_angle = - np.deg2rad(45)
+            pour_angle = -np.deg2rad(45)
         # apply pour_angle on ready_pour_rotation using vector[mass_center[0], mass_center[1], 0] as axis:
         pour_axis = np.array([ready_pour_position[0], ready_pour_position[1], 0])
         axis_norm = np.linalg.norm(pour_axis)
@@ -303,13 +304,13 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
         else:
             # Axis is zero, cannot determine pour direction. Fallback to a default pour.
             raise ValueError(f"axis_norm={axis_norm}")
-            #pour_rotation = [-0.271, 0.653, -0.271, 0.653]
+            # pour_rotation = [-0.271, 0.653, -0.271, 0.653]
 
     ready_pour_pose = ready_pour_position + ready_pour_rotation
     pour_pose1 = ready_pour_position + pour_rotation1
     pour_pose2 = ready_pour_position + pour_rotation2
     pour_pose3 = ready_pour_position + pour_rotation3
-    
+
     # after_grasp_position = grasp_position[:2] + [grasp_position[2] + 0.250]
 
     release_position = grasp_position[:2] + [grasp_position[2] + 0.005]
@@ -445,6 +446,7 @@ def move_to_curobo(
     full_act = {"moves": moves, "obstacles": obstacles}
     return full_act
 
+
 def joints_rad_move_to_curobo(
     target_name: str, grasp: np.array, args: list, scene_data: dict
 ) -> list[dict]:
@@ -465,7 +467,6 @@ def joints_rad_move_to_curobo(
     moves.append({"type": "arm", "joints_goal": joints_goal, "wait_time": 0.0})
     full_act = {"moves": moves, "obstacles": obstacles}
     return full_act
-    
 
 
 action_dict = {
