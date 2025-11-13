@@ -71,7 +71,7 @@ def parse_args():
     parser.add_argument(
         "--transform-config",
         type=str,
-        default="sim1.json",
+        default="vid1.json",
         help="transform-config",
     )
     parser.add_argument(

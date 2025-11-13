@@ -1,0 +1,47 @@
+{
+    "track": ["green cup", "blue cup"],
+    "actions":
+    [
+
+        {
+            "target_name": "green cup",
+            "qualifier": "cup_qualifier",
+            "action": "grab_and_pour_and_place_back_curobo",
+            "args": [
+                [0,0.40,0.10],
+                [0.50, -0.30, 0.10, 0.09, 0.15, 0.02],
+                [0,0.40,0.10,0.10,0.10,0.02],
+
+                [0.60,0.20,0.10, 0.04, 0.04, 0.02]
+            ]
+        },
+
+        {
+            "target_name": "blue cup",
+            "qualifier": "cup_qualifier",
+            "action": "grab_and_pour_and_place_back_curobo",
+            "args": [
+                [0,0.40,0.10],
+                [0.50, -0.30, 0.10, 0.09, 0.15, 0.02],
+                [0,0.40,0.10,0.10,0.10,0.02],
+
+                [0.60,0.20,0.10, 0.04, 0.04, 0.02]
+            ]
+        },
+        {
+            "target_name": "glass cup",
+            "qualifier": "cup_qualifier",
+            "action": "joints_rad_move_to_curobo",
+            "args": [
+                [ 0.60650192, -0.74851936,  2.0824396 ,  2.02151015, -1.55803797, 3.21062043],
+                [0.50, -0.30, 0.10, 0.09, 0.15, 0.02],
+                [0,0.40,0.10,0.10,0.10,0.02],
+
+                [0.60,0.20,0.10, 0.04, 0.04, 0.02]
+
+            ]
+        }
+    ]
+    
+    
+}

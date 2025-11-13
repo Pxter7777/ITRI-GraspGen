@@ -239,72 +239,83 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
 
     # specific fixed poses
     if isinstance(args[0], list):
-        ready_pour_position = args[0]
-        ready_pour_rotation = [0.5, 0.5, 0.5, 0.5]
-        # pour_rotation = [-0.271, 0.653, -0.271, 0.653]
+        mass_center = np.array(args[0])
     elif isinstance(args[0], str):
         obj_points = scene_data["object_infos"][args[0]]["points"]
         mass_center = np.mean(obj_points, axis=0)
-        ## Ready pour position
-        grasp_angle = np.arctan2(grasp_position[1], grasp_position[0])
-        target_angle = np.arctan2(mass_center[1], mass_center[0])
-
-        # compute radius using mass_center[0] and mass_center[1]
-        radius = np.linalg.norm(mass_center[:2]) - 0.20
-
-        angle_diff = target_angle - grasp_angle
-        if angle_diff > np.pi:
-            angle_diff -= 2 * np.pi
-        elif angle_diff < -np.pi:
-            angle_diff += 2 * np.pi
-
-        if angle_diff < 0:  # Clockwise
-            goal_angle = target_angle + np.deg2rad(10)
-        else:  # Counter-clockwise
-            goal_angle = target_angle - np.deg2rad(10)
-        ready_pour_position = [
-            radius * np.cos(goal_angle),
-            radius * np.sin(goal_angle),
-            mass_center[2] + 0.200,
-        ]
-        q_z_rotation = trimesh.transformations.quaternion_about_axis(
-            goal_angle, [0, 0, 1]
-        )
-        q_y_rotation = trimesh.transformations.quaternion_about_axis(
-            -np.arcsin(front[2]), [0, 1, 0]
-        )
-        q_base = np.array([0.5, 0.5, 0.5, 0.5])
-        q_base_tilt = trimesh.transformations.quaternion_multiply(
-            q_y_rotation, q_base
-        ).tolist()
-        ready_pour_rotation = trimesh.transformations.quaternion_multiply(
-            q_z_rotation, q_base_tilt
-        ).tolist()
-        if angle_diff < 0:  # Clockwise
-            pour_angle = np.deg2rad(45)
-        else:  # Counter-clockwise
-            pour_angle = -np.deg2rad(45)
-        # apply pour_angle on ready_pour_rotation using vector[mass_center[0], mass_center[1], 0] as axis:
-        pour_axis = np.array([ready_pour_position[0], ready_pour_position[1], 0])
-        axis_norm = np.linalg.norm(pour_axis)
-        if axis_norm > 1e-6:  # Avoid division by zero
-            pour_axis /= axis_norm
-            q_pour = trimesh.transformations.quaternion_about_axis(
-                pour_angle, pour_axis
+    if len(args) > 1:
+        for arg in args[1:]:
+            # add obstacle
+            obstacles.append(
+                {
+                    "mass_center": list(
+                        np.array(arg[0:3])
+                    ),
+                    "std": list(
+                        np.array(arg[3:6])
+                    ),
+                }
             )
-            pour_rotation1 = trimesh.transformations.quaternion_multiply(
-                q_pour, np.array(ready_pour_rotation)
-            ).tolist()
-            pour_rotation2 = trimesh.transformations.quaternion_multiply(
-                q_pour, np.array(pour_rotation1)
-            ).tolist()
-            pour_rotation3 = trimesh.transformations.quaternion_multiply(
-                q_pour, np.array(pour_rotation2)
-            ).tolist()
-        else:
-            # Axis is zero, cannot determine pour direction. Fallback to a default pour.
-            raise ValueError(f"axis_norm={axis_norm}")
-            # pour_rotation = [-0.271, 0.653, -0.271, 0.653]
+    ## Ready pour position
+    grasp_angle = np.arctan2(grasp_position[1], grasp_position[0])
+    target_angle = np.arctan2(mass_center[1], mass_center[0])
+
+    # compute radius using mass_center[0] and mass_center[1]
+    radius = np.linalg.norm(mass_center[:2]) - 0.0
+
+    angle_diff = target_angle - grasp_angle
+    if angle_diff > np.pi:
+        angle_diff -= 2 * np.pi
+    elif angle_diff < -np.pi:
+        angle_diff += 2 * np.pi
+
+    if angle_diff < 0:  # Clockwise
+        goal_angle = target_angle + np.deg2rad(10)
+    else:  # Counter-clockwise
+        goal_angle = target_angle - np.deg2rad(10)
+    ready_pour_position = [
+        radius * np.cos(goal_angle),
+        radius * np.sin(goal_angle),
+        mass_center[2] + 0.200,
+    ]
+    q_z_rotation = trimesh.transformations.quaternion_about_axis(
+        goal_angle, [0, 0, 1]
+    )
+    q_y_rotation = trimesh.transformations.quaternion_about_axis(
+        -np.arcsin(front[2]), [0, 1, 0]
+    )
+    q_base = np.array([0.5, 0.5, 0.5, 0.5])
+    q_base_tilt = trimesh.transformations.quaternion_multiply(
+        q_y_rotation, q_base
+    ).tolist()
+    ready_pour_rotation = trimesh.transformations.quaternion_multiply(
+        q_z_rotation, q_base_tilt
+    ).tolist()
+    if angle_diff < 0:  # Clockwise
+        pour_angle = np.deg2rad(45)
+    else:  # Counter-clockwise
+        pour_angle = -np.deg2rad(45)
+    # apply pour_angle on ready_pour_rotation using vector[mass_center[0], mass_center[1], 0] as axis:
+    pour_axis = np.array([ready_pour_position[0], ready_pour_position[1], 0])
+    axis_norm = np.linalg.norm(pour_axis)
+    if axis_norm > 1e-6:  # Avoid division by zero
+        pour_axis /= axis_norm
+        q_pour = trimesh.transformations.quaternion_about_axis(
+            pour_angle, pour_axis
+        )
+        pour_rotation1 = trimesh.transformations.quaternion_multiply(
+            q_pour, np.array(ready_pour_rotation)
+        ).tolist()
+        pour_rotation2 = trimesh.transformations.quaternion_multiply(
+            q_pour, np.array(pour_rotation1)
+        ).tolist()
+        pour_rotation3 = trimesh.transformations.quaternion_multiply(
+            q_pour, np.array(pour_rotation2)
+        ).tolist()
+    else:
+        # Axis is zero, cannot determine pour direction. Fallback to a default pour.
+        raise ValueError(f"axis_norm={axis_norm}")
+        # pour_rotation = [-0.271, 0.653, -0.271, 0.653]
 
     ready_pour_pose = ready_pour_position + ready_pour_rotation
     pour_pose1 = ready_pour_position + pour_rotation1
@@ -463,6 +474,19 @@ def joints_rad_move_to_curobo(
                 ),
             }
         )
+    if len(args) > 1:
+        for arg in args[1:]:
+            # add obstacle
+            obstacles.append(
+                {
+                    "mass_center": list(
+                        np.array(arg[0:3])
+                    ),
+                    "std": list(
+                        np.array(arg[3:6])
+                    ),
+                }
+            )
     moves = []
     moves.append({"type": "arm", "joints_goal": joints_goal, "wait_time": 0.0})
     full_act = {"moves": moves, "obstacles": obstacles}
