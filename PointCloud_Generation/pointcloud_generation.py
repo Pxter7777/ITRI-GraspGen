@@ -419,10 +419,15 @@ def generate_pointcloud_multiple_obj_with_name_dict(
                     object_points.append(point)
                     object_colors.append(color)
                     break
-            # add the point into scene no matter what
-            scene_points.append(point)
-            scene_colors.append(color)
-    # here
+            else:
+                # add the point into scene if not belongs to any object
+                scene_points.append(point)
+                scene_colors.append(color)
+    # scene points
+    scene_points = np.array([[z, -x, -y] for x, y, z in scene_points])
+    scene_colors = np.array(scene_colors)
+    if scene_colors.size > 0:
+        scene_colors = scene_colors[:, ::-1]
     # objects points parse
     for i in range(len(objects_points)):
         if not objects_points[i]:
@@ -439,7 +444,7 @@ def generate_pointcloud_multiple_obj_with_name_dict(
             objects_colors[i] = objects_colors[i][:, ::-1]
 
         ## remove outliers
-        objects_points[i], _, objects_colors[i], _ = (
+        objects_points[i], removed_points, objects_colors[i], removed_colors = (
             point_cloud_outlier_removal_with_color(
                 torch.from_numpy(objects_points[i]),
                 torch.from_numpy(objects_colors[i].copy()),
@@ -447,12 +452,10 @@ def generate_pointcloud_multiple_obj_with_name_dict(
         )
         objects_points[i] = objects_points[i].cpu().numpy()
         objects_colors[i] = objects_colors[i].cpu().numpy()
-
-    # scene points
-    scene_points = np.array([[z, -x, -y] for x, y, z in scene_points])
-    scene_colors = np.array(scene_colors)
-    if scene_colors.size > 0:
-        scene_colors = scene_colors[:, ::-1]
+        removed_points = removed_points.cpu().numpy()
+        removed_colors = removed_colors.cpu().numpy()
+        scene_points = np.vstack((scene_points, removed_points))
+        scene_colors = np.vstack((scene_colors, removed_colors))
 
     # Final construct
     scene_data = {

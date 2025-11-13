@@ -38,7 +38,9 @@ include = ["PointCloud_Generation", "common_utils", "src", "ROS2_server", "Third
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 filterwarnings = [
-    "ignore:Importing from timm.models.layers is deprecated:FutureWarning"
+    "ignore:Importing from timm.models.layers is deprecated:FutureWarning",
+    "ignore:zmq.eventloop.ioloop is deprecated in pyzmq 17:Warning:meshcat.servers.zmqserver",
+    "ignore:'locale.getdefaultlocale' is deprecated:Warning:ccimport.buildtools.writer",
 ]
 
 [build-system]
@@ -99,7 +101,9 @@ dependencies = [
     "cython>=3.2.0",
     "numpy>=2.3.4",
     "gitpython>=3.1.45",
-    "PyOpenGL-accelerate"
+    "PyOpenGL-accelerate",
+    "pytest",
+    "pytest-mock"
 ]
 
 [tool.uv.sources]
@@ -154,7 +158,7 @@ requires-dist = [
     "huggingface-hub==0.25.2",
     "PyOpenGL==3.1.0",
     "addict",
-    "spconv-cu120",
+    "spconv-cu121", #cu120 gives unecessasary warnings
     "yapf==0.40.1",
     "tensorboardx",
     "sharedarray",
