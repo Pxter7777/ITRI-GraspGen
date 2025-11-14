@@ -232,10 +232,16 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
     front = front.tolist()
 
     # Grasp Position
-    before_grasp_position = [
-        p - f * 0.060 for p, f in zip(position, front, strict=False)
+    before_grasp_position1 = [
+        p - f * 0.090 for p, f in zip(position, front, strict=False)
     ]
-    grasp_position = [p + f * 0.060 for p, f in zip(position, front, strict=False)]
+    before_grasp_position2 = [
+        p - f * 0.030 for p, f in zip(position, front, strict=False)
+    ]
+    before_grasp_position3 = [
+        p - f * 0.000 for p, f in zip(position, front, strict=False)
+    ]
+    grasp_position = [p + f * 0.040 for p, f in zip(position, front, strict=False)]
 
     # specific fixed poses
     if isinstance(args[0], list):
@@ -325,12 +331,26 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
     # after_grasp_position = grasp_position[:2] + [grasp_position[2] + 0.250]
 
     release_position = grasp_position[:2] + [grasp_position[2] + 0.005]
-    after_release_position = before_grasp_position
+    #after_release_position = before_grasp_position
     # moves.append({"type": "move_arm", "goal": HOME_SIGNAL,"wait_time": 0.0})
     moves.append(
         {
             "type": "arm",
-            "goal": before_grasp_position + quaternion_orientation,
+            "goal": before_grasp_position1 + quaternion_orientation,
+            "wait_time": 0.0,
+        }
+    )
+    # moves.append(
+    #     {
+    #         "type": "arm",
+    #         "goal": before_grasp_position2 + quaternion_orientation,
+    #         "wait_time": 0.0,
+    #     }
+    # )
+    moves.append(
+        {
+            "type": "arm",
+            "goal": before_grasp_position3 + quaternion_orientation,
             "wait_time": 0.0,
         }
     )
@@ -374,7 +394,21 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
     moves.append(
         {
             "type": "arm",
-            "goal": after_release_position + quaternion_orientation,
+            "goal": before_grasp_position3 + quaternion_orientation,
+            "wait_time": 0.0,
+        }
+    )
+    # moves.append(
+    #     {
+    #         "type": "arm",
+    #         "goal": before_grasp_position2 + quaternion_orientation,
+    #         "wait_time": 0.0,
+    #     }
+    # )
+    moves.append(
+        {
+            "type": "arm",
+            "goal": before_grasp_position1 + quaternion_orientation,
             "wait_time": 0.0,
         }
     )

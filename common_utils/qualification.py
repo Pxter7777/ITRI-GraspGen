@@ -14,7 +14,7 @@ def get_left_up_and_front(grasp: np.array):
 def cup_qualifier(grasp: np.array, mass_center, obj_std):
     position = grasp[:3, 3].tolist()
     left, up, front = get_left_up_and_front(grasp)
-    if up[2] < 0.9:
+    if up[2] < 0.8:
         return False
     # Rule: planar 2D angle between grasp approach (front) vector and grasp position vector should be small
     angle_front = np.arctan2(front[1], front[0])
