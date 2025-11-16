@@ -198,11 +198,6 @@ def main():
                             break
                     while True:
                         grasp = grasp_generator.generate_grasp(scene_data, action)
-                        quaternion = list(
-                            trimesh.transformations.quaternion_from_matrix(grasp)
-                        )
-                        euler = list(trimesh.transformations.euler_from_matrix(grasp))
-                        logger.info(f"Quaternion: {quaternion}, Euler: {euler}")
                         full_act = act_with_name(
                             action["action"],
                             action["target_name"],
