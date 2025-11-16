@@ -396,9 +396,10 @@ class GraspGeneratorUI:
         grasps, grasp_conf = GraspGenSampler.run_inference(
             obj_pc,
             self.grasp_sampler,
-            grasp_threshold=self.grasp_threshold,
-            num_grasps=self.num_grasps,
-            topk_num_grasps=self.topk_num_grasps,
+            #grasp_threshold=-1,
+            num_grasps=200,
+            topk_num_grasps=20,
+            min_grasps=100
         )
         grasps = grasps.cpu().numpy()
         grasps[:, 3, 3] = 1
