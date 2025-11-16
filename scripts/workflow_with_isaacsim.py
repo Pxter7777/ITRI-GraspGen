@@ -3,6 +3,7 @@ import argparse
 import logging
 import json
 import trimesh
+import numpy as np
 from PointCloud_Generation.pointcloud_generation import PointCloudGenerator
 from PointCloud_Generation.PC_transform import (
     silent_transform_multiple_obj_with_name_dict,
@@ -183,12 +184,12 @@ def main():
                         "move_to_curobo",
                         "joints_rad_move_to_curobo",
                     ]:
-                        full_act = act_with_name(
-                            action["action"], None, None, action["args"], scene_data
+                        full_acts = act_with_name(
+                            action["action"], None, [None], action["args"], scene_data
                         )
                         if args.save_fullact:
-                            save_json("fullact", "fullact", full_act)
-                        sender.send_data(full_act)
+                            save_json("fullact", "fullact", full_acts)
+                        sender.send_data(full_acts)
                         response = receiever.capture_data()
                         if response["message"] == "Success":
                             logger.info("curobo handled successfully")
@@ -197,17 +198,17 @@ def main():
                             logger.info("curobo failed handling the move action")
                             break
                     while True:
-                        grasp = grasp_generator.generate_grasp(scene_data, action)
-                        full_act = act_with_name(
+                        grasps = grasp_generator.generate_grasp(scene_data, action)
+                        full_acts = act_with_name(
                             action["action"],
                             action["target_name"],
-                            grasp,
+                            grasps,
                             action["args"],
                             scene_data,
-                        )
+                        )                        
                         if args.save_fullact:
-                            save_json("fullact", "fullact_", full_act)
-                        sender.send_data(full_act)
+                            save_json("fullact", "fullact_", full_acts)
+                        sender.send_data(full_acts)
                         # wait for isaacsim's good news
                         response = receiever.capture_data()
                         if response["message"] == "Success":
