@@ -2,8 +2,6 @@ import os
 import argparse
 import logging
 import json
-import trimesh
-import numpy as np
 from PointCloud_Generation.pointcloud_generation import PointCloudGenerator
 from PointCloud_Generation.PC_transform import (
     silent_transform_multiple_obj_with_name_dict,
@@ -205,7 +203,7 @@ def main():
                             grasps,
                             action["args"],
                             scene_data,
-                        )                        
+                        )
                         if args.save_fullact:
                             save_json("fullact", "fullact_", full_acts)
                         sender.send_data(full_acts)

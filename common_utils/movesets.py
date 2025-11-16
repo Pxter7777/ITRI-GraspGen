@@ -487,10 +487,13 @@ def act(action: str, grasp: np.array, args: list, scene_data: dict) -> list[dict
 
 
 def act_with_name(
-    action: str, target_name: str, grasps: list[np.ndarray], args: list, scene_data: dict
+    action: str,
+    target_name: str,
+    grasps: list[np.ndarray],
+    args: list,
+    scene_data: dict,
 ) -> list[dict]:
     if action not in action_dict:
         logger.error(f"There is no such action: {action}")
     action_method = action_dict[action]
     return [action_method(target_name, grasp, args, scene_data) for grasp in grasps]
-

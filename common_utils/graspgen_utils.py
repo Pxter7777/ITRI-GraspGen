@@ -363,6 +363,7 @@ def create_control_panel(
     )
     panel.run()
 
+
 def angle_offset_rad(grasp: np.ndarray) -> float:
     position = grasp[:3, 3].tolist()
     left, up, front = get_left_up_and_front(grasp)
@@ -373,7 +374,7 @@ def angle_offset_rad(grasp: np.ndarray) -> float:
         angle_diff = 2 * np.pi - angle_diff
     return angle_diff
 
-    
+
 class GraspGeneratorUI:
     def __init__(
         self,
@@ -406,10 +407,10 @@ class GraspGeneratorUI:
         grasps, grasp_conf = GraspGenSampler.run_inference(
             obj_pc,
             self.grasp_sampler,
-            #grasp_threshold=-1,
+            # grasp_threshold=-1,
             num_grasps=200,
             topk_num_grasps=20,
-            min_grasps=100
+            min_grasps=100,
         )
         grasps = grasps.cpu().numpy()
         grasps[:, 3, 3] = 1
@@ -478,7 +479,9 @@ class GraspGeneratorUI:
             all_grasps, custom_filter_mask, collision_free_mask = (
                 self._generate_grasps()
             )
-            qualified_grasps.extend([grasp for grasp in all_grasps[custom_filter_mask & collision_free_mask]])
+            qualified_grasps.extend(
+                list(all_grasps[custom_filter_mask & collision_free_mask])
+            )
             if len(qualified_grasps) >= GRASPS_BATCH_SIZE:
                 qualified_grasps = sorted(qualified_grasps, key=angle_offset_rad)
                 return qualified_grasps[:GRASPS_BATCH_SIZE]
