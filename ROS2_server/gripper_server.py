@@ -66,8 +66,11 @@ successs = 0
 class TMRobotController(Node):
     def __init__(self):
         super().__init__("tm_robot_controller")
-        self.receiver = NonBlockingJSONReceiver(port=9876)
-        self.sender = NonBlockingJSONSender(port=9877)
+        self.csv_receiver = NonBlockingJSONReceiver(port=9893)
+        self.csv_sender = NonBlockingJSONSender(port=9894)
+        self.isaacsim_receiver = NonBlockingJSONReceiver(port=9876)
+        self.isaacsim_sender = NonBlockingJSONSender(port=9877)
+        self.data_source = ""
         self.script_cli = None
         self.io_cli = None
         self.tcp_queue = deque()
@@ -91,10 +94,18 @@ class TMRobotController(Node):
     def _capture_command(self):
         if self.moving:
             return
-
-        data = self.receiver.capture_data()
-        if data is None:
-            return
+        # try capture csv first
+        csv_data = self.csv_receiver.capture_data()
+        if csv_data is not None:
+            data = csv_data
+            self.data_source = "csv"
+        else:
+            isaacsim_data = self.isaacsim_receiver.capture_data()
+            if isaacsim_data is not None:
+                data = isaacsim_data
+                self.data_source = "isaacsim"
+            else:
+                return  # no data
         print("received new data")
         print(data)
         self.moving = True
@@ -126,6 +137,14 @@ class TMRobotController(Node):
             elif data["grip_type"] == "open":
                 self.goal_gripper = [0, 0, 1]
                 self.append_gripper_states([0, 0, 1])
+            elif data["grip_type"] == "half_open":
+                self.goal_gripper = [0, 1, 0]
+                self.append_gripper_states([0, 1, 0])
+            elif data["grip_type"] == "close_tight":
+                self.goal_gripper = [1, 1, 0]
+                self.append_gripper_states([1, 1, 0])
+
+    
 
     def setup_services(self):
         self.get_logger().info("等待 ROS 2 服務啟動...")
@@ -182,7 +201,10 @@ class TMRobotController(Node):
                 self.reached_time = float("inf")
                 self.moving = False
                 print("sending successfulness")
-                self.sender.send_data({"message": "Success"})
+                if self.data_source == "csv":
+                    self.csv_sender.send_data({"message": "Success"})
+                elif self.data_source == "isaacsim":
+                    self.isaacsim_sender.send_data({"message": "Success"})
                 global successs
                 successs += 1
                 print(successs)
@@ -380,7 +402,7 @@ class TMRobotController(Node):
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Visualize grasps on a scene point cloud after GraspGen inference, for entire scene"
+        description="Visualize grasps on a scene point cloud after IsaacSim inference, for entire scene"
     )
     parser.add_argument(
         "--input",
