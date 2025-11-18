@@ -409,7 +409,7 @@ class GraspGeneratorUI:
             self.grasp_sampler,
             grasp_threshold=0.8,
             num_grasps=200,
-            #topk_num_grasps=5,
+            # topk_num_grasps=5,
             min_grasps=80,
             max_tries=20,
         )
