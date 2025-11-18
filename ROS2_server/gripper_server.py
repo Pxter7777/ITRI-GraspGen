@@ -66,8 +66,11 @@ successs = 0
 class TMRobotController(Node):
     def __init__(self):
         super().__init__("tm_robot_controller")
-        self.receiver = NonBlockingJSONReceiver(port=9893)
-        self.sender = NonBlockingJSONSender(port=9894)
+        self.csv_receiver = NonBlockingJSONReceiver(port=9893)
+        self.csv_sender = NonBlockingJSONSender(port=9894)
+        self.graspgen_receiver = NonBlockingJSONReceiver(port=9876)
+        self.graspgen_sender = NonBlockingJSONSender(port=9877)
+        self.data_source = ""
         self.script_cli = None
         self.io_cli = None
         self.tcp_queue = deque()
@@ -91,10 +94,18 @@ class TMRobotController(Node):
     def _capture_command(self):
         if self.moving:
             return
-
-        data = self.receiver.capture_data()
-        if data is None:
-            return
+        # try capture csv first
+        csv_data = self.csv_receiver.capture_data()
+        if csv_data is not None:
+            data = csv_data
+            self.data_source = "csv"
+        else:
+            graspgen_data = self.graspgen_receiver.capture_data()
+            if graspgen_data is not None:
+                data = graspgen_data
+                self.data_source = "graspgen"
+            else:
+                return  # no data
         print("received new data")
         print(data)
         self.moving = True
@@ -190,7 +201,10 @@ class TMRobotController(Node):
                 self.reached_time = float("inf")
                 self.moving = False
                 print("sending successfulness")
-                self.sender.send_data({"message": "Success"})
+                if self.data_source == "csv":
+                    self.csv_sender.send_data({"message": "Success"})
+                elif self.data_source == "graspgen":
+                    self.graspgen_sender.send_data({"message": "Success"})
                 global successs
                 successs += 1
                 print(successs)
