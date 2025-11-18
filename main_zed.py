@@ -16,11 +16,11 @@ sys.path.insert(0, os.path.expanduser("~/Third_Party"))
 from src.stereo_utils2 import FoundationStereoModel
 from src.yolo_inference import YOLOv5Detector
 from src import (
-    config,
     mouse_handler,
-    sam_utils,
     visualization,
 )
+from common_utils import config
+from PointCloud_Generation import sam_utils
 from src.zed_utils import ZedCamera
 
 

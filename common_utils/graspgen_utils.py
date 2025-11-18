@@ -364,6 +364,17 @@ def create_control_panel(
     panel.run()
 
 
+def angle_offset_rad(grasp: np.ndarray) -> float:
+    position = grasp[:3, 3].tolist()
+    left, up, front = get_left_up_and_front(grasp)
+    angle_front = np.arctan2(front[1], front[0])
+    angle_position = np.arctan2(position[1], position[0])
+    angle_diff = np.abs(angle_front - angle_position)
+    if angle_diff > np.pi:
+        angle_diff = 2 * np.pi - angle_diff
+    return angle_diff
+
+
 class GraspGeneratorUI:
     def __init__(
         self,
@@ -396,9 +407,11 @@ class GraspGeneratorUI:
         grasps, grasp_conf = GraspGenSampler.run_inference(
             obj_pc,
             self.grasp_sampler,
-            grasp_threshold=self.grasp_threshold,
-            num_grasps=self.num_grasps,
-            topk_num_grasps=self.topk_num_grasps,
+            grasp_threshold=0.8,
+            num_grasps=200,
+            # topk_num_grasps=5,
+            min_grasps=80,
+            max_tries=20,
         )
         grasps = grasps.cpu().numpy()
         grasps[:, 3, 3] = 1
@@ -454,18 +467,31 @@ class GraspGeneratorUI:
         return grasps, custom_filter_mask, collision_free_mask
 
     def _generate_grasp_silent(self) -> np.array:
+        """
+        Returns:
+            Qualified grasps, A list of that contains multiple np.ndarray s of shape(4, 4).
+        """
+        GRASPS_BATCH_SIZE = 4
         num_try = 0
+        qualified_grasps = []
         while True:
             num_try += 1
             logger.info(f"try #{num_try}")
             all_grasps, custom_filter_mask, collision_free_mask = (
                 self._generate_grasps()
             )
-            qualified_grasps = all_grasps[custom_filter_mask & collision_free_mask]
-            if len(qualified_grasps) > 0:
-                return qualified_grasps[0]
+            qualified_grasps.extend(
+                list(all_grasps[custom_filter_mask & collision_free_mask])
+            )
+            if len(qualified_grasps) >= GRASPS_BATCH_SIZE:
+                qualified_grasps = sorted(qualified_grasps, key=angle_offset_rad)
+                return qualified_grasps[:GRASPS_BATCH_SIZE]
 
-    def generate_grasp(self, scene_data: dict, action: dict) -> np.array:
+    def generate_grasp(self, scene_data: dict, action: dict) -> list[np.ndarray]:
+        """
+        Returns:
+            grasps: A list of shape(4, 4) np array. only single one elements if returned from self._generate_grasp_with_GUI(), while multiple elements if returned by self._generate_grasp_silent()
+        """
         # reload scene_data and action
         self.scene_data = scene_data
         self.action = action
@@ -476,7 +502,11 @@ class GraspGeneratorUI:
         else:
             return self._generate_grasp_silent()
 
-    def _generate_grasp_with_GUI(self):
+    def _generate_grasp_with_GUI(self) -> list[np.ndarray]:
+        """
+        Returns:
+            A list of that contains only one element: np.ndarray of shape(4, 4).
+        """
         self._visualize_scene()
         grasp_q = queue.Queue()
         grasps_to_handle_queue = queue.Queue()
@@ -500,7 +530,7 @@ class GraspGeneratorUI:
             # wait panel to respond
             selected_grasp = grasp_q.get()
             if selected_grasp is not None:
-                return selected_grasp
+                return [selected_grasp]
 
     def _create_control_panel(self, grasp_queue, grasps_to_handle_queue):
         """Creates and runs the tkinter control panel."""

@@ -1,0 +1,18 @@
+{
+    "track": ["blue cup"],
+    "actions":
+    [
+        {
+            "target_name": "blue cup",
+            "qualifier": "cup_qualifier",
+            "action": "grab_and_pour_and_place_back_curobo",
+            "args": [
+                [0,0,0]
+            ]
+        }
+
+
+    ]
+    
+    
+}

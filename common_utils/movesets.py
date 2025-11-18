@@ -233,7 +233,7 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
 
     # Grasp Position
     before_grasp_position = [
-        p - f * 0.060 for p, f in zip(position, front, strict=False)
+        p - f * 0.050 for p, f in zip(position, front, strict=False)
     ]
     grasp_position = [p + f * 0.060 for p, f in zip(position, front, strict=False)]
 
@@ -487,9 +487,13 @@ def act(action: str, grasp: np.array, args: list, scene_data: dict) -> list[dict
 
 
 def act_with_name(
-    action: str, target_name: str, grasp: np.array, args: list, scene_data: dict
+    action: str,
+    target_name: str,
+    grasps: list[np.ndarray],
+    args: list,
+    scene_data: dict,
 ) -> list[dict]:
     if action not in action_dict:
         logger.error(f"There is no such action: {action}")
     action_method = action_dict[action]
-    return action_method(target_name, grasp, args, scene_data)
+    return [action_method(target_name, grasp, args, scene_data) for grasp in grasps]
