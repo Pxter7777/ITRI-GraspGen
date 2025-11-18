@@ -66,8 +66,8 @@ successs = 0
 class TMRobotController(Node):
     def __init__(self):
         super().__init__("tm_robot_controller")
-        self.receiver = NonBlockingJSONReceiver(port=9876)
-        self.sender = NonBlockingJSONSender(port=9877)
+        self.receiver = NonBlockingJSONReceiver(port=9893)
+        self.sender = NonBlockingJSONSender(port=9894)
         self.script_cli = None
         self.io_cli = None
         self.tcp_queue = deque()
@@ -126,6 +126,14 @@ class TMRobotController(Node):
             elif data["grip_type"] == "open":
                 self.goal_gripper = [0, 0, 1]
                 self.append_gripper_states([0, 0, 1])
+            elif data["grip_type"] == "half_open":
+                self.goal_gripper = [0, 1, 0]
+                self.append_gripper_states([0, 1, 0])
+            elif data["grip_type"] == "close_tight":
+                self.goal_gripper = [1, 1, 0]
+                self.append_gripper_states([1, 1, 0])
+
+    
 
     def setup_services(self):
         self.get_logger().info("等待 ROS 2 服務啟動...")
