@@ -144,8 +144,6 @@ class TMRobotController(Node):
                 self.goal_gripper = [1, 1, 0]
                 self.append_gripper_states([1, 1, 0])
 
-    
-
     def setup_services(self):
         self.get_logger().info("等待 ROS 2 服務啟動...")
 
