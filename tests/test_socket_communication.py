@@ -127,7 +127,8 @@ def test_Non_to_Non_sendall_first():  # should success
     sender = NonBlockingJSONSender(port=9876)
 
     for data in SAMPLE_DATAS:
-        sender.send_data(data)
+        succ = sender.send_data(data)
+        assert succ
     for data in SAMPLE_DATAS:
         assert data_queue.get(timeout=3) == data
 
@@ -144,7 +145,8 @@ def test_NonBlockingJSONReceiver_on_NonBlockingJSONReceiver_task():  # should su
 
     for data in SAMPLE_DATAS:
         time.sleep(0.2)
-        sender.send_data(data)
+        succ = sender.send_data(data)
+        assert succ
         assert data_queue.get(timeout=3) == data
 
     if process.is_alive():
@@ -157,7 +159,8 @@ def test_NonBlockingJSONReceiver_on_BlockingJSONReceiver_task():  # should fail
         port=9876, task_type="blocking_task", receiver_type="non-blocking_receiver"
     )
     sender = NonBlockingJSONSender(port=9876)
-    sender.send_data(SAMPLE_DATAS[0])
+    succ = sender.send_data(SAMPLE_DATAS[0])
+    assert not succ  # Because the receiver already left
     assert error_queue.get(timeout=3) == "Capture a None data."
     process.join(timeout=5)  # Wait for the process to finish
     if process.is_alive():
@@ -173,7 +176,8 @@ def test_BlockingJSONReceiver_on_BlockingJSONReceiver_task():  # should success
 
     for data in SAMPLE_DATAS:
         time.sleep(0.2)
-        sender.send_data(data)
+        succ = sender.send_data(data)
+        assert succ
         assert data_queue.get(timeout=3) == data
 
     # process.join(timeout=5)  # Wait for the process to finish
@@ -188,8 +192,8 @@ def test_BlockingJSONReceiver_on_NonBlockingJSONReceiver_task():  # should fail
     )
     sender = NonBlockingJSONSender(port=9876)
 
-    sender.send_data(SAMPLE_DATAS[0])
-
+    succ = sender.send_data(SAMPLE_DATAS[0])
+    assert succ
     assert (
         error_queue.get(timeout=3) == "Error: the receiver is slowing down the process."
     )
@@ -208,7 +212,8 @@ def test_send_to_disconnected_NonBlockingJSONReceiver():
 
     for data in SAMPLE_DATAS:
         time.sleep(0.2)
-        sender.send_data(data)
+        succ = sender.send_data(data)
+        assert succ
         assert data_queue.get(timeout=3) == data
     # kill the receiver process and starts a new one.
     if process.is_alive():
@@ -219,11 +224,19 @@ def test_send_to_disconnected_NonBlockingJSONReceiver():
     )
     for data in SAMPLE_DATAS:
         time.sleep(0.2)
-        sender.send_data(data)
+        succ = sender.send_data(data)
+        assert succ
         assert data_queue.get(timeout=3) == data
     if process.is_alive():
         process.terminate()  # Force kill if it doesn't stop gracefully
     process.join()
+
+
+def test_send_to_non_open_socket():
+    port = 9881
+    sender = NonBlockingJSONSender(port=port)
+    succ = sender.send_data(SAMPLE_DATAS[0])
+    assert not succ
 
 
 if __name__ == "__main__":

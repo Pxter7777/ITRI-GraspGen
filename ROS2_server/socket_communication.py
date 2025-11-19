@@ -39,7 +39,7 @@ class NonBlockingJSONSender:
     Connects automatically upon instantiation.
     """
 
-    def __init__(self, host="localhost", port=9870):
+    def __init__(self, port, host="localhost"):
         self.host = host
         self.port = port
         self.socket = None
@@ -146,7 +146,7 @@ class NonBlockingJSONReceiver:
     Connects automatically upon instantiation.
     """
 
-    def __init__(self, host="localhost", port=9870):
+    def __init__(self, port, host="localhost"):
         self.host = host
         self.port = port
         self.socket = None
@@ -241,7 +241,7 @@ class BlockingJSONReceiver:
     Connects automatically upon instantiation.
     """
 
-    def __init__(self, host="localhost", port=9870):
+    def __init__(self, port, host="localhost"):
         self.host = host
         self.port = port
         self.socket = None
