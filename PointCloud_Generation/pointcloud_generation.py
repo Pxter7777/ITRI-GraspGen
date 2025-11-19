@@ -562,9 +562,11 @@ class PointCloudGenerator:
             for named_mask in named_masks:
                 display_frame = visualize_mask(display_frame, named_mask.mask)
             cv2.imshow(win_name, display_frame)
+            logger.info("if satisfied, press space and continue.")
             while True:
-                logger.info("if satisfied, press space and continue.")
-                key = cv2.waitKey(0)
+                key = cv2.waitKey(100)
+                if cv2.getWindowProperty(win_name, cv2.WND_PROP_VISIBLE) < 1:
+                    key = 27
                 if key == 32:
                     break
                 elif key == 27:
