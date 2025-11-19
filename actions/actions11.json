@@ -1,0 +1,33 @@
+{
+    "track": ["small purple cup", "blue cup", "black frying pan"],
+    "actions":
+    [
+        {
+            "target_name": "blue cup",
+            "qualifier": "cup_qualifier",
+            "action": "grab_and_pour_and_place_back_curobo",
+            "args": [
+                "black frying pan"
+            ]
+        },
+        {
+            "target_name": "small purple cup",
+            "qualifier": "cup_qualifier",
+            "action": "grab_and_pour_and_place_back_curobo",
+            "args": [
+                "black frying pan"
+            ]
+        },
+        {
+            "target_name": "glass cup",
+            "qualifier": "cup_qualifier",
+            "action": "joints_rad_move_to_curobo",
+            "args": [
+                [ 0.04712389, -0.31939525,  2.44695161,  1.07337749, -1.52192711,
+        3.12413936]
+            ]
+        }
+    ]
+    
+    
+}
