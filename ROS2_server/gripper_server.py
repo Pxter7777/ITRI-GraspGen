@@ -10,12 +10,28 @@ from tm_msgs.srv import SendScript, SetIO
 from tm_msgs.msg import FeedbackState
 from geometry_msgs.msg import PoseStamped
 from collections import deque
+import numpy as np
 import argparse
 import logging
-from socket_communication import NonBlockingJSONReceiver, NonBlockingJSONSender
+import os
+import sys
 
-import numpy as np
+# Because this script isn't using itri-graspgen venv, we need to manually add the project root to sys.path
+current_file_dir = os.path.dirname(os.path.abspath(__file__))
+project_root_dir = os.path.dirname(current_file_dir)
+if project_root_dir not in sys.path:
+    sys.path.insert(0, project_root_dir)
 
+from common_utils.socket_communication import (  # noqa: E402
+    NonBlockingJSONReceiver,
+    NonBlockingJSONSender,
+)
+from common_utils.custom_logger import CustomFormatter  # noqa: E402
+
+
+handler = logging.StreamHandler()
+handler.setFormatter(CustomFormatter())
+logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
 logger = logging.getLogger(__name__)
 
 
@@ -145,15 +161,15 @@ class TMRobotController(Node):
                 self.append_gripper_states([1, 1, 0])
 
     def setup_services(self):
-        self.get_logger().info("等待 ROS 2 服務啟動...")
+        logger.info("等待 ROS 2 服務啟動...")
 
         self.script_cli = self.create_client(SendScript, "send_script")
         while not self.script_cli.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info("等待 send_script 服務...")
+            logger.info("等待 send_script 服務...")
 
         self.io_cli = self.create_client(SetIO, "set_io")
         while not self.io_cli.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info("等待 set_io 服務...")
+            logger.info("等待 set_io 服務...")
 
         # 初始化 gripper 狀態追蹤
         self.ee_digital_output = [0, 0, 1, 0]  # 初始狀態
@@ -164,9 +180,9 @@ class TMRobotController(Node):
         self.create_subscription(
             FeedbackState, "feedback_states", self.feedback_callback, 10
         )
-        self.get_logger().info("✅ 已訂閱 feedback_states")
+        logger.info("✅ 已訂閱 feedback_states")
         self.sub = self.create_subscription(PoseStamped, "/tool_pose", self.cb, 10)
-        self.get_logger().info(" subscribe /tool_pose")
+        logger.info(" subscribe /tool_pose")
 
     def feedback_callback(self, msg: FeedbackState):
         current_time = time.time()
@@ -174,7 +190,7 @@ class TMRobotController(Node):
 
         # if self.waiting_for_gripper and self.target_ee_output is not None:
         #     if self.ee_digital_output[:3] == self.target_ee_output:
-        #         self.get_logger().info(
+        #         logger.info(
         #             f"🔄 夾爪狀態達成: {self.ee_digital_output}，開始等待 6 秒"
         #         )
         #         self.waiting_for_gripper = False
@@ -218,7 +234,7 @@ class TMRobotController(Node):
             if is_two_point_identical(
                 [x_mm, y_mm, z_mm, rx, ry, rz], state["position"]
             ):
-                self.get_logger().info(
+                logger.info(
                     f"🔄 夾爪狀態達成: {self.ee_digital_output}，開始等待 87 秒"
                 )
                 self._start_arm_wait_timer(state["time_to_wait"])
@@ -229,7 +245,7 @@ class TMRobotController(Node):
         self._wait_timer = self.create_timer(1.0, self._gripper_wait_done)
 
     def _gripper_wait_done(self):
-        self.get_logger().info("✅ 夾爪動作等待完成")
+        logger.info("✅ 夾爪動作等待完成")
         self._busy = False
 
         if hasattr(self, "_wait_timer"):
@@ -241,7 +257,7 @@ class TMRobotController(Node):
         self._wait_timer_arm = self.create_timer(time, self._arm_wait_done)
 
     def _arm_wait_done(self):
-        self.get_logger().info("✅ 夾爪動作等待完成")
+        logger.info("✅ 夾爪動作等待完成")
         self._busy = False
 
         if hasattr(self, "_wait_timer_arm"):
@@ -263,25 +279,23 @@ class TMRobotController(Node):
                 try:
                     result = fut.result()
                     if result.ok:
-                        self.get_logger().info(
-                            f"✅ End_DO{pin} 設定成功，等待 feedback 確認"
-                        )
+                        logger.info(f"✅ End_DO{pin} 設定成功，等待 feedback 確認")
                         # 只設定一次 target 狀態即可
                         if pin == 2:  # 最後一個 pin 設定完成時
                             self.target_ee_output = states
                             self.waiting_for_gripper = True
                     else:
-                        self.get_logger().warn(f"⚠️ End_DO{pin} 設定失敗，略過等待")
+                        logger.warn(f"⚠️ End_DO{pin} 設定失敗，略過等待")
                         self._busy = False
                 except Exception as e:
-                    self.get_logger().error(f"[SetIO 失敗] {e}")
+                    logger.error(f"[SetIO 失敗] {e}")
                     self._busy = False
 
             future.add_done_callback(_done)
 
     def append_gripper_states(self, states):
         if not (isinstance(states, (list, tuple)) and len(states) == 3):
-            self.get_logger().error("IO 狀態必須為長度 3 的 list，例如 [1,0,0]")
+            logger.error("IO 狀態必須為長度 3 的 list，例如 [1,0,0]")
             return
         self.tcp_queue.append(
             {"script": f"IO:{states[0]},{states[1]},{states[2]}", "wait_time": 0.0}
@@ -300,7 +314,7 @@ class TMRobotController(Node):
         self, tcp_values: list, vel=20, acc=20, coord=80, fine=False, wait_time=0.0
     ):
         if len(tcp_values) != 6:
-            self.get_logger().error("TCP 必須 6 個數字")
+            logger.error("TCP 必須 6 個數字")
             return
         fine_str = "true" if fine else "false"
         script = (
@@ -318,7 +332,7 @@ class TMRobotController(Node):
         self, joint_values: list, vel=20, acc=20, coord=80, fine=False, wait_time=0.0
     ):
         if len(joint_values) != 6:
-            self.get_logger().error("TCP 必須 6 個數字")
+            logger.error("TCP 必須 6 個數字")
             return
         # fine_str = "true" if fine else "false"
         script = (
@@ -347,45 +361,43 @@ class TMRobotController(Node):
 
         # IO 指令
         if isinstance(cmd, str) and cmd.startswith("IO:"):
-            self.get_logger().info(f"執行夾爪指令: {cmd}")
+            logger.info(f"執行夾爪指令: {cmd}")
             try:
                 _, vals = cmd.split(":")
                 a, b, c = map(int, vals.split(","))
                 self.set_io([a, b, c])
             except Exception as e:
-                self.get_logger().error(f"IO 解析錯誤: {e}")
+                logger.error(f"IO 解析錯誤: {e}")
                 self._busy = False
             return
 
         # 動作指令
         script_to_run = cmd
-        self.get_logger().info(
-            f"正在執行佇列中的腳本: {script_to_run} wait_time={wait_time}"
-        )
+        logger.info(f"正在執行佇列中的腳本: {script_to_run} wait_time={wait_time}")
         self._send_script_async(script_to_run, wait_time)
 
     def _send_script_async(self, script: str, wait_time):
         if not self.script_cli:
-            self.get_logger().error("send_script 客戶端尚未初始化。")
+            logger.error("send_script 客戶端尚未初始化。")
             self._busy = False
             return
         req = SendScript.Request()
         req.id = "auto"
         req.script = script
-        self.get_logger().info("ready to call async")
+        logger.info("ready to call async")
         future = self.script_cli.call_async(req)
-        self.get_logger().info("called async")
+        logger.info("called async")
 
         def _done(_):
             try:
                 res = future.result()
                 ok = bool(getattr(res, "ok", False))
                 if ok:
-                    self.get_logger().info("✅ successed")
+                    logger.info("✅ successed")
                 else:
-                    self.get_logger().warn("⚠️ 執行失敗：跳過該指令")
+                    logger.warn("⚠️ 執行失敗：跳過該指令")
             except Exception as e:
-                self.get_logger().error(f"[SendScript 失敗] {e}")
+                logger.error(f"[SendScript 失敗] {e}")
             finally:
                 if wait_time == 0:
                     self._busy = False
@@ -395,7 +407,7 @@ class TMRobotController(Node):
     def clear_queue(self):
         n = len(self.tcp_queue)
         self.tcp_queue.clear()
-        self.get_logger().info(f"已清空佇列，共 {n} 筆")
+        logger.info(f"已清空佇列，共 {n} 筆")
 
 
 def parse_args():
@@ -438,7 +450,10 @@ def main():
     finally:
         node.destroy_node()
         rclpy.shutdown()
-        node.receiver.disconnect()
+        node.csv_sender.disconnect()
+        node.isaacsim_sender.disconnect()
+        node.isaacsim_receiver.disconnect()
+        node.csv_receiver.disconnect()
 
 
 if __name__ == "__main__":

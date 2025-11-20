@@ -60,9 +60,7 @@ class NonBlockingJSONSender:
             logger.info(f"Sender connected to receiver at {self.host}:{self.port}")
             return True
         except ConnectionRefusedError:
-            logger.exception(
-                f"Connection failed. Is the bridge.py script running on {self.host}:{self.port}?"
-            )
+            logger.warning(f"No socket currently listening at {self.host}:{self.port}")
             self.socket = None
             return False
         except Exception as e:
