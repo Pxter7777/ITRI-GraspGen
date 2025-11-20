@@ -78,6 +78,7 @@ def is_pose_identical(joints1: list, joints2: list):
 successs = 0
 LAST_JOINTS_REC_NUM = 100
 
+
 class TMRobotController(Node):
     def __init__(self):
         super().__init__("tm_robot_controller")
@@ -192,17 +193,23 @@ class TMRobotController(Node):
         current_time = time.time()
         self.ee_digital_output = list(msg.ee_digital_output)
         self.last_joint_positions.append(list(msg.joint_pos))
-        if len(self.last_joint_positions) == LAST_JOINTS_REC_NUM and is_pose_identical(list(msg.joint_pos), self.last_joint_positions[0]) and self.reached_time > current_time:
+        if (
+            len(self.last_joint_positions) == LAST_JOINTS_REC_NUM
+            and is_pose_identical(list(msg.joint_pos), self.last_joint_positions[0])
+            and self.reached_time > current_time
+        ):
             # logger.warning(f"Stuck detected. {self.stuck_start_time}, {current_time}")
             if self.stuck_start_time > current_time:
-                logger.warning(f"Same as last joint positions, start timing stuck.")
-                logger.debug(f"{self.last_joint_positions[0]}, {self.last_joint_positions[-1]}, {list(msg.joint_pos)}")
+                logger.warning("Same as last joint positions, start timing stuck.")
+                logger.debug(
+                    f"{self.last_joint_positions[0]}, {self.last_joint_positions[-1]}, {list(msg.joint_pos)}"
+                )
                 self.stuck_start_time = current_time
             if current_time - self.stuck_start_time > 3:
                 logger.debug(f"{current_time}, {self.stuck_start_time}")
                 logger.error("Stuck detected.")
                 self._handle_failure()
-            
+
         else:
             self.stuck_start_time = float("inf")
         if current_time - self.stuck_start_time > 5:
@@ -229,7 +236,7 @@ class TMRobotController(Node):
         if current_time - self.reached_time > self.wait_time:
             self.reached_time = float("inf")
             self._handle_success()
-        
+
     def cb(self, msg: PoseStamped):
         p = msg.pose.position
         q = msg.pose.orientation
@@ -416,6 +423,7 @@ class TMRobotController(Node):
         n = len(self.tcp_queue)
         self.tcp_queue.clear()
         logger.info(f"已清空佇列，共 {n} 筆")
+
     def _handle_failure(self):
         logger.error("clearing queue.")
         self.clear_queue()
@@ -425,6 +433,7 @@ class TMRobotController(Node):
         self.last_joint_positions.clear()
         self.stuck_start_time = float("inf")
         self.moving = False
+
     def _handle_success(self):
         logger.info("Acknowledging movement completion.")
         sender = self.csv_sender if self.data_source == "csv" else self.isaacsim_sender
@@ -434,7 +443,6 @@ class TMRobotController(Node):
         successs += 1
         logger.debug(f"Success count: {successs}")
         self.moving = False
-        
 
 
 def parse_args():
@@ -463,8 +471,7 @@ def main():
         logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
     else:
         logging.basicConfig(level=logging.WARNING, handlers=[handler], force=True)
-    
-    
+
     rclpy.init()
     node = TMRobotController()
 
