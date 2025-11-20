@@ -92,7 +92,7 @@ class NonBlockingJSONSender:
         Returns True on successful send, False otherwise.
         """
         if not self.socket:
-            logger.warning("Connection not established. Attempting to reconnect.")
+            logger.info("Connection not established. Attempting to reconnect.")
             if not self.reconnect():
                 return False
 
@@ -107,7 +107,7 @@ class NonBlockingJSONSender:
                     logger.warning("Receiver has closed the connection.")
                     raise BrokenPipeError("Connection closed by peer")
         except BrokenPipeError:
-            logger.warning("Connection lost. Attempting to reconnect and resend.")
+            logger.info("Connection lost. Attempting to reconnect and resend.")
             if self.reconnect():
                 return self.send_data(data)  # Retry sending
             else:
