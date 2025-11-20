@@ -14,13 +14,13 @@ from common_utils.socket_communication import (
     NonBlockingJSONSender,
     BlockingJSONReceiver,
 )
+from common_utils.custom_logger import CustomFormatter
 from common_utils.common_utils import save_json
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="[%(asctime)s][%(name)s][%(levelname)s] %(message)s",
-    force=True,
-)
+# root logger setup
+handler = logging.StreamHandler()
+handler.setFormatter(CustomFormatter())
+logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
 logger = logging.getLogger(__name__)
 
 
