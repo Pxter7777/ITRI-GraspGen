@@ -49,7 +49,7 @@ end_pose_1 = data1["joints_values"][-1]
 interpolated_joints_1 = linear_interpolate(start_pose_1, end_pose_1, 100)
 data5 = {
     "type": "arm",
-    "wait_time": 2.0,
+    "wait_time": 5.0,
     "joints_values": interpolated_joints_1,
 }
 
@@ -58,7 +58,7 @@ end_pose_2 = data2["joints_values"][-1]
 interpolated_joints_2 = linear_interpolate(start_pose_2, end_pose_2, 100)
 data6 = {
     "type": "arm",
-    "wait_time": 2.0,
+    "wait_time": 5.0,
     "joints_values": interpolated_joints_2,
 }
 data3 = {"type": "gripper", "wait_time": 2.0, "grip_type": "close"}
@@ -71,10 +71,16 @@ while True:
         break
     if wait_for_response:
         response = receiver.capture_data()
-        if response is not None and response["message"] == "Success":
+        if response is None:
+            continue
+        # Message received
+        if response["message"] == "Success":
             print("Success! Yeah!")
             wait_for_response = False
-        continue
+        elif response["message"] == "Fail":
+            print("Failure detected. Stopping further commands.")
+            break
+
     data = datalist.pop(0)
     sender.send_data(data)
     wait_for_response = True
