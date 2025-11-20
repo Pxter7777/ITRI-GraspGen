@@ -75,7 +75,7 @@ class NonBlockingJSONSender:
         if self.socket:
             self.socket.close()
             self.socket = None
-            logger.warning("Sender disconnected")
+            logger.info("Sender disconnected")
 
     def reconnect(self) -> bool:
         """
@@ -104,7 +104,7 @@ class NonBlockingJSONSender:
                 # A recv with MSG_PEEK will not remove data from buffer.
                 # If it returns b'', the peer has closed the connection.
                 if self.socket.recv(1, socket.MSG_PEEK) == b"":
-                    logger.warning("Receiver has closed the connection.")
+                    logger.warning("The other peer's receiver has disconnected.")
                     raise BrokenPipeError("Connection closed by peer")
         except BrokenPipeError:
             logger.info("Connection lost. Attempting to reconnect and resend.")
@@ -198,7 +198,7 @@ class NonBlockingJSONReceiver:
 
             data = self.conn.recv(4096)
             if not data:
-                logger.warning("Sender disconnected.")
+                logger.warning("The other peer's sender has disconnected.")
                 self.conn.close()
                 self.conn = None
                 return None

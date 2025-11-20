@@ -29,9 +29,6 @@ from common_utils.socket_communication import (  # noqa: E402
 from common_utils.custom_logger import CustomFormatter  # noqa: E402
 
 
-handler = logging.StreamHandler()
-handler.setFormatter(CustomFormatter())
-logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
 logger = logging.getLogger(__name__)
 
 
@@ -70,14 +67,16 @@ def is_two_point_identical(point1: list, point2: list):
 
 
 def is_pose_identical(joints1: list, joints2: list):
+    if joints1 is None or joints2 is None:
+        return False
     pos_identical = all(
-        abs(j1 - j2) < 0.1 for j1, j2 in zip(joints1, joints2, strict=False)
+        abs(j1 - j2) < 0.02 for j1, j2 in zip(joints1, joints2, strict=False)
     )
     return pos_identical
 
 
 successs = 0
-
+LAST_JOINTS_REC_NUM = 100
 
 class TMRobotController(Node):
     def __init__(self):
@@ -106,6 +105,8 @@ class TMRobotController(Node):
         self.current_moving_type = ""
         self.reached_time = float("inf")
         self.goal_gripper = None
+        # record the last LAST_JOINTS_REC_NUM joint positions to detect stuck, using queue
+        self.last_joint_positions = deque(maxlen=LAST_JOINTS_REC_NUM)
 
     def _capture_command(self):
         if self.moving:
@@ -122,8 +123,9 @@ class TMRobotController(Node):
                 self.data_source = "isaacsim"
             else:
                 return  # no data
-        print("received new data")
-        print(data)
+        logger.info("received new data")
+        logger.debug(data)
+        self.stuck_start_time = float("inf")
         self.moving = True
         self.wait_time = data["wait_time"]
         self.current_moving_type = data["type"]
@@ -185,44 +187,49 @@ class TMRobotController(Node):
         logger.info(" subscribe /tool_pose")
 
     def feedback_callback(self, msg: FeedbackState):
+        if not self.moving:
+            return
         current_time = time.time()
         self.ee_digital_output = list(msg.ee_digital_output)
+        self.last_joint_positions.append(list(msg.joint_pos))
+        if len(self.last_joint_positions) == LAST_JOINTS_REC_NUM and is_pose_identical(list(msg.joint_pos), self.last_joint_positions[0]) and self.reached_time > current_time:
+            # logger.warning(f"Stuck detected. {self.stuck_start_time}, {current_time}")
+            if self.stuck_start_time > current_time:
+                logger.warning(f"Same as last joint positions, start timing stuck.")
+                logger.debug(f"{self.last_joint_positions[0]}, {self.last_joint_positions[-1]}, {list(msg.joint_pos)}")
+                self.stuck_start_time = current_time
+            if current_time - self.stuck_start_time > 3:
+                logger.debug(f"{current_time}, {self.stuck_start_time}")
+                logger.error("Stuck detected.")
+                self._handle_failure()
+            
+        else:
+            self.stuck_start_time = float("inf")
+        if current_time - self.stuck_start_time > 5:
+            logger.error("Stuck detected.")
+        if (
+            self.current_moving_type == "arm"
+            and is_pose_identical(msg.joint_pos, self.goal_joints)
+            and self.reached_time > current_time
+        ):
+            self.reached_time = current_time
+        elif (
+            self.current_moving_type == "gripper"
+            and list(msg.ee_digital_output)[:3] == self.goal_gripper
+            and self.reached_time > current_time
+        ):
+            self.reached_time = current_time
+        # stuck detection
+        # if self.reached_time > current_time: # moving toward goal
+        #     if current_time - self.stuck_start_time > 3:
+        #         logger.error(f"{current_time}, {self.stuck_start_time}")
+        #         logger.error("Stuck detected, clearing queue.")
+        #         self._handle_failure()
 
-        # if self.waiting_for_gripper and self.target_ee_output is not None:
-        #     if self.ee_digital_output[:3] == self.target_ee_output:
-        #         logger.info(
-        #             f"🔄 夾爪狀態達成: {self.ee_digital_output}，開始等待 6 秒"
-        #         )
-        #         self.waiting_for_gripper = False
-        #         self.target_ee_output = None
-        #         self._start_gripper_wait_timer()
-
-        if self.moving:
-            if (
-                self.current_moving_type == "arm"
-                and is_pose_identical(msg.joint_pos, self.goal_joints)
-                and self.reached_time > current_time
-            ):
-                self.reached_time = current_time
-            elif (
-                self.current_moving_type == "gripper"
-                and list(msg.ee_digital_output)[:3] == self.goal_gripper
-                and self.reached_time > current_time
-            ):
-                self.reached_time = current_time
-
-            if current_time - self.reached_time > self.wait_time:
-                self.reached_time = float("inf")
-                self.moving = False
-                print("sending successfulness")
-                if self.data_source == "csv":
-                    self.csv_sender.send_data({"message": "Success"})
-                elif self.data_source == "isaacsim":
-                    self.isaacsim_sender.send_data({"message": "Success"})
-                global successs
-                successs += 1
-                print(successs)
-
+        if current_time - self.reached_time > self.wait_time:
+            self.reached_time = float("inf")
+            self._handle_success()
+        
     def cb(self, msg: PoseStamped):
         p = msg.pose.position
         q = msg.pose.orientation
@@ -395,7 +402,8 @@ class TMRobotController(Node):
                 if ok:
                     logger.info("✅ successed")
                 else:
-                    logger.warn("⚠️ 執行失敗：跳過該指令")
+                    logger.error("⚠️ failed to send script.")
+                    self._handle_failure()
             except Exception as e:
                 logger.error(f"[SendScript 失敗] {e}")
             finally:
@@ -408,6 +416,25 @@ class TMRobotController(Node):
         n = len(self.tcp_queue)
         self.tcp_queue.clear()
         logger.info(f"已清空佇列，共 {n} 筆")
+    def _handle_failure(self):
+        logger.error("clearing queue.")
+        self.clear_queue()
+        logger.error("Acknowledging failure.")
+        sender = self.csv_sender if self.data_source == "csv" else self.isaacsim_sender
+        sender.send_data({"message": "Fail"})
+        self.last_joint_positions.clear()
+        self.stuck_start_time = float("inf")
+        self.moving = False
+    def _handle_success(self):
+        logger.info("Acknowledging movement completion.")
+        sender = self.csv_sender if self.data_source == "csv" else self.isaacsim_sender
+        sender.send_data({"message": "Success"})
+        self.last_joint_positions.clear()
+        global successs
+        successs += 1
+        logger.debug(f"Success count: {successs}")
+        self.moving = False
+        
 
 
 def parse_args():
@@ -420,12 +447,24 @@ def parse_args():
         default="",
         help="Directory containing JSON files with point cloud data",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="show debug info",
+    )
     return parser.parse_args()
 
 
 def main():
-    # args = parse_args()
-
+    args = parse_args()
+    handler = logging.StreamHandler()
+    handler.setFormatter(CustomFormatter())
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
+    else:
+        logging.basicConfig(level=logging.WARNING, handlers=[handler], force=True)
+    
+    
     rclpy.init()
     node = TMRobotController()
 
