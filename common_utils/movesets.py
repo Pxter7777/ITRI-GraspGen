@@ -328,6 +328,7 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
             "type": "arm",
             "goal": grasp_position + quaternion_orientation,
             "wait_time": 0.0,
+            "no_obstacles": "yesyesyes"
         }
     )
     moves.append({"type": "gripper", "grip_type": "close", "wait_time": 1.0})
@@ -365,6 +366,15 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
             "type": "arm",
             "goal": after_release_position + quaternion_orientation,
             "wait_time": 0.0,
+            "no_obstacles": "yesyesyes"
+        }
+    )
+    moves.append(
+        {
+            "type": "arm",
+            "goal": after_release_position[:2] + [after_release_position[2]+0.1] + quaternion_orientation,
+            "wait_time": 0.0,
+            "no_obstacles": "yesyesyes"
         }
     )
 
