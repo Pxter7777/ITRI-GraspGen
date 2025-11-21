@@ -108,7 +108,9 @@ class TMRobotController(Node):
         self.goal_gripper = None
         # record the last LAST_JOINTS_REC_NUM joint positions to detect stuck, using queue
         self.last_joint_positions = deque(maxlen=LAST_JOINTS_REC_NUM)
-        self.num_response_to_send_back = 0 # it's enough because we're not using multi-threading
+        self.num_response_to_send_back = (
+            0  # it's enough because we're not using multi-threading
+        )
 
     def _capture_command(self):
         if self.moving:
