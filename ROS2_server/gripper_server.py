@@ -108,6 +108,7 @@ class TMRobotController(Node):
         self.goal_gripper = None
         # record the last LAST_JOINTS_REC_NUM joint positions to detect stuck, using queue
         self.last_joint_positions = deque(maxlen=LAST_JOINTS_REC_NUM)
+        self.num_response_to_send_back = 0 # it's enough because we're not using multi-threading
 
     def _capture_command(self):
         if self.moving:
@@ -126,6 +127,7 @@ class TMRobotController(Node):
                 return  # no data
         logger.info("received new data")
         logger.debug(data)
+        self.num_response_to_send_back += 1
         self.stuck_start_time = float("inf")
         self.moving = True
         self.wait_time = data["wait_time"]
@@ -425,6 +427,9 @@ class TMRobotController(Node):
         logger.info(f"已清空佇列，共 {n} 筆")
 
     def _handle_failure(self):
+        if self.num_response_to_send_back == 0:
+            return
+        self.num_response_to_send_back -= 1
         logger.error("clearing queue.")
         self.clear_queue()
         logger.error("Acknowledging failure.")
@@ -435,6 +440,9 @@ class TMRobotController(Node):
         self.moving = False
 
     def _handle_success(self):
+        if self.num_response_to_send_back == 0:
+            return
+        self.num_response_to_send_back -= 1
         logger.info("Acknowledging movement completion.")
         sender = self.csv_sender if self.data_source == "csv" else self.isaacsim_sender
         sender.send_data({"message": "Success"})
