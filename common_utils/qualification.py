@@ -29,7 +29,7 @@ def cup_qualifier(grasp: np.array, mass_center, obj_std):
         return False
     if position[2] > mass_center[2] + obj_std[2] * 2:  # too high
         return False
-    if position[2] < mass_center[2] - obj_std[2] * 1.5:  # too low
+    if position[2] < mass_center[2] - obj_std[2]:  # too low
         return False
     return True
 
