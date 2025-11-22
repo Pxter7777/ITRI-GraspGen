@@ -38,6 +38,7 @@ try:
     for data in datas:
         sender.send_data([data])
         message = receiever.capture_data()
+        print(message)
 finally:
     sender.disconnect()
     receiever.disconnect()
