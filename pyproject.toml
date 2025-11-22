@@ -1,7 +1,8 @@
 # referenced from https://github.com/AUTOMATIC1111/stable-diffusion-webui/blob/82a973c04367123ae98bd9abdf80d9eda9b910e2/pyproject.toml
 [tool.ruff]
 exclude = [
-    "Third_Party"
+    "Third_Party",
+    "isaac-sim2real/isaacsim_utils/helper.py"
 ]
 target-version = "py311"
 
