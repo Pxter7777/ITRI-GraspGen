@@ -666,14 +666,29 @@ def main():
                 cmd_idx = 0
                 cmd_plan = cmd_plans.pop(0)
             # print(wait_ros2, successs)
-
+        
         if wait_ros2:
             ros2_response = ros2_receiver.capture_data()
-            if ros2_response is not None and ros2_response["message"] == "Success":
-                print("receiver successfulness.")
+            if ros2_response is not None:
+                if ros2_response["message"] == "Success":
+                    print("receiver successfulness.")
+                    
+                elif ros2_response["message"] == "Fail":
+                    print("receiver failedness.")
+                    # send abort to graspgen
+                    graspgen_sender.send_data({"message": "Abort"})
+                    # set robot state back to default
+                    last_joint_states = default_config
+                    robot.set_joint_positions(default_config, idx_list)
+                    robot._articulation_view.set_max_efforts(
+                        values=np.array([5000 for i in range(len(idx_list))]),
+                        joint_indices=idx_list,
+                    )
+                    # clear plan
+                    graspgen_datas = graspgen_receiver.capture_data() # eat the new plan if there is any
+                    plans = []
+                    cmd_plans = []
                 wait_ros2 = False
-                successs += 1
-                # print(wait_ros2, successs)
         # Step
         my_world.step(render=True)
         step_index = my_world.current_time_step_index

@@ -215,10 +215,19 @@ def main():
                         elif response["message"] == "Fail":
                             logger.warning("failed")
                             continue
+                        elif response["message"] == "Abort":
+                            raise InterruptedError("aborted by isaacsim, stop current action")
+                except KeyboardInterrupt:
+                    logger.info("Manual stopping current action.")
+                    break
+                except InterruptedError as e:
+                    name = action["target_name"]
+                    logger.exception(f"Action for {name} interrupted, stopping. {e}")
+                    break
                 except Exception as e:
                     name = action["target_name"]
                     logger.exception(
-                        f"Error while generating grasp for {name}, stopping. {e}"
+                        f"Unknown Error while generating grasp for {name}, stopping. {e}"
                     )
                     break
                 # send the grasp to gripper
