@@ -130,6 +130,7 @@ class TMRobotController(Node):
         logger.info("received new data")
         logger.debug(data)
         self.num_response_to_send_back += 1
+        logger.debug(f"{self.num_response_to_send_back}")
         self.stuck_start_time = float("inf")
         self.moving = True
         self.wait_time = data["wait_time"]
@@ -434,7 +435,7 @@ class TMRobotController(Node):
         self.num_response_to_send_back -= 1
         logger.error("clearing queue.")
         self.clear_queue()
-        logger.error("Acknowledging failure.")
+        logger.error(f"Acknowledging failure. {self.num_response_to_send_back}")
         sender = self.csv_sender if self.data_source == "csv" else self.isaacsim_sender
         sender.send_data({"message": "Fail"})
         self.last_joint_positions.clear()
@@ -445,7 +446,7 @@ class TMRobotController(Node):
         if self.num_response_to_send_back == 0:
             return
         self.num_response_to_send_back -= 1
-        logger.info("Acknowledging movement completion.")
+        logger.info(f"Acknowledging movement completion. {self.num_response_to_send_back}")
         sender = self.csv_sender if self.data_source == "csv" else self.isaacsim_sender
         sender.send_data({"message": "Success"})
         self.last_joint_positions.clear()

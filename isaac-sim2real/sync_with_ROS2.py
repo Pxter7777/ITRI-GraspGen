@@ -662,6 +662,7 @@ def main():
         if not wait_ros2 and len(plans) > 0:
             wait_ros2 = True
             plan = plans.pop(0)
+            # print("send new position")
             ros2_sender.send_data(plan)
             if plan["type"] == "arm":
                 cmd_idx = 0
@@ -687,6 +688,10 @@ def main():
                     )
                     # clear plan
                     graspgen_datas = graspgen_receiver.capture_data() # eat the new plan if there is any
+                    if graspgen_datas is not None:
+                        print(f"ate the data {graspgen_datas}")
+                    else:
+                        print("no data to eat")
                     plans = []
                     cmd_plans = []
                 wait_ros2 = False
