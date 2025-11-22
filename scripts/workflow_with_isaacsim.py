@@ -6,7 +6,7 @@ from PointCloud_Generation.pointcloud_generation import PointCloudGenerator
 from PointCloud_Generation.PC_transform import (
     silent_transform_multiple_obj_with_name_dict,
 )
-from common_utils import config
+from common_utils import config, port_config
 from common_utils.graspgen_utils import GraspGeneratorUI
 from common_utils.actions_format_checker import is_actions_format_valid_v1028
 from common_utils.movesets import act_with_name
@@ -128,8 +128,8 @@ def main():
     current_file_dir = os.path.dirname(os.path.abspath(__file__))
     project_root_dir = os.path.dirname(current_file_dir)
     try:
-        sender = NonBlockingJSONSender(port=9878)
-        receiever = BlockingJSONReceiver(port=9879)
+        sender = NonBlockingJSONSender(port=port_config.GRASPGEN_TO_ISAACSIM)
+        receiever = BlockingJSONReceiver(port=port_config.ISAACSIM_TO_GRASPGEN)
         pc_generator = PointCloudGenerator(args)
         grasp_generator = GraspGeneratorUI(
             args.gripper_config,

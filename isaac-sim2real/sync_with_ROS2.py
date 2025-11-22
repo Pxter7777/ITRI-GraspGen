@@ -33,6 +33,7 @@ from isaacsim_utils.socket_communication import (
     NonBlockingJSONSender,
     NonBlockingJSONReceiver,
 )
+from isaacsim_utils import port_config
 
 
 parser = argparse.ArgumentParser()
@@ -478,10 +479,10 @@ def main():
 
     # pose_metric = None
     wait_ros2 = False
-    graspgen_receiver = NonBlockingJSONReceiver(port=9878)
-    graspgen_sender = NonBlockingJSONSender(port=9879)
-    ros2_receiver = NonBlockingJSONReceiver(port=9877)
-    ros2_sender = NonBlockingJSONSender(port=9876)
+    graspgen_receiver = NonBlockingJSONReceiver(port=port_config.GRASPGEN_TO_ISAACSIM)
+    graspgen_sender = NonBlockingJSONSender(port=port_config.ISAACSIM_TO_GRASPGEN)
+    ros2_receiver = NonBlockingJSONReceiver(port=port_config.ROS2_TO_ISAACSIM)
+    ros2_sender = NonBlockingJSONSender(port=port_config.ISAACSIM_TO_ROS2)
     plans = []
     cmd_plans = []
     last_joint_states = default_config

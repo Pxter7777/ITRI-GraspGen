@@ -21,7 +21,7 @@ current_file_dir = os.path.dirname(os.path.abspath(__file__))
 project_root_dir = os.path.dirname(current_file_dir)
 if project_root_dir not in sys.path:
     sys.path.insert(0, project_root_dir)
-
+from common_utils import port_config
 from common_utils.socket_communication import (  # noqa: E402
     NonBlockingJSONReceiver,
     NonBlockingJSONSender,
@@ -82,10 +82,10 @@ LAST_JOINTS_REC_NUM = 100
 class TMRobotController(Node):
     def __init__(self):
         super().__init__("tm_robot_controller")
-        self.csv_receiver = NonBlockingJSONReceiver(port=9893)
-        self.csv_sender = NonBlockingJSONSender(port=9894)
-        self.isaacsim_receiver = NonBlockingJSONReceiver(port=9876)
-        self.isaacsim_sender = NonBlockingJSONSender(port=9877)
+        self.csv_receiver = NonBlockingJSONReceiver(port=port_config.MIA_TO_ROS2)
+        self.csv_sender = NonBlockingJSONSender(port=port_config.ROS2_TO_MIA)
+        self.isaacsim_receiver = NonBlockingJSONReceiver(port=port_config.ISAACSIM_TO_ROS2)
+        self.isaacsim_sender = NonBlockingJSONSender(port=port_config.ROS2_TO_ISAACSIM)
         self.data_source = ""
         self.script_cli = None
         self.io_cli = None
