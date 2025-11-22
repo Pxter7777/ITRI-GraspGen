@@ -21,7 +21,7 @@ current_file_dir = os.path.dirname(os.path.abspath(__file__))
 project_root_dir = os.path.dirname(current_file_dir)
 if project_root_dir not in sys.path:
     sys.path.insert(0, project_root_dir)
-
+from common_utils import port_config  # noqa: E402
 from common_utils.socket_communication import (  # noqa: E402
     NonBlockingJSONReceiver,
     NonBlockingJSONSender,
@@ -82,10 +82,12 @@ LAST_JOINTS_REC_NUM = 100
 class TMRobotController(Node):
     def __init__(self):
         super().__init__("tm_robot_controller")
-        self.csv_receiver = NonBlockingJSONReceiver(port=9893)
-        self.csv_sender = NonBlockingJSONSender(port=9894)
-        self.isaacsim_receiver = NonBlockingJSONReceiver(port=9876)
-        self.isaacsim_sender = NonBlockingJSONSender(port=9877)
+        self.csv_receiver = NonBlockingJSONReceiver(port=port_config.MIA_TO_ROS2)
+        self.csv_sender = NonBlockingJSONSender(port=port_config.ROS2_TO_MIA)
+        self.isaacsim_receiver = NonBlockingJSONReceiver(
+            port=port_config.ISAACSIM_TO_ROS2
+        )
+        self.isaacsim_sender = NonBlockingJSONSender(port=port_config.ROS2_TO_ISAACSIM)
         self.data_source = ""
         self.script_cli = None
         self.io_cli = None
@@ -130,6 +132,7 @@ class TMRobotController(Node):
         logger.info("received new data")
         logger.debug(data)
         self.num_response_to_send_back += 1
+        logger.debug(f"{self.num_response_to_send_back}")
         self.stuck_start_time = float("inf")
         self.moving = True
         self.wait_time = data["wait_time"]
@@ -434,7 +437,7 @@ class TMRobotController(Node):
         self.num_response_to_send_back -= 1
         logger.error("clearing queue.")
         self.clear_queue()
-        logger.error("Acknowledging failure.")
+        logger.error(f"Acknowledging failure. {self.num_response_to_send_back}")
         sender = self.csv_sender if self.data_source == "csv" else self.isaacsim_sender
         sender.send_data({"message": "Fail"})
         self.last_joint_positions.clear()
@@ -445,7 +448,9 @@ class TMRobotController(Node):
         if self.num_response_to_send_back == 0:
             return
         self.num_response_to_send_back -= 1
-        logger.info("Acknowledging movement completion.")
+        logger.info(
+            f"Acknowledging movement completion. {self.num_response_to_send_back}"
+        )
         sender = self.csv_sender if self.data_source == "csv" else self.isaacsim_sender
         sender.send_data({"message": "Success"})
         self.last_joint_positions.clear()

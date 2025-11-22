@@ -1,9 +1,9 @@
 {
-    "track": ["orange cup", "blue cup", "black frying pan"],
+    "track": ["green cup", "blue cup", "black frying pan"],
     "actions":
     [
         {
-            "target_name": "blue cup",
+            "target_name": "green cup",
             "qualifier": "cup_qualifier",
             "action": "grab_and_pour_and_place_back_curobo",
             "args": [
@@ -11,7 +11,7 @@
             ]
         },
         {
-            "target_name": "orange cup",
+            "target_name": "blue cup",
             "qualifier": "cup_qualifier",
             "action": "grab_and_pour_and_place_back_curobo",
             "args": [
@@ -23,7 +23,7 @@
             "qualifier": "cup_qualifier",
             "action": "joints_rad_move_to_curobo",
             "args": [
-                [ 0.04642576, -0.32005848,  2.44768465,  1.07295861, -1.52266015, 3.12450588]
+                [ 0.04712389, -0.31939525,  2.44695161,  1.07337749, -1.52192711, 3.12413936]
             ]
         }
     ]

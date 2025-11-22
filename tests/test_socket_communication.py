@@ -8,6 +8,7 @@ from multiprocessing import Process, Queue
 import logging
 
 SAMPLE_DATAS = [{"name": "bobby"}, [1, 2, 3, 4, 5], {"motions": [1, 2, 3, 4, 5]}]
+SAMPLE_BIG_DATA = {"big_data": "x" * 1000000}
 
 TIMEOUT = 5
 
@@ -239,5 +240,23 @@ def test_send_to_non_open_socket():
     assert not succ
 
 
+def test_send_big_data_to_NonBlockingJSONReceiver():
+    sender = NonBlockingJSONSender(port=9878)
+    receiver = NonBlockingJSONReceiver(port=9878)
+    succ = sender.send_data(SAMPLE_BIG_DATA)
+    assert succ
+    received_data = receiver.capture_data()
+    assert received_data == SAMPLE_BIG_DATA
+
+
+def test_send_big_data_to_BlockingJSONReceiver():
+    sender = NonBlockingJSONSender(port=9876)
+    receiver = BlockingJSONReceiver(port=9876)
+    succ = sender.send_data(SAMPLE_BIG_DATA)
+    assert succ
+    received_data = receiver.capture_data()
+    assert received_data == SAMPLE_BIG_DATA
+
+
 if __name__ == "__main__":
-    test_send_to_disconnected_NonBlockingJSONReceiver()
+    test_send_big_data_to_NonBlockingJSONReceiver()

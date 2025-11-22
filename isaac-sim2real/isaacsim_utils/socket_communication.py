@@ -195,14 +195,14 @@ class NonBlockingJSONReceiver:
                 self.buffer = b""
                 self.msg_len = None
                 logger.info(f"Accepted connection from {addr}")
-
-            data = self.conn.recv(4096)
-            if not data:
-                logger.warning("The other peer's sender has disconnected.")
-                self.conn.close()
-                self.conn = None
-                return None
-            self.buffer += data
+            while True:
+                data = self.conn.recv(4096)
+                if not data:
+                    logger.warning("The other peer's sender has disconnected.")
+                    self.conn.close()
+                    self.conn = None
+                    return None
+                self.buffer += data
         except BlockingIOError:
             pass  # No data available
         except Exception as e:
@@ -219,18 +219,20 @@ class NonBlockingJSONReceiver:
                 self.buffer = self.buffer[4:]
             else:
                 return None  # Not enough data for header
+        # check message length
+        if len(self.buffer) < self.msg_len:
+            raise ValueError(
+                "Message length defined in the header is larger than the received buffer size, shouldn't happen"
+            )
 
-        if len(self.buffer) >= self.msg_len:
-            message_bytes = self.buffer[: self.msg_len]
-            self.buffer = self.buffer[self.msg_len :]
-            self.msg_len = None  # Reset for next message
-            try:
-                return json.loads(message_bytes.decode("utf-8"))
-            except json.JSONDecodeError as e:
-                logger.exception(f"JSON decode error: {e}")
-                return None
-
-        return None  # Not enough data for full message
+        message_bytes = self.buffer[: self.msg_len]
+        self.buffer = self.buffer[self.msg_len :]
+        self.msg_len = None  # Reset for next message
+        try:
+            return json.loads(message_bytes.decode("utf-8"))
+        except json.JSONDecodeError as e:
+            logger.exception(f"JSON decode error: {e}")
+            return None
 
 
 class BlockingJSONReceiver:

@@ -6,13 +6,13 @@ from PointCloud_Generation.pointcloud_generation import PointCloudGenerator
 from PointCloud_Generation.PC_transform import (
     silent_transform_multiple_obj_with_name_dict,
 )
-from common_utils import config
+from common_utils import config, port_config
 from common_utils.graspgen_utils import GraspGeneratorUI
 from common_utils.actions_format_checker import is_actions_format_valid_v1028
 from common_utils.movesets import act_with_name
 from common_utils.socket_communication import (
     NonBlockingJSONSender,
-    BlockingJSONReceiver,
+    NonBlockingJSONReceiver,
 )
 from common_utils.custom_logger import CustomFormatter
 from common_utils.common_utils import save_json
@@ -128,8 +128,8 @@ def main():
     current_file_dir = os.path.dirname(os.path.abspath(__file__))
     project_root_dir = os.path.dirname(current_file_dir)
     try:
-        sender = NonBlockingJSONSender(port=9878)
-        receiever = BlockingJSONReceiver(port=9879)
+        sender = NonBlockingJSONSender(port=port_config.GRASPGEN_TO_ISAACSIM)
+        receiver = NonBlockingJSONReceiver(port=port_config.ISAACSIM_TO_GRASPGEN)
         pc_generator = PointCloudGenerator(args)
         grasp_generator = GraspGeneratorUI(
             args.gripper_config,
@@ -187,14 +187,25 @@ def main():
                         )
                         if args.save_fullact:
                             save_json("fullact", "fullact", full_acts)
+                        response = receiver.capture_data()
+                        if response is not None and response["message"] == "Abort":
+                            raise InterruptedError(
+                                "aborted by isaacsim, stop current action"
+                            )
                         sender.send_data(full_acts)
-                        response = receiever.capture_data()
+                        # wait for isaacsim's good news
+                        while response is None:
+                            response = receiver.capture_data()
                         if response["message"] == "Success":
-                            logger.info("curobo handled successfully")
-                            continue
-                        elif response["message"] == "Fail":
-                            logger.info("curobo failed handling the move action")
+                            logger.warning("Success")
                             break
+                        elif response["message"] == "Fail":
+                            logger.warning("failed")
+                            continue
+                        elif response["message"] == "Abort":
+                            raise InterruptedError(
+                                "aborted by isaacsim, stop current action"
+                            )
                     while True:
                         grasps = grasp_generator.generate_grasp(scene_data, action)
                         full_acts = act_with_name(
@@ -206,19 +217,36 @@ def main():
                         )
                         if args.save_fullact:
                             save_json("fullact", "fullact_", full_acts)
+                        response = receiver.capture_data()
+                        if response is not None and response["message"] == "Abort":
+                            raise InterruptedError(
+                                "aborted by isaacsim, stop current action"
+                            )
                         sender.send_data(full_acts)
                         # wait for isaacsim's good news
-                        response = receiever.capture_data()
+                        while response is None:
+                            response = receiver.capture_data()
                         if response["message"] == "Success":
                             logger.warning("Success")
                             break
                         elif response["message"] == "Fail":
                             logger.warning("failed")
                             continue
+                        elif response["message"] == "Abort":
+                            raise InterruptedError(
+                                "aborted by isaacsim, stop current action"
+                            )
+                except KeyboardInterrupt:
+                    logger.info("Manual stopping current action.")
+                    break
+                except InterruptedError as e:
+                    name = action["target_name"]
+                    logger.exception(f"Action for {name} interrupted, stopping. {e}")
+                    break
                 except Exception as e:
                     name = action["target_name"]
                     logger.exception(
-                        f"Error while generating grasp for {name}, stopping. {e}"
+                        f"Unknown Error while generating grasp for {name}, stopping. {e}"
                     )
                     break
                 # send the grasp to gripper
