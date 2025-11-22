@@ -189,7 +189,9 @@ def main():
                             save_json("fullact", "fullact", full_acts)
                         response = receiver.capture_data()
                         if response is not None and response["message"] == "Abort":
-                            raise InterruptedError("aborted by isaacsim, stop current action")
+                            raise InterruptedError(
+                                "aborted by isaacsim, stop current action"
+                            )
                         sender.send_data(full_acts)
                         # wait for isaacsim's good news
                         while response is None:
@@ -201,7 +203,9 @@ def main():
                             logger.warning("failed")
                             continue
                         elif response["message"] == "Abort":
-                            raise InterruptedError("aborted by isaacsim, stop current action")
+                            raise InterruptedError(
+                                "aborted by isaacsim, stop current action"
+                            )
                     while True:
                         grasps = grasp_generator.generate_grasp(scene_data, action)
                         full_acts = act_with_name(
@@ -215,7 +219,9 @@ def main():
                             save_json("fullact", "fullact_", full_acts)
                         response = receiver.capture_data()
                         if response is not None and response["message"] == "Abort":
-                            raise InterruptedError("aborted by isaacsim, stop current action")
+                            raise InterruptedError(
+                                "aborted by isaacsim, stop current action"
+                            )
                         sender.send_data(full_acts)
                         # wait for isaacsim's good news
                         while response is None:
@@ -227,7 +233,9 @@ def main():
                             logger.warning("failed")
                             continue
                         elif response["message"] == "Abort":
-                            raise InterruptedError("aborted by isaacsim, stop current action")
+                            raise InterruptedError(
+                                "aborted by isaacsim, stop current action"
+                            )
                 except KeyboardInterrupt:
                     logger.info("Manual stopping current action.")
                     break

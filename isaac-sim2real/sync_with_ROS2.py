@@ -486,7 +486,7 @@ def main():
     plans = []
     cmd_plans = []
     last_joint_states = default_config
-    successs = 0
+    # successs = 0
     temp_cuboid_paths = []
     sim_js = robot.get_joints_state()
     sim_js_names = robot.dof_names
@@ -668,13 +668,13 @@ def main():
                 cmd_idx = 0
                 cmd_plan = cmd_plans.pop(0)
             # print(wait_ros2, successs)
-        
+
         if wait_ros2:
             ros2_response = ros2_receiver.capture_data()
             if ros2_response is not None:
                 if ros2_response["message"] == "Success":
                     print("receiver successfulness.")
-                    
+
                 elif ros2_response["message"] == "Fail":
                     print("receiver failedness.")
                     # send abort to graspgen
@@ -687,7 +687,9 @@ def main():
                         joint_indices=idx_list,
                     )
                     # clear plan
-                    graspgen_datas = graspgen_receiver.capture_data() # eat the new plan if there is any
+                    graspgen_datas = (
+                        graspgen_receiver.capture_data()
+                    )  # eat the new plan if there is any
                     if graspgen_datas is not None:
                         print(f"ate the data {graspgen_datas}")
                     else:

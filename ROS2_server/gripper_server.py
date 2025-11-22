@@ -21,7 +21,7 @@ current_file_dir = os.path.dirname(os.path.abspath(__file__))
 project_root_dir = os.path.dirname(current_file_dir)
 if project_root_dir not in sys.path:
     sys.path.insert(0, project_root_dir)
-from common_utils import port_config
+from common_utils import port_config  # noqa: E402
 from common_utils.socket_communication import (  # noqa: E402
     NonBlockingJSONReceiver,
     NonBlockingJSONSender,
@@ -84,7 +84,9 @@ class TMRobotController(Node):
         super().__init__("tm_robot_controller")
         self.csv_receiver = NonBlockingJSONReceiver(port=port_config.MIA_TO_ROS2)
         self.csv_sender = NonBlockingJSONSender(port=port_config.ROS2_TO_MIA)
-        self.isaacsim_receiver = NonBlockingJSONReceiver(port=port_config.ISAACSIM_TO_ROS2)
+        self.isaacsim_receiver = NonBlockingJSONReceiver(
+            port=port_config.ISAACSIM_TO_ROS2
+        )
         self.isaacsim_sender = NonBlockingJSONSender(port=port_config.ROS2_TO_ISAACSIM)
         self.data_source = ""
         self.script_cli = None
@@ -446,7 +448,9 @@ class TMRobotController(Node):
         if self.num_response_to_send_back == 0:
             return
         self.num_response_to_send_back -= 1
-        logger.info(f"Acknowledging movement completion. {self.num_response_to_send_back}")
+        logger.info(
+            f"Acknowledging movement completion. {self.num_response_to_send_back}"
+        )
         sender = self.csv_sender if self.data_source == "csv" else self.isaacsim_sender
         sender.send_data({"message": "Success"})
         self.last_joint_positions.clear()

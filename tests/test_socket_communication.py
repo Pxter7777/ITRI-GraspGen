@@ -239,6 +239,7 @@ def test_send_to_non_open_socket():
     succ = sender.send_data(SAMPLE_DATAS[0])
     assert not succ
 
+
 def test_send_big_data_to_NonBlockingJSONReceiver():
     sender = NonBlockingJSONSender(port=9878)
     receiver = NonBlockingJSONReceiver(port=9878)
@@ -247,6 +248,7 @@ def test_send_big_data_to_NonBlockingJSONReceiver():
     received_data = receiver.capture_data()
     assert received_data == SAMPLE_BIG_DATA
 
+
 def test_send_big_data_to_BlockingJSONReceiver():
     sender = NonBlockingJSONSender(port=9876)
     receiver = BlockingJSONReceiver(port=9876)
@@ -254,6 +256,7 @@ def test_send_big_data_to_BlockingJSONReceiver():
     assert succ
     received_data = receiver.capture_data()
     assert received_data == SAMPLE_BIG_DATA
+
 
 if __name__ == "__main__":
     test_send_big_data_to_NonBlockingJSONReceiver()

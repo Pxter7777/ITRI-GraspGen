@@ -221,7 +221,9 @@ class NonBlockingJSONReceiver:
                 return None  # Not enough data for header
         # check message length
         if len(self.buffer) < self.msg_len:
-            raise ValueError("Message length defined in the header is larger than the received buffer size, shouldn't happen")
+            raise ValueError(
+                "Message length defined in the header is larger than the received buffer size, shouldn't happen"
+            )
 
         message_bytes = self.buffer[: self.msg_len]
         self.buffer = self.buffer[self.msg_len :]
