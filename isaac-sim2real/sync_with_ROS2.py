@@ -29,7 +29,10 @@ import os
 import json
 import time
 import numpy as np
-from isaacsim_utils.socket_communication import NonBlockingJSONSender, NonBlockingJSONReceiver
+from isaacsim_utils.socket_communication import (
+    NonBlockingJSONSender,
+    NonBlockingJSONReceiver,
+)
 
 
 parser = argparse.ArgumentParser()
