@@ -15,5 +15,5 @@ ln -sf <path_to_tm5s.yml> <path_to_curobo>/src/curobo/content/configs/robot/tm5s
 ```
 e.g.,
 ```bash
-ln -sf /home/j300/isaac-sim-4.5.0/isaac-sim2real/tm5s.yml /home/j300/curobo/src/curobo/content/configs/robot/tm5s.yml
+ln -sf /home/j300/ITRI-GraspGen/isaac-sim2real/tm5s.yml /home/j300/curobo/src/curobo/content/configs/robot/tm5s.yml
 ```
