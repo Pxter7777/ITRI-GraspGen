@@ -163,8 +163,6 @@ simulation_app = SimulationApp(  # noqa: E402
 from isaacsim_utils.helper import add_extensions, add_robot_to_scene  # noqa: E402
 from omni.isaac.core import World  # noqa: E402
 from omni.isaac.core.objects import cuboid, sphere  # noqa: E402
-from omni.isaac.core.utils.stage import add_reference_to_stage  # noqa: E402
-from omni.isaac.core.prims import XFormPrim  # noqa: E402
 
 # import omni.isaac.core.utils.prims as prims_utils  # noqa: E402
 from omni.isaac.core.utils.types import ArticulationAction  # noqa: E402
