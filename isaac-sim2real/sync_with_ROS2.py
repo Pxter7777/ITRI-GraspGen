@@ -541,7 +541,9 @@ def main():
                     # Update the motion planner's world
                     # motion_gen.update_world(obstacles)
                     print(graspgen_data)
+                    before_move_joints = last_joint_states
                     for move in graspgen_data["moves"]:
+                        
                         if "no_obstacles" in move:
                             motion_gen.update_world(zero_obstacles)
                         else:
@@ -645,6 +647,7 @@ def main():
                             new_cmd_plan = None
                         else:
                             print("This plan failed.")
+                            last_joint_states = before_move_joints
                             break
 
                     else:  # success!
