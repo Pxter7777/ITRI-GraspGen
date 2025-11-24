@@ -18,6 +18,7 @@ from common_utils.socket_communication import (  # noqa: E402
     NonBlockingJSONReceiver,
     NonBlockingJSONSender,
 )
+from common_utils import port_config
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -25,9 +26,9 @@ logging.basicConfig(
     format="[%(asctime)s][%(name)s][%(levelname)s] %(message)s",
     force=True,
 )
-sender = NonBlockingJSONSender(port=9877)
+sender = NonBlockingJSONSender(port=port_config.ROS2_TO_ISAACSIM)
 # if it says [socket_communication][ERROR] Connection failed. Is the bridge.py script running on localhost:9877? when started, it's normal and can be ignored.
-receiver = NonBlockingJSONReceiver(port=9876)
+receiver = NonBlockingJSONReceiver(port=port_config.ISAACSIM_TO_ROS2)
 
 while True:
     time.sleep(0.1)
