@@ -16,19 +16,19 @@ try:
     current_file_dir = os.path.dirname(os.path.abspath(__file__))
     project_root_dir = os.path.dirname(current_file_dir)
     filepath = os.path.join(
-        project_root_dir, "data_for_test", "fullact", "fullact_20251104_201025.json"
+        project_root_dir, "data_for_test", "fullact", "fullact_20251124_153709.json"
     )
     with open(filepath, "rb") as f:
         data1 = json.load(f)
 
     filepath = os.path.join(
-        project_root_dir, "data_for_test", "fullact", "fullact_20251104_201027.json"
+        project_root_dir, "data_for_test", "fullact", "fullact_20251124_153711.json"
     )
     with open(filepath, "rb") as f:
         data2 = json.load(f)
 
     filepath = os.path.join(
-        project_root_dir, "data_for_test", "fullact", "fullact20251104_201051.json"
+        project_root_dir, "data_for_test", "fullact", "fullact20251124_153726.json"
     )
     with open(filepath, "rb") as f:
         data3 = json.load(f)
@@ -36,7 +36,7 @@ try:
     datas = [data1, data2, data3]
 
     for data in datas:
-        sender.send_data([data])
+        sender.send_data(data)
         message = receiever.capture_data()
         print(message)
 finally:
