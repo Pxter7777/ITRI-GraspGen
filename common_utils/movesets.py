@@ -215,11 +215,11 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
         if target_name != obj_name:
             obstacles.append(
                 {
-                    "mass_center": list(
-                        np.mean(scene_data["object_infos"][obj_name]["points"], axis=0)
+                    "min": list(
+                        np.percentile(scene_data["object_infos"][obj_name]["points"], 3, axis=0)
                     ),
-                    "std": list(
-                        np.std(scene_data["object_infos"][obj_name]["points"], axis=0)
+                    "max": list(
+                        np.percentile(scene_data["object_infos"][obj_name]["points"], 97, axis=0)
                     ),
                 }
             )
@@ -244,13 +244,13 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
         # pour_rotation = [-0.271, 0.653, -0.271, 0.653]
     elif isinstance(args[0], str):
         obj_points = scene_data["object_infos"][args[0]]["points"]
-        mass_center = np.mean(obj_points, axis=0)
+        middle_point = np.mean([np.percentile(obj_points,97,axis=0), np.percentile(obj_points,3,axis=0)],axis=0)
         ## Ready pour position
         grasp_angle = np.arctan2(grasp_position[1], grasp_position[0])
-        target_angle = np.arctan2(mass_center[1], mass_center[0])
+        target_angle = np.arctan2(middle_point[1], middle_point[0])
 
         # compute radius using mass_center[0] and mass_center[1]
-        radius = np.linalg.norm(mass_center[:2]) - 0.20
+        radius = np.linalg.norm(middle_point[:2]) - 0.20
 
         angle_diff = target_angle - grasp_angle
         if angle_diff > np.pi:
@@ -259,13 +259,13 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
             angle_diff += 2 * np.pi
 
         if angle_diff < 0:  # Clockwise
-            goal_angle = target_angle + np.deg2rad(10)
+            goal_angle = target_angle + np.deg2rad(5)
         else:  # Counter-clockwise
-            goal_angle = target_angle - np.deg2rad(10)
+            goal_angle = target_angle - np.deg2rad(5)
         ready_pour_position = [
             radius * np.cos(goal_angle),
             radius * np.sin(goal_angle),
-            mass_center[2] + 0.200,
+            middle_point[2] + 0.200,
         ]
         q_z_rotation = trimesh.transformations.quaternion_about_axis(
             goal_angle, [0, 0, 1]
@@ -467,11 +467,11 @@ def joints_rad_move_to_curobo(
     for obj_name in scene_data["object_infos"]:
         obstacles.append(
             {
-                "mass_center": list(
-                    np.mean(scene_data["object_infos"][obj_name]["points"], axis=0)
+                "min": list(
+                    np.percentile(scene_data["object_infos"][obj_name]["points"], 3, axis=0)
                 ),
-                "std": list(
-                    np.std(scene_data["object_infos"][obj_name]["points"], axis=0)
+                "max": list(
+                    np.percentile(scene_data["object_infos"][obj_name]["points"], 97, axis=0)
                 ),
             }
         )
