@@ -216,10 +216,14 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
             obstacles.append(
                 {
                     "min": list(
-                        np.percentile(scene_data["object_infos"][obj_name]["points"], 3, axis=0)
+                        np.percentile(
+                            scene_data["object_infos"][obj_name]["points"], 3, axis=0
+                        )
                     ),
                     "max": list(
-                        np.percentile(scene_data["object_infos"][obj_name]["points"], 97, axis=0)
+                        np.percentile(
+                            scene_data["object_infos"][obj_name]["points"], 97, axis=0
+                        )
                     ),
                 }
             )
@@ -244,7 +248,13 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
         # pour_rotation = [-0.271, 0.653, -0.271, 0.653]
     elif isinstance(args[0], str):
         obj_points = scene_data["object_infos"][args[0]]["points"]
-        middle_point = np.mean([np.percentile(obj_points,97,axis=0), np.percentile(obj_points,3,axis=0)],axis=0)
+        middle_point = np.mean(
+            [
+                np.percentile(obj_points, 97, axis=0),
+                np.percentile(obj_points, 3, axis=0),
+            ],
+            axis=0,
+        )
         ## Ready pour position
         grasp_angle = np.arctan2(grasp_position[1], grasp_position[0])
         target_angle = np.arctan2(middle_point[1], middle_point[0])
@@ -468,10 +478,14 @@ def joints_rad_move_to_curobo(
         obstacles.append(
             {
                 "min": list(
-                    np.percentile(scene_data["object_infos"][obj_name]["points"], 3, axis=0)
+                    np.percentile(
+                        scene_data["object_infos"][obj_name]["points"], 3, axis=0
+                    )
                 ),
                 "max": list(
-                    np.percentile(scene_data["object_infos"][obj_name]["points"], 97, axis=0)
+                    np.percentile(
+                        scene_data["object_infos"][obj_name]["points"], 97, axis=0
+                    )
                 ),
             }
         )

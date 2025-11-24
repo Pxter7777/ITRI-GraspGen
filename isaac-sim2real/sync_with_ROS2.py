@@ -505,14 +505,18 @@ def main():
                     # Create new temporary obstacles in the Isaac Sim stage
                     if "obstacles" in graspgen_data and graspgen_data["obstacles"]:
                         for i, obs_data in enumerate(graspgen_data["obstacles"]):
-                            middle_point = np.mean([obs_data["max"], obs_data["min"]],axis=0)
-                            scale = np.array(obs_data["max"])-np.array(obs_data["min"])
+                            middle_point = np.mean(
+                                [obs_data["max"], obs_data["min"]], axis=0
+                            )
+                            scale = np.array(obs_data["max"]) - np.array(
+                                obs_data["min"]
+                            )
                             # std = obs_data["std"]
                             prim_path = f"/World/temp_obstacle_{i}"
                             cuboid.FixedCuboid(
                                 prim_path=prim_path,
                                 position=np.array(middle_point),
-                                scale=scale*1.2,
+                                scale=scale * 1.2,
                                 color=np.array([0.0, 0.0, 1.0]),  # Blue
                                 # physics=True,
                             )
