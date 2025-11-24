@@ -512,7 +512,7 @@ def main():
                             cuboid.FixedCuboid(
                                 prim_path=prim_path,
                                 position=np.array(middle_point),
-                                scale=scale,
+                                scale=scale*1.2,
                                 color=np.array([0.0, 0.0, 1.0]),  # Blue
                                 # physics=True,
                             )

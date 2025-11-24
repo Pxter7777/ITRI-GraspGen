@@ -30,43 +30,58 @@ robot_cfg:
     collision_link_names: ['link_1', 'link_2', 'link_3', 'link_4', 'link_5', 'link_6']
     collision_spheres:
       link_1:
-        - "center": [-0.0, -0.0, 0.05]
-          "radius": 0.04
-        - "center": [-0.0, -0.182, -0.0]
-          "radius": 0.04
+        - "center": [0.0, -0.0, 0.052]
+          "radius": 0.06
+        - "center": [0.0, -0.0, -0.043]
+          "radius": 0.06
       link_2:
-        - "center": [0.1, 0.0, -0.15]
-          "radius": 0.03
-        - "center": [0.2, 0.0, -0.15]
-          "radius": 0.03
-        - "center": [0.3, 0.0, -0.15]
-          "radius": 0.03
-        - "center": [0.426, 0.0, -0.178]
-          "radius": 0.04
-      link_3:
-        - "center": [0.0, 0.0, 0.0]
-          "radius": 0.075
-        - "center": [0.1, 0.0, -0.015]
-          "radius": 0.025
-        - "center": [0.2, 0.0, -0.015]
-          "radius": 0.025
-        - "center": [0.3, 0.0, -0.015]
-          "radius": 0.025
-        - "center": [0.376, -0.0, -0.006]
-          "radius": 0.03
+        - "center": [0.0, 0.0, -0.095]
+          "radius": 0.07
+        - "center": [0.0, 0.0, -0.187]
+          "radius": 0.07
+        - "center": [0.103, 0.0, -0.151]
+          "radius": 0.06
+        - "center": [0.203, 0.0, -0.153]
+          "radius": 0.06
+        - "center": [0.31, 0.0, -0.151]
+          "radius": 0.06
       link_4:
-        - "center": [0.0, 0.0, 0.0]
-          "radius": 0.035
-      link_5:
-        - "center": [0.0, 0.0, 0.0]
-          "radius": 0.035
+        - "center": [0.0, 0.024, -0.0]
+          "radius": 0.05
+        - "center": [0.0, 0.0, 0.08]
+          "radius": 0.05
+        - "center": [0.0, 0.0, 0.15]
+          "radius": 0.05
       link_6:
         - "center": [0.0, 0.0, 0.0]
-          "radius": 0.03
-        - "center": [0.0, 0.045, -0.0]
-          "radius": 0.03
-        - "center": [0.000, 0.0, 0.104]
+          "radius": 0.05
+        - "center": [0.0, 0.075, -0.03]
           "radius": 0.04
+        - "center": [0.0, 0.075, 0.02]
+          "radius": 0.04
+        - "center": [0.0, 0.0, 0.07]
+          "radius": 0.05
+      link_5:
+        - "center": [-0.0, 0.02, 0.0]
+          "radius": 0.05
+        - "center": [0.0, 0.0, -0.08]
+          "radius": 0.05
+        - "center": [-0.0, -0.029, -0.0]
+          "radius": 0.05
+      link_3:
+        - "center": [0.301, -0.001, -0.016]
+          "radius": 0.04
+        - "center": [0.211, 0.004, -0.016]
+          "radius": 0.04
+        - "center": [0.086, 0.0, -0.014]
+          "radius": 0.04
+        - "center": [-0.0, 0.0, -0.047]
+          "radius": 0.055
+        - "center": [-0.0, 0.0, -0.131]
+          "radius": 0.055
+        - "center": [-0.0, 0.0, -0.199]
+          "radius": 0.055
+
 
     collision_sphere_buffer: 0.005 # float or Dict[str, float]
     extra_collision_spheres: {}
