@@ -52,6 +52,7 @@ def is_qualified(grasp: np.array, mass_center, obj_std):
     return True
 """
 
+
 def flip_grasp(grasp: np.ndarray) -> np.ndarray:
     """
     Flips a grasp by rotating it 180 degrees around its approach (front) axis.
@@ -112,7 +113,6 @@ class GraspGenerator:
         except KeyboardInterrupt:  # manual stop if too many fail
             logging.info("Manually stopping generating grasps")
             return None
-
 
 
 def start_meshcat_server():
@@ -376,8 +376,8 @@ class GraspGeneratorUI:
         obj_name = self.action["target_name"]
         obj_pc = self.scene_data["object_infos"][obj_name]["points"]
         qualifier_name = self.action["qualifier"]
-        mass_center = np.mean(obj_pc, axis=0)
-        std = np.std(obj_pc, axis=0)
+        # mass_center = np.mean(obj_pc, axis=0)
+        # std = np.std(obj_pc, axis=0)
         grasps, grasp_conf = GraspGenSampler.run_inference(
             obj_pc,
             self.grasp_sampler,

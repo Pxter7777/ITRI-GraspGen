@@ -1,6 +1,6 @@
 import numpy as np
 import logging
-from common_utils import config
+
 logger = logging.getLogger(__name__)
 
 
@@ -30,9 +30,9 @@ def cup_qualifier(grasp: np.array, min_point: np.ndarray, max_point: np.ndarray)
 
     if position[2] < 0.05:  # for safety
         return False
-    if position[2] > min_point[2] +  (max_point[2] - min_point[2])*0.75:  # too high
+    if position[2] > min_point[2] + (max_point[2] - min_point[2]) * 0.75:  # too high
         return False
-    if position[2] < min_point[2] + (max_point[2] - min_point[2])*0.3:  # too low
+    if position[2] < min_point[2] + (max_point[2] - min_point[2]) * 0.3:  # too low
         return False
     return True
 

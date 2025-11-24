@@ -18,7 +18,7 @@ from common_utils.socket_communication import (  # noqa: E402
     NonBlockingJSONReceiver,
     NonBlockingJSONSender,
 )
-from common_utils import port_config
+from common_utils import port_config  # noqa: E402
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(

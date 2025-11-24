@@ -543,7 +543,6 @@ def main():
                     print(graspgen_data)
                     before_move_joints = last_joint_states
                     for move in graspgen_data["moves"]:
-                        
                         if "no_obstacles" in move:
                             motion_gen.update_world(zero_obstacles)
                         else:
