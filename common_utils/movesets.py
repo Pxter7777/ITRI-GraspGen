@@ -235,7 +235,7 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
     before_grasp_position = [
         p - f * 0.050 for p, f in zip(position, front, strict=False)
     ]
-    grasp_position = [p + f * 0.060 for p, f in zip(position, front, strict=False)]
+    grasp_position = [p + f * 0.050 for p, f in zip(position, front, strict=False)]
 
     # specific fixed poses
     if isinstance(args[0], list):

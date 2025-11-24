@@ -12,7 +12,7 @@ from threading import Thread
 import queue
 from grasp_gen.grasp_server import GraspGenSampler, load_grasp_cfg
 from grasp_gen.robot import get_gripper_info
-from common_utils.qualification import is_qualified_with_name
+from common_utils.qualification import is_qualified
 from grasp_gen.utils.meshcat_utils import (
     create_visualizer,
     visualize_grasp,
@@ -23,7 +23,7 @@ from grasp_gen.utils.point_cloud_utils import filter_colliding_grasps
 
 logger = logging.getLogger(__name__)
 
-
+"""
 def is_qualified(grasp: np.array, mass_center, obj_std):
     position = grasp[:3, 3].tolist()
     left, up, front = get_left_up_and_front(grasp)
@@ -50,7 +50,7 @@ def is_qualified(grasp: np.array, mass_center, obj_std):
     if position[2] < mass_center[2] - obj_std[2]:  # too low
         return False
     return True
-
+"""
 
 def flip_grasp(grasp: np.ndarray) -> np.ndarray:
     """
@@ -113,32 +113,6 @@ class GraspGenerator:
             logging.info("Manually stopping generating grasps")
             return None
 
-    def flexible_auto_select_valid_grasp(self, obj: dict, qualifier: str) -> np.array:
-        mass_center = np.mean(obj["points"], axis=0)
-        std = np.std(obj["points"], axis=0)
-
-        num_try = 0
-        while True:
-            num_try += 1
-            logging.info(f"try #{num_try}")
-            grasps, grasp_conf = GraspGenSampler.run_inference(
-                obj["points"],
-                self.grasp_sampler,
-                grasp_threshold=self.grasp_threshold,
-                num_grasps=self.num_grasps,
-                topk_num_grasps=self.topk_num_grasps,
-            )
-            grasps = grasps.cpu().numpy()
-            grasps[:, 3, 3] = 1
-            qualified_grasps = np.array(
-                [
-                    grasp
-                    for grasp in grasps
-                    if is_qualified_with_name(grasp, qualifier, mass_center, std)
-                ]
-            )
-            if len(qualified_grasps) > 0:
-                return qualified_grasps[0]
 
 
 def start_meshcat_server():
@@ -416,9 +390,11 @@ class GraspGeneratorUI:
         grasps = grasps.cpu().numpy()
         grasps[:, 3, 3] = 1
         grasps = flip_upside_down_grasps(grasps)
+        min_point = np.percentile(obj_pc, 3, axis=0)
+        max_point = np.percentile(obj_pc, 97, axis=0)
         custom_filter_mask = np.array(
             [
-                is_qualified_with_name(grasp, qualifier_name, mass_center, std)
+                is_qualified(grasp, qualifier_name, min_point, max_point)
                 for grasp in grasps
             ]
         )
