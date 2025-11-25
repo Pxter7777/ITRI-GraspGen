@@ -6,7 +6,6 @@ import open3d as o3d
 import numpy as np
 import pyzed.sl as sl
 
-from grasp_gen.utils.point_cloud_utils import point_cloud_outlier_removal_with_color
 from PointCloud_Generation.mouse_handlerv2 import MouseHandler
 from PointCloud_Generation.grounding_dino_utils import GroundindDinoPredictor
 from PointCloud_Generation.visualization import visualize_named_box, visualize_mask

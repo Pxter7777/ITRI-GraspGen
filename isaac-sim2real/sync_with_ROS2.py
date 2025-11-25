@@ -645,7 +645,9 @@ def main():
                                     jerk=new_cmd_plan.jerk[[0, -1]],
                                     joint_names=new_cmd_plan.joint_names,
                                 )
-                                print("---------------------------------------------------------only keep first and last")
+                                print(
+                                    "---------------------------------------------------------only keep first and last"
+                                )
                             positions = cmd_to_move(new_cmd_plan)
                             plans.append(
                                 {
