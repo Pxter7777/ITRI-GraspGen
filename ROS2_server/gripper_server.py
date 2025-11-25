@@ -182,7 +182,6 @@ class TMRobotController(Node):
             logger.info("等待 set_io 服務...")
 
         # 初始化 gripper 狀態追蹤
-        self.ee_digital_output = [0, 0, 1, 0]  # 初始狀態
         self.target_ee_output = None  # 要等待的目標狀態
         self.waiting_for_gripper = False  # 是否等待中
 
@@ -191,14 +190,12 @@ class TMRobotController(Node):
             FeedbackState, "feedback_states", self.feedback_callback, 10
         )
         logger.info("✅ 已訂閱 feedback_states")
-        self.sub = self.create_subscription(PoseStamped, "/tool_pose", self.cb, 10)
         logger.info(" subscribe /tool_pose")
 
     def feedback_callback(self, msg: FeedbackState):
         if not self.moving:
             return
         current_time = time.time()
-        self.ee_digital_output = list(msg.ee_digital_output)
         self.last_joint_positions.append(list(msg.joint_pos))
         if (
             len(self.last_joint_positions) == LAST_JOINTS_REC_NUM
@@ -243,23 +240,6 @@ class TMRobotController(Node):
         if current_time - self.reached_time > self.wait_time:
             self.reached_time = float("inf")
             self._handle_success()
-
-    def cb(self, msg: PoseStamped):
-        p = msg.pose.position
-        q = msg.pose.orientation
-        # 2)  transform to CPP（x y z rx ry rz）
-        x_mm, y_mm, z_mm = p.x * 1000.0, p.y * 1000.0, p.z * 1000.0
-        rx, ry, rz = quat_to_euler_zyx_deg(q.x, q.y, q.z, q.w)
-
-        for state in self.states_need_to_wait:
-            if is_two_point_identical(
-                [x_mm, y_mm, z_mm, rx, ry, rz], state["position"]
-            ):
-                logger.info(
-                    f"🔄 夾爪狀態達成: {self.ee_digital_output}，開始等待 87 秒"
-                )
-                self._start_arm_wait_timer(state["time_to_wait"])
-                self.states_need_to_wait.remove(state)
 
     def _start_gripper_wait_timer(self):
         # 建立 Timer，並在執行 callback 時自行取消
