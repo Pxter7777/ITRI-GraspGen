@@ -636,7 +636,16 @@ def main():
                             new_cmd_plan = new_cmd_plan.get_ordered_joint_state(
                                 common_js_names
                             )
-
+                            # The following code block shows how to prune the plan to keep only the first and last waypoints
+                            if "no_curobo" in move:
+                                new_cmd_plan = JointState(
+                                    position=new_cmd_plan.position[[0, -1]],
+                                    velocity=new_cmd_plan.velocity[[0, -1]],
+                                    acceleration=new_cmd_plan.acceleration[[0, -1]],
+                                    jerk=new_cmd_plan.jerk[[0, -1]],
+                                    joint_names=new_cmd_plan.joint_names,
+                                )
+                                print("---------------------------------------------------------only keep first and last")
                             positions = cmd_to_move(new_cmd_plan)
                             plans.append(
                                 {
