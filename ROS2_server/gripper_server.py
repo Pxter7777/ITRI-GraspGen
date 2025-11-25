@@ -7,7 +7,6 @@ import rclpy
 from rclpy.node import Node
 from tm_msgs.srv import SendScript, SetIO
 from tm_msgs.msg import FeedbackState
-from geometry_msgs.msg import PoseStamped
 from collections import deque
 import numpy as np
 import argparse
@@ -30,17 +29,20 @@ from common_utils.custom_logger import CustomFormatter  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
-def mrad_to_mmdeg(cartesian_pose:list) -> list:
-    position = [p*1000 for p in cartesian_pose[:3]]
+
+def mrad_to_mmdeg(cartesian_pose: list) -> list:
+    position = [p * 1000 for p in cartesian_pose[:3]]
     euler_orientation_deg = np.rad2deg(cartesian_pose[3:]).tolist()
     return position + euler_orientation_deg
 
-def is_joint_vel_near_zero(joint_vel: list):
-    return all(
-        abs(v) < 0.001 for v in joint_vel
-    )
 
-def is_cartesion_pose_similar(point1: list, point2: list): # use euler angle, not quaternion
+def is_joint_vel_near_zero(joint_vel: list):
+    return all(abs(v) < 0.001 for v in joint_vel)
+
+
+def is_cartesion_pose_similar(
+    point1: list, point2: list
+):  # use euler angle, not quaternion
     if point1 is None or point2 is None:
         return False
     pos_similar = all(
@@ -51,7 +53,10 @@ def is_cartesion_pose_similar(point1: list, point2: list): # use euler angle, no
     )
     return pos_similar and orient_identical
 
-def is_cartesion_pose_identical(point1: list, point2: list): # use euler angle, not quaternion
+
+def is_cartesion_pose_identical(
+    point1: list, point2: list
+):  # use euler angle, not quaternion
     if point1 is None or point2 is None:
         return False
     pos_identical = all(
@@ -73,6 +78,7 @@ def is_pose_identical(joints1: list, joints2: list):
 
 
 successs = 0
+
 
 class TMRobotController(Node):
     def __init__(self):
@@ -156,10 +162,12 @@ class TMRobotController(Node):
             self.goal_cartesian_pose = cartesian_poses_mm_degree.pop()
             accepted_cartesion_poses = []
             for cartesian_pose in cartesian_poses_mm_degree:
-                if len(accepted_cartesion_poses)==0:
+                if len(accepted_cartesion_poses) == 0:
                     accepted_cartesion_poses.append(cartesian_pose)
                     continue
-                if not is_cartesion_pose_similar(cartesian_pose, accepted_cartesion_poses[-1]):
+                if not is_cartesion_pose_similar(
+                    cartesian_pose, accepted_cartesion_poses[-1]
+                ):
                     accepted_cartesion_poses.append(cartesian_pose)
             for cartesian_pose in accepted_cartesion_poses:
                 self.append_ptp(cartesian_pose)
@@ -204,25 +212,32 @@ class TMRobotController(Node):
             return
         current_time = time.time()
         # reach detection
-        if self.reached_time > current_time: # hasn't reached yet
-            if self.current_moving_type == "arm" and is_pose_identical(msg.joint_pos, self.goal_joints): # Need to change this type name to JPP if possible.
+        if self.reached_time > current_time:  # hasn't reached yet
+            if self.current_moving_type == "arm" and is_pose_identical(
+                msg.joint_pos, self.goal_joints
+            ):  # Need to change this type name to JPP if possible.
                 self.reached_time = current_time
-            elif self.current_moving_type == "PTP" and is_cartesion_pose_identical(mrad_to_mmdeg(msg.tool_pose), self.goal_cartesian_pose):
+            elif self.current_moving_type == "PTP" and is_cartesion_pose_identical(
+                mrad_to_mmdeg(msg.tool_pose), self.goal_cartesian_pose
+            ):
                 self.reached_time = current_time
-            elif self.current_moving_type == "gripper" and list(msg.ee_digital_output)[:3] == self.goal_gripper:
+            elif (
+                self.current_moving_type == "gripper"
+                and list(msg.ee_digital_output)[:3] == self.goal_gripper
+            ):
                 self.reached_time = current_time
-        
+
         # stuck detection
         if (
             is_joint_vel_near_zero(list(msg.joint_vel))
             and self.reached_time > current_time
-        ): # stuck detected
-            if self.stuck_start_time > current_time: # it's a new stuck
+        ):  # stuck detected
+            if self.stuck_start_time > current_time:  # it's a new stuck
                 logger.info("new stuck detected, start timing stuck.")
                 self.stuck_start_time = current_time
         else:
             self.stuck_start_time = float("inf")
-        
+
         # handle success reach
         if current_time - self.reached_time >= self.wait_time:
             self._handle_success()
@@ -231,7 +246,6 @@ class TMRobotController(Node):
             logger.debug(f"{current_time}, {self.stuck_start_time}")
             logger.error("Stuck detected.")
             self._handle_failure()
-
 
     def _start_gripper_wait_timer(self):
         # 建立 Timer，並在執行 callback 時自行取消
@@ -320,6 +334,7 @@ class TMRobotController(Node):
             self.states_need_to_wait.append(
                 {"position": tcp_values, "time_to_wait": wait_time}
             )
+
     def append_ptp(
         self, ptp_values: list, vel=20, acc=20, coord=80, fine=False, wait_time=0.0
     ):
