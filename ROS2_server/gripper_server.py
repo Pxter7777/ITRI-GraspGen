@@ -156,6 +156,8 @@ class TMRobotController(Node):
             for joints in accepted_joints:
                 self.append_jpp(joints)
             self.append_jpp(goal_degree)
+        elif data["type"] == "PTP":
+            pass
         elif data["type"] == "gripper":
             if data["grip_type"] == "close":
                 self.goal_gripper = [1, 0, 0]
@@ -191,52 +193,57 @@ class TMRobotController(Node):
         )
         logger.info("✅ 已訂閱 feedback_states")
         logger.info(" subscribe /tool_pose")
-
-    def feedback_callback(self, msg: FeedbackState):
-        if not self.moving:
-            return
+    def _JPP_callback(self, msg: FeedbackState) -> None:
         current_time = time.time()
         self.last_joint_positions.append(list(msg.joint_pos))
+        # stuck detection
         if (
             len(self.last_joint_positions) == LAST_JOINTS_REC_NUM
             and is_pose_identical(list(msg.joint_pos), self.last_joint_positions[0])
             and self.reached_time > current_time
+            and self.stuck_start_time > current_time
         ):
-            # logger.warning(f"Stuck detected. {self.stuck_start_time}, {current_time}")
-            if self.stuck_start_time > current_time:
-                logger.warning("Same as last joint positions, start timing stuck.")
-                logger.debug(
-                    f"{self.last_joint_positions[0]}, {self.last_joint_positions[-1]}, {list(msg.joint_pos)}"
-                )
-                self.stuck_start_time = current_time
-            if current_time - self.stuck_start_time > 3:
-                logger.debug(f"{current_time}, {self.stuck_start_time}")
-                logger.error("Stuck detected.")
-                self._handle_failure()
-
+            logger.warning("Same as last joint positions, start timing stuck.")
+            logger.debug(
+                f"{self.last_joint_positions[0]}, {self.last_joint_positions[-1]}, {list(msg.joint_pos)}"
+            )
+            self.stuck_start_time = current_time
         else:
             self.stuck_start_time = float("inf")
-        if current_time - self.stuck_start_time > 5:
-            logger.error("Stuck detected.")
+        # reach detection
         if (
-            self.current_moving_type == "arm"
-            and is_pose_identical(msg.joint_pos, self.goal_joints)
+            is_pose_identical(msg.joint_pos, self.goal_joints)
             and self.reached_time > current_time
         ):
             self.reached_time = current_time
-        elif (
-            self.current_moving_type == "gripper"
-            and list(msg.ee_digital_output)[:3] == self.goal_gripper
-            and self.reached_time > current_time
-        ):
-            self.reached_time = current_time
-        # stuck detection
-        # if self.reached_time > current_time: # moving toward goal
-        #     if current_time - self.stuck_start_time > 3:
-        #         logger.error(f"{current_time}, {self.stuck_start_time}")
-        #         logger.error("Stuck detected, clearing queue.")
-        #         self._handle_failure()
 
+       
+    def _PTP_callback(self, msg: FeedbackState) -> None:
+        pass
+    def _gripper_callback(self, msg: FeedbackState) -> None:
+        current_time = time.time()
+        # reach detection
+        if (
+            list(msg.ee_digital_output)[:3] == self.goal_gripper
+            and self.reached_time > current_time
+        ):
+            self.reached_time = current_time
+    def feedback_callback(self, msg: FeedbackState) -> None:
+        if not self.moving:
+            return
+        if self.current_moving_type == "arm": # Need to change this type name to JPP if possible.
+            self._JPP_callback(msg)
+        elif self.current_moving_type == "PTP":
+            self._PTP_callback(msg)
+        elif self.current_moving_type == "gripper":
+            self._gripper_callback(msg)
+        current_time = time.time()
+        # handle stuck failure
+        if current_time - self.stuck_start_time > 3:
+            logger.debug(f"{current_time}, {self.stuck_start_time}")
+            logger.error("Stuck detected.")
+            self._handle_failure()
+        # handle success reach
         if current_time - self.reached_time > self.wait_time:
             self.reached_time = float("inf")
             self._handle_success()
