@@ -3,7 +3,6 @@
 # one_arm_control_CPP.py
 
 import time
-import math
 import rclpy
 from rclpy.node import Node
 from tm_msgs.srv import SendScript, SetIO
@@ -35,28 +34,6 @@ def mrad_to_mmdeg(cartesian_pose:list) -> list:
     position = [p*1000 for p in cartesian_pose[:3]]
     euler_orientation_deg = np.rad2deg(cartesian_pose[3:]).tolist()
     return position + euler_orientation_deg
-def quat_to_euler_zyx_deg(qx, qy, qz, qw):
-    def _clamp(v, lo, hi):
-        return max(lo, min(hi, v))
-
-    def normalize_quat(x, y, z, w):
-        n = math.sqrt(x * x + y * y + z * z + w * w)
-        return (0.0, 0.0, 0.0, 1.0) if n == 0 else (x / n, y / n, z / n, w / n)
-
-    qx, qy, qz, qw = normalize_quat(qx, qy, qz, qw)
-    # yaw (Z)
-    siny = 2.0 * (qw * qz + qx * qy)
-    cosy = 1.0 - 2.0 * (qy * qy + qz * qz)
-    yaw = math.atan2(siny, cosy)
-    # pitch (Y)
-    sinp = 2.0 * (qw * qy - qz * qx)
-    sinp = _clamp(sinp, -1.0, 1.0)
-    pitch = math.asin(sinp)
-    # roll (X)
-    sinr = 2.0 * (qw * qx + qy * qz)
-    cosr = 1.0 - 2.0 * (qx * qx + qy * qy)
-    roll = math.atan2(sinr, cosr)
-    return math.degrees(roll), math.degrees(pitch), math.degrees(yaw)  # rx, ry, rz
 
 def is_joint_vel_near_zero(joint_vel: list):
     return all(
