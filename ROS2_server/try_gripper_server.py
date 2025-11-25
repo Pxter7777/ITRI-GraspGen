@@ -63,8 +63,19 @@ data6 = {
 }
 data3 = {"type": "gripper", "wait_time": 2.0, "grip_type": "close"}
 data4 = {"type": "gripper", "wait_time": 2.0, "grip_type": "open"}
+data7 = {
+    "type": "PTP",
+    "wait_time": 5.0,
+    "cartesian_poses": [[326,-140,212,93,1,89], [283,-204,200,106,-4,63]]
+}
+data8 = {
+    "type": "PTP",
+    "wait_time": 5.0,
+    "cartesian_poses": [[283,-204,200,106,-4,63],[326,-140,212,93,1,89]]
+}
+data8
 datalist = [data5, data6, data5, data6]
-# datalist = [data1, data2, data1, data2]
+datalist = [data7, data8, data7, data8]
 wait_for_response = False
 while True:
     if len(datalist) == 0:
