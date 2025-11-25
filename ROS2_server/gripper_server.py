@@ -55,8 +55,14 @@ def quat_to_euler_zyx_deg(qx, qy, qz, qw):
     roll = math.atan2(sinr, cosr)
     return math.degrees(roll), math.degrees(pitch), math.degrees(yaw)  # rx, ry, rz
 
+def is_joint_vel_near_zero(joint_vel: list):
+    return all(
+        abs(v) < 0.001 for v in joint_vel
+    )
 
-def is_two_point_identical(point1: list, point2: list):
+def is_cartesion_pose_identical(point1: list, point2: list):
+    if point1 is None or point2 is None:
+        return False
     pos_identical = all(
         abs(p1 - p2) < 10 for p1, p2 in zip(point1[:3], point2[:3], strict=False)
     )
@@ -76,8 +82,6 @@ def is_pose_identical(joints1: list, joints2: list):
 
 
 successs = 0
-LAST_JOINTS_REC_NUM = 100
-
 
 class TMRobotController(Node):
     def __init__(self):
@@ -109,7 +113,6 @@ class TMRobotController(Node):
         self.reached_time = float("inf")
         self.goal_gripper = None
         # record the last LAST_JOINTS_REC_NUM joint positions to detect stuck, using queue
-        self.last_joint_positions = deque(maxlen=LAST_JOINTS_REC_NUM)
         self.num_response_to_send_back = (
             0  # it's enough because we're not using multi-threading
         )
@@ -133,6 +136,7 @@ class TMRobotController(Node):
         logger.debug(data)
         self.num_response_to_send_back += 1
         logger.debug(f"{self.num_response_to_send_back}")
+        self.reached_time = float("inf")
         self.stuck_start_time = float("inf")
         self.moving = True
         self.wait_time = data["wait_time"]
@@ -192,61 +196,40 @@ class TMRobotController(Node):
             FeedbackState, "feedback_states", self.feedback_callback, 10
         )
         logger.info("✅ 已訂閱 feedback_states")
-        logger.info(" subscribe /tool_pose")
-    def _JPP_callback(self, msg: FeedbackState) -> None:
-        current_time = time.time()
-        self.last_joint_positions.append(list(msg.joint_pos))
-        # stuck detection
-        if (
-            len(self.last_joint_positions) == LAST_JOINTS_REC_NUM
-            and is_pose_identical(list(msg.joint_pos), self.last_joint_positions[0])
-            and self.reached_time > current_time
-            and self.stuck_start_time > current_time
-        ):
-            logger.warning("Same as last joint positions, start timing stuck.")
-            logger.debug(
-                f"{self.last_joint_positions[0]}, {self.last_joint_positions[-1]}, {list(msg.joint_pos)}"
-            )
-            self.stuck_start_time = current_time
-        else:
-            self.stuck_start_time = float("inf")
-        # reach detection
-        if (
-            is_pose_identical(msg.joint_pos, self.goal_joints)
-            and self.reached_time > current_time
-        ):
-            self.reached_time = current_time
 
-       
-    def _PTP_callback(self, msg: FeedbackState) -> None:
-        pass
-    def _gripper_callback(self, msg: FeedbackState) -> None:
-        current_time = time.time()
-        # reach detection
-        if (
-            list(msg.ee_digital_output)[:3] == self.goal_gripper
-            and self.reached_time > current_time
-        ):
-            self.reached_time = current_time
     def feedback_callback(self, msg: FeedbackState) -> None:
         if not self.moving:
             return
-        if self.current_moving_type == "arm": # Need to change this type name to JPP if possible.
-            self._JPP_callback(msg)
-        elif self.current_moving_type == "PTP":
-            self._PTP_callback(msg)
-        elif self.current_moving_type == "gripper":
-            self._gripper_callback(msg)
         current_time = time.time()
+        # reach detection
+        if self.reached_time > current_time: # hasn't reached yet
+            if self.current_moving_type == "arm" and is_pose_identical(msg.joint_pos, self.goal_joints): # Need to change this type name to JPP if possible.
+                self.reached_time = current_time
+            elif self.current_moving_type == "PTP" and is_cartesion_pose_identical(msg.tool_pose, self.goal_pose):
+                self.reached_time = current_time
+            elif self.current_moving_type == "gripper" and list(msg.ee_digital_output)[:3] == self.goal_gripper:
+                self.reached_time = current_time
+        
+        # stuck detection
+        if (
+            is_joint_vel_near_zero(list(msg.joint_vel))
+            and self.reached_time > current_time
+        ): # stuck detected
+            if self.stuck_start_time > current_time: # it's a new stuck
+                logger.info("new stuck detected, start timing stuck.")
+                self.stuck_start_time = current_time
+        else:
+            self.stuck_start_time = float("inf")
+        
+        # handle success reach
+        if current_time - self.reached_time >= self.wait_time:
+            self._handle_success()
         # handle stuck failure
-        if current_time - self.stuck_start_time > 3:
+        if current_time - self.stuck_start_time >= 3:
             logger.debug(f"{current_time}, {self.stuck_start_time}")
             logger.error("Stuck detected.")
             self._handle_failure()
-        # handle success reach
-        if current_time - self.reached_time > self.wait_time:
-            self.reached_time = float("inf")
-            self._handle_success()
+
 
     def _start_gripper_wait_timer(self):
         # 建立 Timer，並在執行 callback 時自行取消
@@ -427,8 +410,6 @@ class TMRobotController(Node):
         logger.error(f"Acknowledging failure. {self.num_response_to_send_back}")
         sender = self.csv_sender if self.data_source == "csv" else self.isaacsim_sender
         sender.send_data({"message": "Fail"})
-        self.last_joint_positions.clear()
-        self.stuck_start_time = float("inf")
         self.moving = False
 
     def _handle_success(self):
@@ -440,7 +421,6 @@ class TMRobotController(Node):
         )
         sender = self.csv_sender if self.data_source == "csv" else self.isaacsim_sender
         sender.send_data({"message": "Success"})
-        self.last_joint_positions.clear()
         global successs
         successs += 1
         logger.debug(f"Success count: {successs}")
