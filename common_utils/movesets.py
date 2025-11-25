@@ -339,6 +339,7 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
             "goal": grasp_position + quaternion_orientation,
             "wait_time": 0.0,
             "no_obstacles": "yesyesyes",
+            "no_curobo": True,
         }
     )
     moves.append({"type": "gripper", "grip_type": "close", "wait_time": 1.0})
@@ -350,12 +351,12 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
     #     }
     # )
     moves.append({"type": "arm", "goal": ready_pour_pose, "wait_time": 0.0})
-    moves.append({"type": "arm", "goal": pour_pose1, "wait_time": 0.0})
-    moves.append({"type": "arm", "goal": pour_pose2, "wait_time": 0.0})
-    moves.append({"type": "arm", "goal": pour_pose3, "wait_time": 1.0})
-    moves.append({"type": "arm", "goal": pour_pose2, "wait_time": 0.0})
-    moves.append({"type": "arm", "goal": pour_pose1, "wait_time": 0.0})
-    moves.append({"type": "arm", "goal": ready_pour_pose, "wait_time": 0.0})
+    moves.append({"type": "arm", "goal": pour_pose1, "no_curobo": True, "wait_time": 0.0})
+    moves.append({"type": "arm", "goal": pour_pose2, "no_curobo": True, "wait_time": 0.0})
+    moves.append({"type": "arm", "goal": pour_pose3, "no_curobo": True, "wait_time": 1.0})
+    moves.append({"type": "arm", "goal": pour_pose2, "no_curobo": True, "wait_time": 0.0})
+    moves.append({"type": "arm", "goal": pour_pose1, "no_curobo": True, "wait_time": 0.0})
+    moves.append({"type": "arm", "goal": ready_pour_pose, "no_curobo": True, "wait_time": 0.0})
     # moves.append(
     #     {
     #         "type": "arm",
@@ -377,6 +378,7 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
             "goal": after_release_position + quaternion_orientation,
             "wait_time": 0.0,
             "no_obstacles": "yesyesyes",
+            "no_curobo": True
         }
     )
     moves.append(
