@@ -31,7 +31,10 @@ from common_utils.custom_logger import CustomFormatter  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
-
+def mrad_to_mmdeg(cartesian_pose:list) -> list:
+    position = [p*1000 for p in cartesian_pose[:3]]
+    euler_orientation_deg = np.rad2deg(cartesian_pose[3:]).tolist()
+    return position + euler_orientation_deg
 def quat_to_euler_zyx_deg(qx, qy, qz, qw):
     def _clamp(v, lo, hi):
         return max(lo, min(hi, v))
@@ -60,7 +63,18 @@ def is_joint_vel_near_zero(joint_vel: list):
         abs(v) < 0.001 for v in joint_vel
     )
 
-def is_cartesion_pose_identical(point1: list, point2: list):
+def is_cartesion_pose_similar(point1: list, point2: list): # use euler angle, not quaternion
+    if point1 is None or point2 is None:
+        return False
+    pos_similar = all(
+        abs(p1 - p2) < 20 for p1, p2 in zip(point1[:3], point2[:3], strict=False)
+    )
+    orient_identical = all(
+        abs(o1 - o2) < 4 for o1, o2 in zip(point1[3:], point2[3:], strict=False)
+    )
+    return pos_similar and orient_identical
+
+def is_cartesion_pose_identical(point1: list, point2: list): # use euler angle, not quaternion
     if point1 is None or point2 is None:
         return False
     pos_identical = all(
@@ -161,7 +175,18 @@ class TMRobotController(Node):
                 self.append_jpp(joints)
             self.append_jpp(goal_degree)
         elif data["type"] == "PTP":
-            pass
+            cartesian_poses_mm_degree = data["cartesian_poses"]
+            self.goal_cartesian_pose = cartesian_poses_mm_degree.pop()
+            accepted_cartesion_poses = []
+            for cartesian_pose in cartesian_poses_mm_degree:
+                if len(accepted_cartesion_poses)==0:
+                    accepted_cartesion_poses.append(cartesian_pose)
+                    continue
+                if not is_cartesion_pose_similar(cartesian_pose, accepted_cartesion_poses[-1]):
+                    accepted_cartesion_poses.append(cartesian_pose)
+            for cartesian_pose in accepted_cartesion_poses:
+                self.append_ptp(cartesian_pose)
+            self.append_ptp(self.goal_cartesian_pose)
         elif data["type"] == "gripper":
             if data["grip_type"] == "close":
                 self.goal_gripper = [1, 0, 0]
@@ -205,7 +230,7 @@ class TMRobotController(Node):
         if self.reached_time > current_time: # hasn't reached yet
             if self.current_moving_type == "arm" and is_pose_identical(msg.joint_pos, self.goal_joints): # Need to change this type name to JPP if possible.
                 self.reached_time = current_time
-            elif self.current_moving_type == "PTP" and is_cartesion_pose_identical(msg.tool_pose, self.goal_pose):
+            elif self.current_moving_type == "PTP" and is_cartesion_pose_identical(mrad_to_mmdeg(msg.tool_pose), self.goal_cartesian_pose):
                 self.reached_time = current_time
             elif self.current_moving_type == "gripper" and list(msg.ee_digital_output)[:3] == self.goal_gripper:
                 self.reached_time = current_time
@@ -317,6 +342,23 @@ class TMRobotController(Node):
         if wait_time > 0:
             self.states_need_to_wait.append(
                 {"position": tcp_values, "time_to_wait": wait_time}
+            )
+    def append_ptp(
+        self, ptp_values: list, vel=20, acc=20, coord=80, fine=False, wait_time=0.0
+    ):
+        if len(ptp_values) != 6:
+            logger.error("TCP 必須 6 個數字")
+            return
+        fine_str = "true" if fine else "false"
+        script = (
+            f'PTP("CPP",{ptp_values[0]:.2f}, {ptp_values[1]:.2f}, {ptp_values[2]:.2f}, '
+            f"{ptp_values[3]:.2f}, {ptp_values[4]:.2f}, {ptp_values[5]:.2f},"
+            f"{vel},{acc},{coord},{fine_str})"
+        )
+        self.tcp_queue.append({"script": script, "wait_time": wait_time})
+        if wait_time > 0:
+            self.states_need_to_wait.append(
+                {"position": ptp_values, "time_to_wait": wait_time}
             )
 
     def append_jpp(
