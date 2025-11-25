@@ -442,7 +442,7 @@ def generate_pointcloud_multiple_obj_with_name_dict(
         objects_colors[i] = np.array(objects_colors[i])
         if objects_colors[i].size > 0:
             objects_colors[i] = objects_colors[i][:, ::-1]
-
+        """
         ## remove outliers
         objects_points[i], removed_points, objects_colors[i], removed_colors = (
             point_cloud_outlier_removal_with_color(
@@ -456,6 +456,7 @@ def generate_pointcloud_multiple_obj_with_name_dict(
         removed_colors = removed_colors.cpu().numpy()
         scene_points = np.vstack((scene_points, removed_points))
         scene_colors = np.vstack((scene_colors, removed_colors))
+        """
 
     # Final construct
     scene_data = {
