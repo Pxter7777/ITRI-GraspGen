@@ -539,20 +539,20 @@ def main():
                             # physics=True,
                         )
                         temp_cuboid_paths.append(prim_path)
-                        for i, obstacle in enumerate(graspgen_data["obstacles"]):
-                            if not ("ignore_obstacles" in move and obstacle["name"] in move["ignore_obstacles"]):
+                        for i, obstacle_name in enumerate(graspgen_data["obstacles"]):
+                            if not ("ignore_obstacles" in move and obstacle_name in move["ignore_obstacles"]):
                                 middle_point = np.mean(
-                                    [obstacle["max"], obstacle["min"]], axis=0
+                                    [graspgen_data["obstacles"][obstacle_name]["max"], graspgen_data["obstacles"][obstacle_name]["min"]], axis=0
                                 )
-                                scale = np.array(obstacle["max"]) - np.array(
-                                    obstacle["min"]
+                                scale = np.array(graspgen_data["obstacles"][obstacle_name]["max"]) - np.array(
+                                    graspgen_data["obstacles"][obstacle_name]["min"]
                                 )
                                 # std = obs_data["std"]
                                 prim_path = f"/World/temp_obstacle_{i}"
                                 cuboid.FixedCuboid(
                                     prim_path=prim_path,
                                     position=np.array(middle_point),
-                                    scale=scale * 1.2,
+                                    scale=scale * 1.0,
                                     color=np.array([0.0, 0.0, 1.0]),  # Blue
                                     # physics=True,
                                 )

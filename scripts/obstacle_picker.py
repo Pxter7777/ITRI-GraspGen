@@ -76,7 +76,7 @@ def main():
     pc = scene_data["object_info"]["pc"]
     pc_max, pc_min = np.percentile(pc, 97, axis=0), np.percentile(pc, 3, axis=0)
     obstacle_name = input("./obstacle/<obstacle_name>.json: ")
-    obstacle = {"name": obstacle_name, "max": pc_max.tolist(), "min": pc_min.tolist()}
+    obstacle = {obstacle_name:{ "max": pc_max.tolist(), "min": pc_min.tolist()}}
     save_json("obstacle", "obstacle", obstacle)
     
 

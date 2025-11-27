@@ -231,11 +231,11 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
         ready_pour_rotation = [0.5, 0.5, 0.5, 0.5]
         # pour_rotation = [-0.271, 0.653, -0.271, 0.653]
     elif isinstance(args[0], str):
-        obj_points = scene_data["object_infos"][args[0]]["points"]
+        obj_bounding_box = scene_data["obstacles"][args[0]]
         middle_point = np.mean(
             [
-                np.percentile(obj_points, 97, axis=0),
-                np.percentile(obj_points, 3, axis=0),
+                obj_bounding_box["max"],
+                obj_bounding_box["min"],
             ],
             axis=0,
         )
@@ -474,22 +474,7 @@ def joints_rad_move_to_curobo(
     target_name: str, grasp: np.array, args: list, scene_data: dict
 ) -> list[dict]:
     joints_goal = args[0]
-    obstacles = []
-    for obj_name in scene_data["object_infos"]:
-        obstacles.append(
-            {
-                "min": list(
-                    np.percentile(
-                        scene_data["object_infos"][obj_name]["points"], 3, axis=0
-                    )
-                ),
-                "max": list(
-                    np.percentile(
-                        scene_data["object_infos"][obj_name]["points"], 97, axis=0
-                    )
-                ),
-            }
-        )
+    obstacles = scene_data["obstacles"]
     moves = []
     moves.append({"type": "arm", "joints_goal": joints_goal, "wait_time": 0.0})
     full_act = {"moves": moves, "obstacles": obstacles}
