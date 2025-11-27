@@ -498,60 +498,81 @@ def main():
             if graspgen_datas is not None:
                 print("-------------Received new action--------------")
                 for graspgen_data in graspgen_datas:
-                    if temp_cuboid_paths:
-                        for path in temp_cuboid_paths:
-                            stage.RemovePrim(path)
-                        temp_cuboid_paths = []
                     # Create new temporary obstacles in the Isaac Sim stage
-                    if "obstacles" in graspgen_data and graspgen_data["obstacles"]:
-                        for i, obs_data in enumerate(graspgen_data["obstacles"]):
-                            middle_point = np.mean(
-                                [obs_data["max"], obs_data["min"]], axis=0
-                            )
-                            scale = np.array(obs_data["max"]) - np.array(
-                                obs_data["min"]
-                            )
-                            # std = obs_data["std"]
-                            prim_path = f"/World/temp_obstacle_{i}"
-                            cuboid.FixedCuboid(
-                                prim_path=prim_path,
-                                position=np.array(middle_point),
-                                scale=scale * 1.2,
-                                color=np.array([0.0, 0.0, 1.0]),  # Blue
-                                # physics=True,
-                            )
-                            temp_cuboid_paths.append(prim_path)
-                    # Table
-                    prim_path = "/World/temp_obstacle_table"
-                    cuboid.FixedCuboid(
-                        prim_path=prim_path,
-                        position=np.array([0, 0, -1.97]),
-                        scale=np.array([4, 4, 4]),
-                        color=np.array([0.0, 0.0, 1.0]),  # Blue
-                        # physics=True,
-                    )
-                    temp_cuboid_paths.append(prim_path)
-                    # Get all obstacles from the stage, including the new temporary ones
-                    obstacles = usd_help.get_obstacles_from_stage(
-                        only_paths=["/World"],
-                        reference_prim_path=robot_prim_path,
-                        ignore_substring=[
-                            robot_prim_path,
-                            "/World/defaultGroundPlane",
-                            "/curobo",
-                            "/World/table",
-                        ],
-                    ).get_collision_check_world()
+                    # if "obstacles" in graspgen_data and graspgen_data["obstacles"]:
+                    #     for i, obs_data in enumerate(graspgen_data["obstacles"]):
+                    #         middle_point = np.mean(
+                    #             [obs_data["max"], obs_data["min"]], axis=0
+                    #         )
+                    #         scale = np.array(obs_data["max"]) - np.array(
+                    #             obs_data["min"]
+                    #         )
+                    #         # std = obs_data["std"]
+                    #         prim_path = f"/World/temp_obstacle_{i}"
+                    #         cuboid.FixedCuboid(
+                    #             prim_path=prim_path,
+                    #             position=np.array(middle_point),
+                    #             scale=scale * 1.2,
+                    #             color=np.array([0.0, 0.0, 1.0]),  # Blue
+                    #             # physics=True,
+                    #         )
+                    #         temp_cuboid_paths.append(prim_path)
+                    
 
                     # Update the motion planner's world
                     # motion_gen.update_world(obstacles)
                     print(graspgen_data)
                     before_move_joints = last_joint_states
                     for move in graspgen_data["moves"]:
+                        # handle temp obstacles
+                        if temp_cuboid_paths:
+                            for path in temp_cuboid_paths:
+                                stage.RemovePrim(path)
+                            temp_cuboid_paths = []
+                        # Table
+                        prim_path = "/World/temp_obstacle_table"
+                        cuboid.FixedCuboid(
+                            prim_path=prim_path,
+                            position=np.array([0, 0, -1.97]),
+                            scale=np.array([4, 4, 4]),
+                            color=np.array([0.0, 0.0, 1.0]),  # Blue
+                            # physics=True,
+                        )
+                        temp_cuboid_paths.append(prim_path)
+                        for i, obstacle in enumerate(graspgen_data["obstacles"]):
+                            if not ("ignore_obstacles" in move and obstacle["name"] in move["ignore_obstacles"]):
+                                middle_point = np.mean(
+                                    [obstacle["max"], obstacle["min"]], axis=0
+                                )
+                                scale = np.array(obstacle["max"]) - np.array(
+                                    obstacle["min"]
+                                )
+                                # std = obs_data["std"]
+                                prim_path = f"/World/temp_obstacle_{i}"
+                                cuboid.FixedCuboid(
+                                    prim_path=prim_path,
+                                    position=np.array(middle_point),
+                                    scale=scale * 1.2,
+                                    color=np.array([0.0, 0.0, 1.0]),  # Blue
+                                    # physics=True,
+                                )
+                                temp_cuboid_paths.append(prim_path)
+                        # Get all obstacles from the stage, including the new temporary ones
+                        obstacles = usd_help.get_obstacles_from_stage(
+                            only_paths=["/World"],
+                            reference_prim_path=robot_prim_path,
+                            ignore_substring=[
+                                robot_prim_path,
+                                "/World/defaultGroundPlane",
+                                "/curobo",
+                                "/World/table",
+                            ],
+                        ).get_collision_check_world()
                         if "no_obstacles" in move:
                             motion_gen.update_world(zero_obstacles)
                         else:
                             motion_gen.update_world(obstacles)
+                        # start handle move
                         if move["type"] == "gripper":
                             plans.append(move)
                             continue

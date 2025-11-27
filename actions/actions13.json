@@ -1,0 +1,46 @@
+{
+    "track": ["green cup", "blue cup", "black frying pan"],
+    "extra_obstacles": 
+    [
+        {
+            "name": "bluecup",
+            "max": [
+                1.8330255897299417,
+                0.39706061714750823,
+                0.69387043606417137
+            ],
+            "min": [
+                1.7746650396923918,
+                0.3460386876489272,
+                0.52997162101196133
+            ]
+        }
+    ],
+    "actions":
+    [
+        {
+            "target_name": "green cup",
+            "qualifier": "cup_qualifier",
+            "action": "grab_and_pour_and_place_back_curobo",
+            "args": [
+                "black frying pan"
+            ]
+        },
+        {
+            "target_name": "blue cup",
+            "qualifier": "cup_qualifier",
+            "action": "grab_and_pour_and_place_back_curobo",
+            "args": [
+                "black frying pan"
+            ]
+        },
+        {
+            "target_name": "glass cup",
+            "qualifier": "cup_qualifier",
+            "action": "joints_rad_move_to_curobo",
+            "args": [
+                [ 0.04712389, -0.31939525,  2.44695161,  1.07337749, -1.52192711, 3.12413936]
+            ]
+        }
+    ]
+}

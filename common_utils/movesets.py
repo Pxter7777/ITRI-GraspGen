@@ -210,23 +210,7 @@ def grab_and_pour_and_place_back_curobo(
 def grab_and_pour_and_place_back_curobo_by_rotation(
     target_name: str, grasp: np.array, args: list, scene_data: dict
 ) -> dict:
-    obstacles = []
-    for obj_name in scene_data["object_infos"]:
-        if target_name != obj_name:
-            obstacles.append(
-                {
-                    "min": list(
-                        np.percentile(
-                            scene_data["object_infos"][obj_name]["points"], 3, axis=0
-                        )
-                    ),
-                    "max": list(
-                        np.percentile(
-                            scene_data["object_infos"][obj_name]["points"], 97, axis=0
-                        )
-                    ),
-                }
-            )
+    obstacles = scene_data["obstacles"]
     moves = []
     # fetch basic infos
     position = grasp[:3, 3].tolist()
@@ -340,6 +324,7 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
             "wait_time": 0.0,
             "no_obstacles": "yesyesyes",
             "no_curobo": True,
+            "ignore_obstacles": [target_name]
         }
     )
     moves.append({"type": "gripper", "grip_type": "close", "wait_time": 1.0})
@@ -381,6 +366,7 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
             "type": "arm",
             "goal": release_position + quaternion_orientation,
             "wait_time": 0.0,
+            "ignore_obstacles": [target_name],
         }
     )
     moves.append({"type": "gripper", "grip_type": "open", "wait_time": 1.0})
@@ -390,6 +376,7 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
             "goal": after_release_position + quaternion_orientation,
             "wait_time": 0.0,
             "no_obstacles": "yesyesyes",
+            "ignore_obstacles": [target_name],
             "no_curobo": True,
         }
     )
