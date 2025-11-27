@@ -324,7 +324,7 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
             "wait_time": 0.0,
             "no_obstacles": "yesyesyes",
             "no_curobo": True,
-            "ignore_obstacles": [target_name]
+            "ignore_obstacles": [target_name],
         }
     )
     moves.append({"type": "gripper", "grip_type": "close", "wait_time": 1.0})
@@ -335,7 +335,14 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
     #         "wait_time": 0.0,
     #     }
     # )
-    moves.append({"type": "arm", "goal": ready_pour_pose, "wait_time": 0.0, "ignore_obstacles": [target_name]})
+    moves.append(
+        {
+            "type": "arm",
+            "goal": ready_pour_pose,
+            "wait_time": 0.0,
+            "ignore_obstacles": [target_name],
+        }
+    )
     moves.append(
         {"type": "arm", "goal": pour_pose1, "no_curobo": True, "wait_time": 0.0}
     )

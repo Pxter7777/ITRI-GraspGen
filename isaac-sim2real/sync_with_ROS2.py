@@ -517,7 +517,6 @@ def main():
                     #             # physics=True,
                     #         )
                     #         temp_cuboid_paths.append(prim_path)
-                    
 
                     # Update the motion planner's world
                     # motion_gen.update_world(obstacles)
@@ -540,11 +539,24 @@ def main():
                         )
                         temp_cuboid_paths.append(prim_path)
                         for i, obstacle_name in enumerate(graspgen_data["obstacles"]):
-                            if not ("ignore_obstacles" in move and obstacle_name in move["ignore_obstacles"]):
+                            if not (
+                                "ignore_obstacles" in move
+                                and obstacle_name in move["ignore_obstacles"]
+                            ):
                                 middle_point = np.mean(
-                                    [graspgen_data["obstacles"][obstacle_name]["max"], graspgen_data["obstacles"][obstacle_name]["min"]], axis=0
+                                    [
+                                        graspgen_data["obstacles"][obstacle_name][
+                                            "max"
+                                        ],
+                                        graspgen_data["obstacles"][obstacle_name][
+                                            "min"
+                                        ],
+                                    ],
+                                    axis=0,
                                 )
-                                scale = np.array(graspgen_data["obstacles"][obstacle_name]["max"]) - np.array(
+                                scale = np.array(
+                                    graspgen_data["obstacles"][obstacle_name]["max"]
+                                ) - np.array(
                                     graspgen_data["obstacles"][obstacle_name]["min"]
                                 )
                                 # std = obs_data["std"]

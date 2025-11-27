@@ -14,6 +14,7 @@ handler.setFormatter(CustomFormatter())
 logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
 logger = logging.getLogger(__name__)
 
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
     parser.add_argument(
@@ -63,22 +64,21 @@ def parse_args():
         default="sim2.json",
         help="transform-config",
     )
-    return parser.parse_args()  
+    return parser.parse_args()
+
 
 def main():
     logger.info("starting the program")
     args = parse_args()
     pc_generator = PointCloudGenerator(args)
     scene_data = pc_generator.interactive_gui_mode()
-    scene_data = silent_transform(
-        scene_data, args.transform_config
-    )
+    scene_data = silent_transform(scene_data, args.transform_config)
     pc = scene_data["object_info"]["pc"]
     pc_max, pc_min = np.percentile(pc, 97, axis=0), np.percentile(pc, 3, axis=0)
     obstacle_name = input("./obstacle/<obstacle_name>.json: ")
-    obstacle = {obstacle_name:{ "max": pc_max.tolist(), "min": pc_min.tolist()}}
+    obstacle = {obstacle_name: {"max": pc_max.tolist(), "min": pc_min.tolist()}}
     save_json("obstacle", "obstacle", obstacle)
-    
+
 
 if __name__ == "__main__":
     main()
