@@ -1,7 +1,8 @@
 {
     "blockages":
     [
-        [100,200,400,600]
+        [100,200,400,700],
+        [700,0, 1279, 719]
     ],
     "track": ["green cup", "blue cup", "black frying pan"],
     "extra_obstacles": {

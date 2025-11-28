@@ -160,8 +160,9 @@ def main():
             scene_data = None
             track_names = list(actions["track"])
             try:
+                blockages = actions.get("blockages")
                 scene_data = pc_generator.generate_pointcloud(
-                    track_names, need_confirm=not args.no_confirm
+                    track_names, need_confirm=not args.no_confirm, blockages=blockages
                 )
             except ValueError as e:
                 logger.exception(e)
