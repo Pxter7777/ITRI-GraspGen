@@ -176,10 +176,8 @@ class NonBlockingJSONReceiver:
             logger.exception("Receiver connection failed.")
             self.socket = None
             return False
-        except Exception as e:
-            logger.exception(f"An error occurred during connection: {e}")
-            self.socket = None
-            return False
+        except OSError as e:
+            raise ConnectionAbortedError(f"An error occurred during connecting {self.host}:{self.port}: {e}")
 
     def disconnect(self):
         if self.socket:
@@ -270,10 +268,8 @@ class BlockingJSONReceiver:
             logger.exception("Receiver connection failed.")
             self.socket = None
             return False
-        except Exception as e:
-            logger.exception(f"An error occurred during connection: {e}")
-            self.socket = None
-            return False
+        except OSError as e:
+            raise ConnectionAbortedError(f"An error occurred during connecting {self.host}:{self.port}: {e}")
 
     def disconnect(self):
         if self.socket:
