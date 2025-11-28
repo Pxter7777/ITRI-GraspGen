@@ -200,7 +200,7 @@ def main():
                             response = receiver.capture_data()
                         if response["message"] == "Success":
                             logger.warning("Success")
-                            break
+                            continue
                         elif response["message"] == "Fail":
                             logger.warning("failed")
                             continue
