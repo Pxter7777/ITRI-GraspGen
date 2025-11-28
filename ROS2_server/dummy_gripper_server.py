@@ -38,7 +38,7 @@ while True:
     logger.info("Received data!")
     try:
         if data["type"] == "arm":
-            time.sleep(2.0)
+            time.sleep(0.5)
         time.sleep(data["wait_time"])
     except KeyError as e:
         logger.exception(
