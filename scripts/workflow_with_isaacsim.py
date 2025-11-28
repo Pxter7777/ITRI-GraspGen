@@ -2,6 +2,7 @@ import os
 import argparse
 import logging
 import json
+import time
 from PointCloud_Generation.pointcloud_generation import PointCloudGenerator
 from PointCloud_Generation.PC_transform import (
     silent_transform_multiple_obj_with_name_dict,
@@ -169,6 +170,21 @@ def main():
                 continue
             except Exception as e:
                 logger.exception(f"Unexcpected exception: {e}")
+                continue
+            # try five times
+            for _ in range(5):
+                try:
+                    blockages = actions.get("blockages")
+                    scene_data = pc_generator.generate_pointcloud(
+                        track_names, need_confirm=not args.no_confirm, blockages=blockages
+                    )
+                    break # Success
+                except ValueError as e:
+                    logger.exception(f"{e}, try again")
+                    time.sleep(0.1)
+                    continue
+            else:
+                logger.error(f"Failed to detect using groundingDINO")
                 continue
 
             logger.info(scene_data)
