@@ -6,7 +6,6 @@ import open3d as o3d
 import numpy as np
 import pyzed.sl as sl
 
-from grasp_gen.utils.point_cloud_utils import point_cloud_outlier_removal_with_color
 from PointCloud_Generation.mouse_handlerv2 import MouseHandler
 from PointCloud_Generation.grounding_dino_utils import GroundindDinoPredictor
 from PointCloud_Generation.visualization import visualize_named_box, visualize_mask
@@ -442,7 +441,7 @@ def generate_pointcloud_multiple_obj_with_name_dict(
         objects_colors[i] = np.array(objects_colors[i])
         if objects_colors[i].size > 0:
             objects_colors[i] = objects_colors[i][:, ::-1]
-
+        """
         ## remove outliers
         objects_points[i], removed_points, objects_colors[i], removed_colors = (
             point_cloud_outlier_removal_with_color(
@@ -456,6 +455,7 @@ def generate_pointcloud_multiple_obj_with_name_dict(
         removed_colors = removed_colors.cpu().numpy()
         scene_points = np.vstack((scene_points, removed_points))
         scene_colors = np.vstack((scene_colors, removed_colors))
+        """
 
     # Final construct
     scene_data = {

@@ -15,7 +15,7 @@ from common_utils.socket_communication import (
     NonBlockingJSONReceiver,
 )
 from common_utils.custom_logger import CustomFormatter
-from common_utils.common_utils import save_json
+from common_utils.common_utils import save_json, create_obstacle_info
 
 # root logger setup
 handler = logging.StreamHandler()
@@ -70,7 +70,7 @@ def parse_args():
     parser.add_argument(
         "--transform-config",
         type=str,
-        default="sim1.json",
+        default="sim2.json",
         help="transform-config",
     )
     parser.add_argument(
@@ -175,6 +175,7 @@ def main():
             scene_data = silent_transform_multiple_obj_with_name_dict(
                 scene_data, args.transform_config
             )
+            scene_data = create_obstacle_info(scene_data, actions["extra_obstacles"])
             # GraspGen
             for action in actions["actions"]:
                 try:
