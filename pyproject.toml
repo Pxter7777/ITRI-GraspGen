@@ -61,7 +61,7 @@ dependencies = [
     "torch==2.5.1",
     "torchvision==0.20.1",
     "torchaudio==2.5.1",
-	"pip",
+    "pip",
     "scikit-image",
     "omegaconf",
     "opencv-contrib-python",
@@ -92,9 +92,9 @@ dependencies = [
     "jupyter>=1.0.0",
     "opencv-python>=4.7.0",
     "eva-decord>=0.6.1",
-	# "pyzed @ file:///home/j300/GenPointCloud/pyzed-5.0-cp311-cp311-linux_x86_64.whl", for legal reason, I think I shouldn't add this .whl into my repo
-	"seaborn",
-	"torch_scatter",
+    # "pyzed @ file:///home/j300/GenPointCloud/pyzed-5.0-cp311-cp311-linux_x86_64.whl", for legal reason, I think I shouldn't add this .whl into my repo
+    "seaborn",
+    "torch_scatter",
     "sam-2",
     "groundingdino",
     "grasp_gen",
@@ -104,7 +104,9 @@ dependencies = [
     "gitpython>=3.1.45",
     "PyOpenGL-accelerate",
     "pytest",
-    "pytest-mock"
+    "pytest-mock",
+    "pyside6>=6.10.1",
+    "pyserial>=3.5",
 ]
 
 [tool.uv.sources]
