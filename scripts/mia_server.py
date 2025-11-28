@@ -253,9 +253,9 @@ def main():
                     )
                     break
             else:
-                main_sender.send_data({"Message": "Success"})
+                main_sender.send_data({"message": "Success"})
                 continue
-            main_sender.send_data({"Message": "Fail"})
+            main_sender.send_data({"message": "Fail"})
     finally:
         logger.info("turning off zed camera")
         pc_generator.close()
