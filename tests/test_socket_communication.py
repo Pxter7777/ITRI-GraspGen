@@ -260,19 +260,17 @@ def test_send_big_data_to_BlockingJSONReceiver():
 def test_raise_occupying_socket():
     """Test that raises error if port is occupied."""
     receiver1 = BlockingJSONReceiver(port=9890)
-    with pytest.raises(
-        ConnectionAbortedError,
-        match=r"An error occurred during connecting localhost:9890: \[Errno 98\] Address already in use",
-    ):
+    with pytest.raises(ConnectionAbortedError) as excinfo:
         _ = BlockingJSONReceiver(port=9890)
+    assert str(excinfo.value) == "An error occurred during connecting localhost:9890: [Errno 98] Address already in use"
+    assert isinstance(excinfo.value.__cause__, OSError)
     receiver1.disconnect()
     """Test that raises error if port is occupied."""
     receiver2 = NonBlockingJSONReceiver(port=9891)
-    with pytest.raises(
-        ConnectionAbortedError,
-        match=r"An error occurred during connecting localhost:9891: \[Errno 98\] Address already in use",
-    ):
+    with pytest.raises(ConnectionAbortedError) as excinfo:
         _ = NonBlockingJSONReceiver(port=9891)
+    assert str(excinfo.value) == "An error occurred during connecting localhost:9891: [Errno 98] Address already in use"
+    assert isinstance(excinfo.value.__cause__, OSError)
     receiver2.disconnect()
     
 
