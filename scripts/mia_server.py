@@ -144,8 +144,10 @@ def main():
             task_signal = main_receiver.capture_data()
             if task_signal is None or task_signal.get("actions") != "Grasp_and_Dump":
                 continue
-            
-            actions_filepath = os.path.join(project_root_dir, "actions", "Grasp_and_Dump" + ".json")
+
+            actions_filepath = os.path.join(
+                project_root_dir, "actions", "Grasp_and_Dump" + ".json"
+            )
 
             actions = None
             try:
