@@ -170,9 +170,11 @@ def main():
                 )
             except ValueError as e:
                 logger.exception(e)
+                main_sender.send_data({"message": f"Fail{e}"})
                 continue
             except Exception as e:
                 logger.exception(f"Unexcpected exception: {e}")
+                main_sender.send_data({"message": f"Fail{e}"})
                 continue
 
             logger.info(scene_data)
