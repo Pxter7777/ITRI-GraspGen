@@ -490,7 +490,9 @@ class PointCloudGenerator:
         self.groundingdino_predictor = GroundindDinoPredictor()
         self.zed = ZedCamera(args.use_png)
 
-    def generate_pointcloud(self, target_names: list[str], need_confirm=True, blockages:list = None):
+    def generate_pointcloud(
+        self, target_names: list[str], need_confirm=True, blockages: list = None
+    ):
         """
         bloackages[
             [minX, minY, maxX, maxY],
@@ -527,7 +529,9 @@ class PointCloudGenerator:
                 -1,
             )
         # GroundingDINO detection
-        boxes = self.groundingdino_predictor.predict_boxes(color_np_for_GroundingDINO, prompt)
+        boxes = self.groundingdino_predictor.predict_boxes(
+            color_np_for_GroundingDINO, prompt
+        )
         for box in boxes:
             if box.phrase not in target_boxes:
                 logger.error(

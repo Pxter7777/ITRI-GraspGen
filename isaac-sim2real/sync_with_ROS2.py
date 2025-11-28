@@ -313,7 +313,14 @@ def main():
     j_names = robot_cfg["kinematics"]["cspace"]["joint_names"]
     # default_config = robot_cfg["kinematics"]["cspace"]["retract_config"]
     # default_config = [-0.0031330717463317853, -0.782597719463971, 0.0013149953555822147, -2.3538521161513803, 0.006049369975929311, 1.5787788643767775, 0.7724911821319892, 1.0, 1.0]
-    default_config = [ 1.37296326,  0.08553859,  1.05554023,  2.76803983, -1.48792809, 3.09947786]
+    default_config = [
+        1.37296326,
+        0.08553859,
+        1.05554023,
+        2.76803983,
+        -1.48792809,
+        3.09947786,
+    ]
     robot, robot_prim_path = add_robot_to_scene(robot_cfg, my_world)
 
     ###### Setup Collision table ######
