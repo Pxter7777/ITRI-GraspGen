@@ -176,15 +176,17 @@ def main():
                 try:
                     blockages = actions.get("blockages")
                     scene_data = pc_generator.generate_pointcloud(
-                        track_names, need_confirm=not args.no_confirm, blockages=blockages
+                        track_names,
+                        need_confirm=not args.no_confirm,
+                        blockages=blockages,
                     )
-                    break # Success
+                    break  # Success
                 except ValueError as e:
                     logger.exception(f"{e}, try again")
                     time.sleep(0.1)
                     continue
             else:
-                logger.error(f"Failed to detect using groundingDINO")
+                logger.error("Failed to detect using groundingDINO")
                 continue
 
             logger.info(scene_data)
