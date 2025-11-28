@@ -397,7 +397,7 @@ def main():
     trajopt_tsteps = 32
     trajopt_dt = None
     optimize_dt = True
-    max_attempts = 10
+    max_attempts = 4
     trim_steps = None
     interpolation_dt = 0.05
     enable_finetune_trajopt = True
@@ -564,7 +564,7 @@ def main():
                                 cuboid.FixedCuboid(
                                     prim_path=prim_path,
                                     position=np.array(middle_point),
-                                    scale=[scale[0], scale[1], scale[2] * 1.3],
+                                    scale=[scale[0], scale[1], scale[2] * 1.1],
                                     color=np.array([0.0, 0.0, 1.0]),  # Blue
                                     # physics=True,
                                 )

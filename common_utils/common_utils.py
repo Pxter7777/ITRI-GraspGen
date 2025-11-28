@@ -27,9 +27,15 @@ def create_obstacle_info(scene_data: dict, extra_obstacles: dict = None) -> dict
     for object_name in new_scene_data["object_infos"]:
         obj_pc = new_scene_data["object_infos"][object_name]["points"]
         pc_max, pc_min = (
-            np.percentile(obj_pc, 97, axis=0).tolist(),
-            np.percentile(obj_pc, 3, axis=0).tolist(),
+            np.percentile(obj_pc, 97, axis=0),
+            np.percentile(obj_pc, 3, axis=0),
         )
-        new_scene_data["obstacles"][object_name] = {"max": pc_max, "min": pc_min}
+        middle_point = np.mean([pc_max, pc_min], axis=0)
+        pc_max = (pc_max - middle_point) * 1.5 + middle_point
+        pc_min = (pc_min - middle_point) * 1.5 + middle_point
+        new_scene_data["obstacles"][object_name] = {
+            "max": pc_max.tolist(),
+            "min": pc_min.tolist(),
+        }
 
     return new_scene_data

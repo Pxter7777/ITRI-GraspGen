@@ -223,7 +223,7 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
     before_grasp_position = [
         p - f * 0.050 for p, f in zip(position, front, strict=False)
     ]
-    grasp_position = [p + f * 0.050 for p, f in zip(position, front, strict=False)]
+    grasp_position = [p + f * 0.060 for p, f in zip(position, front, strict=False)]
 
     # specific fixed poses
     if isinstance(args[0], list):
@@ -295,8 +295,8 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
         # pour_rotation = [-0.271, 0.653, -0.271, 0.653]
 
     ready_pour_pose = ready_pour_position + ready_pour_rotation
-    pour_pose1 = ready_pour_position + pour_rotation1
-    pour_pose2 = ready_pour_position + pour_rotation2
+    # pour_pose1 = ready_pour_position + pour_rotation1
+    # pour_pose2 = ready_pour_position + pour_rotation2
     pour_pose3 = ready_pour_position + pour_rotation3
 
     # after_grasp_position = grasp_position[:2] + [grasp_position[2] + 0.250]
@@ -337,21 +337,21 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
             "ignore_obstacles": [target_name],
         }
     )
-    moves.append(
-        {"type": "arm", "goal": pour_pose1, "no_curobo": True, "wait_time": 0.0}
-    )
-    moves.append(
-        {"type": "arm", "goal": pour_pose2, "no_curobo": True, "wait_time": 0.0}
-    )
+    # moves.append(
+    #     {"type": "arm", "goal": pour_pose1, "no_curobo": True, "wait_time": 0.0}
+    # )
+    # moves.append(
+    #     {"type": "arm", "goal": pour_pose2, "no_curobo": True, "wait_time": 0.0}
+    # )
     moves.append(
         {"type": "arm", "goal": pour_pose3, "no_curobo": True, "wait_time": 1.0}
     )
-    moves.append(
-        {"type": "arm", "goal": pour_pose2, "no_curobo": True, "wait_time": 0.0}
-    )
-    moves.append(
-        {"type": "arm", "goal": pour_pose1, "no_curobo": True, "wait_time": 0.0}
-    )
+    # moves.append(
+    #     {"type": "arm", "goal": pour_pose2, "no_curobo": True, "wait_time": 0.0}
+    # )
+    # moves.append(
+    #     {"type": "arm", "goal": pour_pose1, "no_curobo": True, "wait_time": 0.0}
+    # )
     moves.append(
         {"type": "arm", "goal": ready_pour_pose, "no_curobo": True, "wait_time": 0.0}
     )
