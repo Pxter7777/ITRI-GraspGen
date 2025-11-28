@@ -177,7 +177,9 @@ class NonBlockingJSONReceiver:
             self.socket = None
             return False
         except OSError as e:
-            raise ConnectionAbortedError(f"An error occurred during connecting {self.host}:{self.port}: {e}") from e
+            raise ConnectionAbortedError(
+                f"An error occurred during connecting {self.host}:{self.port}: {e}"
+            ) from e
 
     def disconnect(self):
         if self.socket:
@@ -269,7 +271,9 @@ class BlockingJSONReceiver:
             self.socket = None
             return False
         except OSError as e:
-            raise ConnectionAbortedError(f"An error occurred during connecting {self.host}:{self.port}: {e}") from e
+            raise ConnectionAbortedError(
+                f"An error occurred during connecting {self.host}:{self.port}: {e}"
+            ) from e
 
     def disconnect(self):
         if self.socket:
