@@ -1,4 +1,8 @@
 {
+    "blockages":
+    [
+        [915, 242, 1279, 719]
+    ],
     "track": ["green cup", "blue cup", "black frying pan"],
     "extra_obstacles": {
         "bluecupy": {
