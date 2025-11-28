@@ -6,18 +6,18 @@ from common_utils.socket_communication import (
 import time
 from multiprocessing import Process, Queue
 import logging
+import pytest
+from common_utils.custom_logger import CustomFormatter
 
 SAMPLE_DATAS = [{"name": "bobby"}, [1, 2, 3, 4, 5], {"motions": [1, 2, 3, 4, 5]}]
 SAMPLE_BIG_DATA = {"big_data": "x" * 1000000}
 
 TIMEOUT = 5
 
+handler = logging.StreamHandler()
+handler.setFormatter(CustomFormatter())
+logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
 logger = logging.getLogger(__name__)
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="[%(asctime)s][%(name)s][%(levelname)s] %(message)s",
-    force=True,
-)
 
 
 def blocking_receiver_loop(port: int, receiver_type: str, data_queue, error_queue):
@@ -258,5 +258,28 @@ def test_send_big_data_to_BlockingJSONReceiver():
     assert received_data == SAMPLE_BIG_DATA
 
 
+def test_raise_occupying_socket():
+    """Test that raises error if port is occupied."""
+    receiver1 = BlockingJSONReceiver(port=9890)
+    with pytest.raises(ConnectionAbortedError) as excinfo:
+        _ = BlockingJSONReceiver(port=9890)
+    assert (
+        str(excinfo.value)
+        == "An error occurred during connecting localhost:9890: [Errno 98] Address already in use"
+    )
+    assert isinstance(excinfo.value.__cause__, OSError)
+    receiver1.disconnect()
+    """Test that raises error if port is occupied."""
+    receiver2 = NonBlockingJSONReceiver(port=9891)
+    with pytest.raises(ConnectionAbortedError) as excinfo:
+        _ = NonBlockingJSONReceiver(port=9891)
+    assert (
+        str(excinfo.value)
+        == "An error occurred during connecting localhost:9891: [Errno 98] Address already in use"
+    )
+    assert isinstance(excinfo.value.__cause__, OSError)
+    receiver2.disconnect()
+
+
 if __name__ == "__main__":
-    test_send_big_data_to_NonBlockingJSONReceiver()
+    test_raise_occupying_socket()
