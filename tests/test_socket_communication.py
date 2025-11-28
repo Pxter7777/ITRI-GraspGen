@@ -265,6 +265,7 @@ def test_raise_occupying_socket():
         match=r"An error occurred during connecting localhost:9890: \[Errno 98\] Address already in use",
     ):
         _ = BlockingJSONReceiver(port=9890)
+    receiver1.disconnect()
     """Test that raises error if port is occupied."""
     receiver2 = NonBlockingJSONReceiver(port=9891)
     with pytest.raises(
