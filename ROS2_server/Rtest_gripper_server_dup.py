@@ -43,7 +43,9 @@ while True:
         # Message received
         if response["message"] == "Success":
             print("Success! Yeah!")
-            print("Success count: ", success_count) # if this pops up at the moment we started the second command, it's wrong.
+            print(
+                "Success count: ", success_count
+            )  # if this pops up at the moment we started the second command, it's wrong.
             wait_for_response = False
         elif response["message"] == "Fail":
             print("Failure detected. Stopping further commands.")
