@@ -7,7 +7,7 @@ sender = NonBlockingJSONSender(port=9876)
 receiver = NonBlockingJSONReceiver(port=9877)
 data1 = {
     "type": "arm",
-    "wait_time": 2.0,
+    "wait_time": 0.0,
     "joints_values": [
         [0.0, -0.3, 2.4, 1.0, -1.5, 3.0],
         [0.0, -0.3, 2.4, 1.1, -1.4, 3.1],
@@ -19,7 +19,7 @@ data1 = {
 }
 data2 = {
     "type": "arm",
-    "wait_time": 2.0,
+    "wait_time": 0.0,
     "joints_values": [
         [0.0, -0.3, 2.4, 1.5, -1.0, 3.5],
         [0.0, -0.3, 2.4, 1.4, -1.1, 3.4],
@@ -34,14 +34,13 @@ datalist = [data1, data1, data1]
 wait_for_response = False
 success_count = 0
 while True:
-    if len(datalist) == 0:
-        break
     if wait_for_response:
         response = receiver.capture_data()
         if response is None:
             continue
         # Message received
         if response["message"] == "Success":
+            success_count += 1
             print("Success! Yeah!")
             print(
                 "Success count: ", success_count
@@ -49,6 +48,8 @@ while True:
             wait_for_response = False
         elif response["message"] == "Fail":
             print("Failure detected. Stopping further commands.")
+            break
+        if len(datalist) == 0:
             break
 
     data = datalist.pop(0)
