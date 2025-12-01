@@ -135,6 +135,7 @@ class TMRobotController(Node):
         logger.debug(f"{self.num_response_to_send_back}")
         self.reached_time = float("inf")
         self.stuck_start_time = float("inf")
+        self.start_command_time = time.time()
         self.moving = True
         self.wait_time = data["wait_time"]
         self.current_moving_type = data["type"]
@@ -212,7 +213,7 @@ class TMRobotController(Node):
             return
         current_time = time.time()
         # reach detection
-        if self.reached_time > current_time:  # hasn't reached yet
+        if self.reached_time > current_time and current_time - self.start_command_time > 0.3:  # hasn't reached yet
             if self.current_moving_type == "arm" and is_pose_identical(
                 msg.joint_pos, self.goal_joints
             ):  # Need to change this type name to JPP if possible.
