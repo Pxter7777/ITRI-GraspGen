@@ -1,0 +1,48 @@
+{
+    "blockages":
+    [
+        [915, 242, 1279, 719]
+    ],
+    "track": ["green cup", "blue cup", "black cup", "orange cup"],
+    "extra_obstacles": {
+        "pot": {
+            "max": [
+                0.08977235445530003,
+                1.0718347810109903,
+                0.15538556125213734
+            ],
+            "min": [
+                -0.23256618410628488,
+                0.7197777535824897,
+                -0.04309180230325711
+            ]
+        }
+    },
+    "actions":
+    [
+        {
+            "target_name": "green cup",
+            "qualifier": "cup_qualifier",
+            "action": "grab_and_pour_and_place_back_curobo",
+            "args": [
+                [-0.07139691,  0.99580627,  0.15614688]
+            ]
+        },
+        {
+            "target_name": "blue cup",
+            "qualifier": "cup_qualifier",
+            "action": "grab_and_pour_and_place_back_curobo",
+            "args": [
+                [-0.07139691,  0.99580627,  0.15614688]
+            ]
+        },
+        {
+            "target_name": "glass cup",
+            "qualifier": "cup_qualifier",
+            "action": "joints_rad_move_to_curobo",
+            "args": [
+                [ 1.37296326,  0.08553859,  1.05554023,  2.76803983, -1.48792809, 3.09947786]
+            ]
+        }
+    ]
+}

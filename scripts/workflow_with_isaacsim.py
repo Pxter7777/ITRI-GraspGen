@@ -160,17 +160,17 @@ def main():
             # start to generate pointcloud
             scene_data = None
             track_names = list(actions["track"])
-            try:
-                blockages = actions.get("blockages")
-                scene_data = pc_generator.generate_pointcloud(
-                    track_names, need_confirm=not args.no_confirm, blockages=blockages
-                )
-            except ValueError as e:
-                logger.exception(e)
-                continue
-            except Exception as e:
-                logger.exception(f"Unexcpected exception: {e}")
-                continue
+            # try:
+            #     blockages = actions.get("blockages")
+            #     scene_data = pc_generator.generate_pointcloud(
+            #         track_names, need_confirm=not args.no_confirm, blockages=blockages
+            #     )
+            # except ValueError as e:
+            #     logger.exception(e)
+            #     continue
+            # except Exception as e:
+            #     logger.exception(f"Unexcpected exception: {e}")
+            #     continue
             # try five times
             for _ in range(5):
                 try:
