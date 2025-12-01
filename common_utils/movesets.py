@@ -480,7 +480,14 @@ def joints_rad_move_to_curobo(
     moves.append({"type": "arm", "joints_goal": joints_goal, "wait_time": 0.0})
     full_act = {"moves": moves, "obstacles": obstacles}
     return full_act
-
+def open_grip(
+    target_name: str, grasp: np.array, args: list, scene_data: dict
+) -> list[dict]:
+    obstacles = []
+    moves = []
+    moves.append({"type": "gripper", "grip_type": "open", "wait_time": 1.0})
+    full_act = {"moves": moves, "obstacles": obstacles}
+    return full_act
 
 action_dict = {
     "grab_and_pour_and_place_back": grab_and_pour_and_place_back,
@@ -489,6 +496,7 @@ action_dict = {
     "move_to": move_to,
     "move_to_curobo": move_to_curobo,
     "joints_rad_move_to_curobo": joints_rad_move_to_curobo,
+    "open_grip": open_grip,
 }
 
 

@@ -194,6 +194,7 @@ def main():
                     if action["action"] in [
                         "move_to_curobo",
                         "joints_rad_move_to_curobo",
+                        "open_grip",
                     ]:
                         full_acts = act_with_name(
                             action["action"], None, [None], action["args"], scene_data

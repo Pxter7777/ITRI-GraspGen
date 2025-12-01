@@ -45,6 +45,14 @@
     "actions":
     [
         {
+            "target_name": "glass cup",
+            "qualifier": "cup_qualifier",
+            "action": "open_grip",
+            "args": [
+                [ 1.37296326,  0.08553859,  1.05554023,  2.76803983, -1.48792809, 3.09947786]
+            ]
+        },
+        {
             "target_name": "green cup",
             "qualifier": "cup_qualifier",
             "action": "grab_and_pour_and_place_back_curobo",
