@@ -490,7 +490,18 @@ class PointCloudGenerator:
         self.groundingdino_predictor = GroundindDinoPredictor()
         self.zed = ZedCamera(args.use_png)
 
-    def generate_pointcloud(self, target_names: list[str], need_confirm=True):
+    def generate_pointcloud(
+        self, target_names: list[str], need_confirm=True, blockages: list = None
+    ):
+        """
+        bloackages[
+            [minX, minY, maxX, maxY],
+            [minX, minY, maxX, maxY], ...
+        ]
+        """
+        # blockage init
+        if blockages is None:
+            blockages = []
         # Target objects
         prompt = ""
         target_boxes = dict()
@@ -507,9 +518,20 @@ class PointCloudGenerator:
 
         color_np = left_image.get_data()[:, :, :3]  # Drop alpha channel
         color_np_org = color_np.copy()
-        display_frame = color_np.copy()
+        color_np_for_GroundingDINO = color_np.copy()
+        # replace the blockage region with black
+        for blockage in blockages:
+            cv2.rectangle(
+                color_np_for_GroundingDINO,
+                (blockage[0], blockage[1]),
+                (blockage[2], blockage[3]),
+                (0, 0, 0),
+                -1,
+            )
         # GroundingDINO detection
-        boxes = self.groundingdino_predictor.predict_boxes(color_np_org, prompt)
+        boxes = self.groundingdino_predictor.predict_boxes(
+            color_np_for_GroundingDINO, prompt
+        )
         for box in boxes:
             if box.phrase not in target_boxes:
                 logger.error(
@@ -557,6 +579,7 @@ class PointCloudGenerator:
         if need_confirm:
             win_name = "RGB + Mask | Depth"
             cv2.namedWindow(win_name)
+            display_frame = color_np_for_GroundingDINO.copy()
             for box in boxes:
                 display_frame = visualize_named_box(display_frame, box)
             for named_mask in named_masks:

@@ -2,6 +2,7 @@ import os
 import argparse
 import logging
 import json
+import time
 from PointCloud_Generation.pointcloud_generation import PointCloudGenerator
 from PointCloud_Generation.PC_transform import (
     silent_transform_multiple_obj_with_name_dict,
@@ -163,15 +164,22 @@ def main():
             # start to generate pointcloud
             scene_data = None
             track_names = list(actions["track"])
-            try:
-                scene_data = pc_generator.generate_pointcloud(
-                    track_names, need_confirm=not args.no_confirm
-                )
-            except ValueError as e:
-                logger.exception(e)
-                continue
-            except Exception as e:
-                logger.exception(f"Unexcpected exception: {e}")
+            # try five times
+            for _ in range(5):
+                try:
+                    blockages = actions.get("blockages")
+                    scene_data = pc_generator.generate_pointcloud(
+                        track_names,
+                        need_confirm=not args.no_confirm,
+                        blockages=blockages,
+                    )
+                    break  # Success
+                except ValueError as e:
+                    logger.exception(f"{e}, try again")
+                    time.sleep(0.1)
+                    continue
+            else:
+                main_sender.send_data({"message": "Failed to detect targets."})
                 continue
 
             logger.info(scene_data)
@@ -203,7 +211,7 @@ def main():
                             response = receiver.capture_data()
                         if response["message"] == "Success":
                             logger.warning("Success")
-                            break
+                            continue
                         elif response["message"] == "Fail":
                             logger.warning("failed")
                             continue

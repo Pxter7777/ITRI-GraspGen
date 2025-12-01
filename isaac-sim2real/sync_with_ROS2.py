@@ -314,12 +314,12 @@ def main():
     # default_config = robot_cfg["kinematics"]["cspace"]["retract_config"]
     # default_config = [-0.0031330717463317853, -0.782597719463971, 0.0013149953555822147, -2.3538521161513803, 0.006049369975929311, 1.5787788643767775, 0.7724911821319892, 1.0, 1.0]
     default_config = [
-        0.04642576,
-        -0.32005848,
-        2.44768465,
-        1.07295861,
-        -1.52266015,
-        3.12450588,
+        1.37296326,
+        0.08553859,
+        1.05554023,
+        2.76803983,
+        -1.48792809,
+        3.09947786,
     ]
     robot, robot_prim_path = add_robot_to_scene(robot_cfg, my_world)
 
@@ -397,7 +397,7 @@ def main():
     trajopt_tsteps = 32
     trajopt_dt = None
     optimize_dt = True
-    max_attempts = 10
+    max_attempts = 4
     trim_steps = None
     interpolation_dt = 0.05
     enable_finetune_trajopt = True
@@ -564,7 +564,7 @@ def main():
                                 cuboid.FixedCuboid(
                                     prim_path=prim_path,
                                     position=np.array(middle_point),
-                                    scale=scale * 1.0,
+                                    scale=[scale[0], scale[1], scale[2] * 1.1],
                                     color=np.array([0.0, 0.0, 1.0]),  # Blue
                                     # physics=True,
                                 )
