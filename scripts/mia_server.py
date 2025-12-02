@@ -201,7 +201,11 @@ def main():
                     ]:
                         while True:
                             full_acts = act_with_name(
-                                action["action"], None, [None], action["args"], scene_data
+                                action["action"],
+                                None,
+                                [None],
+                                action["args"],
+                                scene_data,
                             )
                             if args.save_fullact:
                                 save_json("fullact", "fullact", full_acts)
@@ -224,7 +228,7 @@ def main():
                                 raise InterruptedError(
                                     "aborted by isaacsim, stop current action"
                                 )
-                    else: # Need GraspGen
+                    else:  # Need GraspGen
                         while True:
                             grasps = grasp_generator.generate_grasp(scene_data, action)
                             full_acts = act_with_name(

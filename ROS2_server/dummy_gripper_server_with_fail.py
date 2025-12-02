@@ -45,7 +45,7 @@ while True:
             f"{e}, key error, please make sure the signal format is correct."
         )
     i += 1
-    if i%5==0:
+    if i % 5 == 0:
         sender.send_data({"message": "Fail"})
     else:
         sender.send_data({"message": "Success"})

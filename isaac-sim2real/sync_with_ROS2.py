@@ -168,7 +168,7 @@ simulation_app = SimulationApp(  # noqa: E402
 
 from isaacsim_utils.helper import add_extensions, add_robot_to_scene  # noqa: E402
 from omni.isaac.core import World  # noqa: E402
-from omni.isaac.core.objects import cuboid, sphere  # noqa: E402
+from omni.isaac.core.objects import sphere  # noqa: E402
 
 # import omni.isaac.core.utils.prims as prims_utils  # noqa: E402
 from omni.isaac.core.utils.types import ArticulationAction  # noqa: E402
@@ -277,13 +277,28 @@ def init_pose_matric(motion_gen):
         pose_metric = PoseCostMetric(hold_partial_pose=True, hold_vec_weight=hold_vec)
     return pose_metric
 
+
 # dataclass
 class Move:
-    def __init__(self, ROS2_move:dict, cmd_plan:list):
+    def __init__(self, ROS2_move: dict, cmd_plan: list):
         self.ROS2_move = ROS2_move
         self.cmd_plan = cmd_plan
 
-def action_handler(stage, usd_help, robot_prim_path, motion_gen, tensor_args, plan_config, pose_metric, sim_js, sim_js_names, planned_action_queue: queue.Queue, motion_gen_lock: Lock, ROS2_fail_queue: queue.Queue):
+
+def action_handler(
+    stage,
+    usd_help,
+    robot_prim_path,
+    motion_gen,
+    tensor_args,
+    plan_config,
+    pose_metric,
+    sim_js,
+    sim_js_names,
+    planned_action_queue: queue.Queue,
+    motion_gen_lock: Lock,
+    ROS2_fail_queue: queue.Queue,
+):
     graspgen_receiver = NonBlockingJSONReceiver(port=port_config.GRASPGEN_TO_ISAACSIM)
     graspgen_sender = NonBlockingJSONSender(port=port_config.ISAACSIM_TO_GRASPGEN)
     zero_obstacles = usd_help.get_obstacles_from_stage(
@@ -306,8 +321,8 @@ def action_handler(stage, usd_help, robot_prim_path, motion_gen, tensor_args, pl
     ]
     last_joint_states = default_config
     temp_cuboid_paths = []
-    idx_list = [0,1,2,3,4,5]
-    common_js_names = ['joint_1', 'joint_2', 'joint_3', 'joint_4', 'joint_5', 'joint_6']
+    # idx_list = [0,1,2,3,4,5]
+    common_js_names = ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"]
     while True:
         time.sleep(0.1)
         # handle abort
@@ -318,29 +333,29 @@ def action_handler(stage, usd_help, robot_prim_path, motion_gen, tensor_args, pl
             # clear plan
             while not planned_action_queue.empty():
                 planned_action_queue.get()
-            ROS2_fail_queue.get() # Finish handling the Fail
-            graspgen_datas = graspgen_receiver.capture_data() # eat the new plan if there is any
+            ROS2_fail_queue.get()  # Finish handling the Fail
+            graspgen_datas = (
+                graspgen_receiver.capture_data()
+            )  # eat the new plan if there is any
             if graspgen_datas is not None:
                 print(f"ate the data {graspgen_datas}")
             else:
                 print("no data to eat")
             continue
 
-
-
         graspgen_datas = graspgen_receiver.capture_data()
         if graspgen_datas is None:
             continue
         print("-------------Received new action--------------")
-        
+
         for graspgen_data in graspgen_datas:
             before_move_joints = last_joint_states
-            planned_action:list[Move] = []
+            planned_action: list[Move] = []
             for move in graspgen_data["moves"]:
                 # handle temp obstacles
                 if temp_cuboid_paths:
                     for path in temp_cuboid_paths:
-                        stage.RemovePrim(path) # this may race condition
+                        stage.RemovePrim(path)  # this may race condition
                     temp_cuboid_paths = []
                 # Table # race condition, I guess? Yes this shit will race condition
                 # prim_path = "/World/temp_obstacle_table"
@@ -360,24 +375,24 @@ def action_handler(stage, usd_help, robot_prim_path, motion_gen, tensor_args, pl
                     ):
                         middle_point = np.mean(
                             [
-                                graspgen_data["obstacles"][obstacle_name][
-                                    "max"
-                                ],
-                                graspgen_data["obstacles"][obstacle_name][
-                                    "min"
-                                ],
+                                graspgen_data["obstacles"][obstacle_name]["max"],
+                                graspgen_data["obstacles"][obstacle_name]["min"],
                             ],
                             axis=0,
                         )
                         scale = np.array(
                             graspgen_data["obstacles"][obstacle_name]["max"]
-                        ) - np.array(
-                            graspgen_data["obstacles"][obstacle_name]["min"]
+                        ) - np.array(graspgen_data["obstacles"][obstacle_name]["min"])
+                        cuboids.append(
+                            Cuboid(
+                                name=f"obs_{i}",
+                                pose=middle_point.tolist() + [1, 0, 0, 0],
+                                dims=scale.tolist(),
+                            )
                         )
-                        cuboids.append(Cuboid(name=f"obs_{i}", pose= middle_point.tolist() + [1, 0, 0, 0], dims=scale.tolist()))
-                        
+
                         # Race condition
-                        # prim_path = f"/World/temp_obstacle_{i}" 
+                        # prim_path = f"/World/temp_obstacle_{i}"
                         # cuboid.FixedCuboid(
                         #     prim_path=prim_path,
                         #     position=np.array(middle_point),
@@ -399,7 +414,7 @@ def action_handler(stage, usd_help, robot_prim_path, motion_gen, tensor_args, pl
                 # ).get_collision_check_world()
                 obstacles = WorldConfig(cuboid=cuboids)
 
-                #motion_gen.update_world(world)
+                # motion_gen.update_world(world)
                 if "no_obstacles" in move:
                     with motion_gen_lock:
                         motion_gen.update_world(zero_obstacles)
@@ -434,8 +449,7 @@ def action_handler(stage, usd_help, robot_prim_path, motion_gen, tensor_args, pl
                         position=tensor_args.to_device(last_joint_states),
                         velocity=tensor_args.to_device(sim_js.velocities)
                         * 0.0,  # * 0.0,
-                        acceleration=tensor_args.to_device(sim_js.velocities)
-                        * 0.0,
+                        acceleration=tensor_args.to_device(sim_js.velocities) * 0.0,
                         jerk=tensor_args.to_device(sim_js.velocities) * 0.0,
                         joint_names=sim_js_names,
                     )
@@ -450,8 +464,7 @@ def action_handler(stage, usd_help, robot_prim_path, motion_gen, tensor_args, pl
                         position=tensor_args.to_device(move["joints_goal"]),
                         velocity=tensor_args.to_device(sim_js.velocities)
                         * 0.0,  # * 0.0,
-                        acceleration=tensor_args.to_device(sim_js.velocities)
-                        * 0.0,
+                        acceleration=tensor_args.to_device(sim_js.velocities) * 0.0,
                         jerk=tensor_args.to_device(sim_js.velocities) * 0.0,
                         joint_names=sim_js_names,
                     )
@@ -462,8 +475,7 @@ def action_handler(stage, usd_help, robot_prim_path, motion_gen, tensor_args, pl
                         position=tensor_args.to_device(last_joint_states),
                         velocity=tensor_args.to_device(sim_js.velocities)
                         * 0.0,  # * 0.0,
-                        acceleration=tensor_args.to_device(sim_js.velocities)
-                        * 0.0,
+                        acceleration=tensor_args.to_device(sim_js.velocities) * 0.0,
                         jerk=tensor_args.to_device(sim_js.velocities) * 0.0,
                         joint_names=sim_js_names,
                     )
@@ -491,9 +503,7 @@ def action_handler(stage, usd_help, robot_prim_path, motion_gen, tensor_args, pl
                     #         idx_list.append(robot.get_dof_index(x))
                     #         common_js_names.append(x)
 
-                    new_cmd_plan = new_cmd_plan.get_ordered_joint_state(
-                        common_js_names
-                    )
+                    new_cmd_plan = new_cmd_plan.get_ordered_joint_state(common_js_names)
                     # The following code block shows how to prune the plan to keep only the first and last waypoints
                     if "no_curobo" in move:
                         new_cmd_plan = JointState(
@@ -513,7 +523,7 @@ def action_handler(stage, usd_help, robot_prim_path, motion_gen, tensor_args, pl
                         # "cmd_plan": cmd_plan, # only for later reuse by isaacsim, not for ROS2
                         "joints_values": positions,
                     }
-                    
+
                     planned_action.append(Move(ROS2_move, new_cmd_plan))
                     last_joint_states = positions[-1]
                 else:
@@ -522,14 +532,13 @@ def action_handler(stage, usd_help, robot_prim_path, motion_gen, tensor_args, pl
                     break
 
             else:  # success!
-                print(
-                    "-------------Successfully handled new action--------------"
-                )
+                print("-------------Successfully handled new action--------------")
                 graspgen_sender.send_data({"message": "Success"})
                 planned_action_queue.put(planned_action)
                 break  # stop trying other acts
         else:  # all graspgen_datas failed
             graspgen_sender.send_data({"message": "Fail"})
+
 
 def main():
     setup_curobo_logger("warn")
@@ -697,16 +706,16 @@ def main():
     usd_help.add_world_to_stage(world_cfg, base_frame="/World")
 
     ### add a no obstacle world
-    zero_obstacles = usd_help.get_obstacles_from_stage(
-        only_paths=["/World"],
-        reference_prim_path=robot_prim_path,
-        ignore_substring=[
-            robot_prim_path,
-            "/World/defaultGroundPlane",
-            "/curobo",
-            "/World/table",
-        ],
-    ).get_collision_check_world()
+    # zero_obstacles = usd_help.get_obstacles_from_stage(
+    #     only_paths=["/World"],
+    #     reference_prim_path=robot_prim_path,
+    #     ignore_substring=[
+    #         robot_prim_path,
+    #         "/World/defaultGroundPlane",
+    #         "/curobo",
+    #         "/World/table",
+    #     ],
+    # ).get_collision_check_world()
 
     ###### Pose matrice initialization
     pose_metric = init_pose_matric(motion_gen)
@@ -717,7 +726,7 @@ def main():
     # idle = 0
 
     planned_action_queue = queue.Queue()
-    ROS2_fail_queue = queue.Queue() # put message in if ROS2 fail
+    ROS2_fail_queue = queue.Queue()  # put message in if ROS2 fail
     cmd_plan = None
     cmd_idx = 0
     # my_world.scene.add_default_ground_plane()
@@ -732,25 +741,38 @@ def main():
     # graspgen_sender = NonBlockingJSONSender(port=port_config.ISAACSIM_TO_GRASPGEN)
     ros2_receiver = NonBlockingJSONReceiver(port=port_config.ROS2_TO_ISAACSIM)
     ros2_sender = NonBlockingJSONSender(port=port_config.ISAACSIM_TO_ROS2)
-    plans = []
-    cmd_plans = []
-    last_joint_states = default_config
+    # plans = []
+    # cmd_plans = []
+    # last_joint_states = default_config
     # successs = 0
-    temp_cuboid_paths = []
+    # temp_cuboid_paths = []
     sim_js = robot.get_joints_state()
     sim_js_names = robot.dof_names
-    planned_action:list = []
+    planned_action: list = []
     gui_thread = Thread(
         target=action_handler,
-        args=(stage, usd_help, robot_prim_path, motion_gen, tensor_args, plan_config, pose_metric, sim_js, sim_js_names, planned_action_queue, motion_gen_lock, ROS2_fail_queue),
+        args=(
+            stage,
+            usd_help,
+            robot_prim_path,
+            motion_gen,
+            tensor_args,
+            plan_config,
+            pose_metric,
+            sim_js,
+            sim_js_names,
+            planned_action_queue,
+            motion_gen_lock,
+            ROS2_fail_queue,
+        ),
         daemon=True,
     )
     gui_thread.start()
+    idx_list = [0, 1, 2, 3, 4, 5]
     while simulation_app.is_running():
-        # make sure the thread has catched and handled the issue 
+        # make sure the thread has catched and handled the issue
         if not ROS2_fail_queue.empty():
             continue
-        
 
         if wait_ros2:
             ros2_response = ros2_receiver.capture_data()
@@ -770,11 +792,11 @@ def main():
                     cmd_plan = None
                     planned_action = []
                     # Finished handled
-                    ROS2_fail_queue.put({"message": "Abort"}) # tell that thread to handle
-                    continue # Go and please stuck
+                    ROS2_fail_queue.put(
+                        {"message": "Abort"}
+                    )  # tell that thread to handle
+                    continue  # Go and please stuck
 
-                    
-                
         # Step
         my_world.step(render=True)
         step_index = my_world.current_time_step_index
@@ -865,7 +887,7 @@ def main():
         ###### update past_pose
         # past_pose = cube_position
         # past_orientation = cube_orientation
-        
+
         if cmd_plan is not None:
             cmd_state = cmd_plan[cmd_idx]
             past_cmd = cmd_state.clone()
@@ -888,19 +910,17 @@ def main():
         if not wait_ros2 and len(planned_action) > 0:
             # planned action
             wait_ros2 = True
-            move:Move = planned_action.pop(0)
+            move: Move = planned_action.pop(0)
             # For ROS2
             ros2_sender.send_data(move.ROS2_move)
             # For isaac sim animation
             cmd_idx = 0
             cmd_plan = move.cmd_plan
 
-
         if len(planned_action) == 0 and not planned_action_queue.empty():
             # currently no plan but we have more in queue, can start grab a new planned_action and apply here.
-            planned_action:list = planned_action_queue.get()
-            
-        
+            planned_action: list = planned_action_queue.get()
+
     simulation_app.close()
 
 
