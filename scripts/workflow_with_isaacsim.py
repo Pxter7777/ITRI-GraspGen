@@ -202,65 +202,68 @@ def main():
             # GraspGen
             for action in actions["actions"]:
                 try:
+                    # Don't need GraspGen
                     if action["action"] in [
                         "move_to_curobo",
                         "joints_rad_move_to_curobo",
                         "open_grip",
                     ]:
-                        full_acts = act_with_name(
-                            action["action"], None, [None], action["args"], scene_data
-                        )
-                        if args.save_fullact:
-                            save_json("fullact", "fullact", full_acts)
-                        response = receiver.capture_data()
-                        if response is not None and response["message"] == "Abort":
-                            raise InterruptedError(
-                                "aborted by isaacsim, stop current action"
+                        while True:
+                            full_acts = act_with_name(
+                                action["action"], None, [None], action["args"], scene_data
                             )
-                        sender.send_data(full_acts)
-                        # wait for isaacsim's good news
-                        while response is None:
+                            if args.save_fullact:
+                                save_json("fullact", "fullact", full_acts)
                             response = receiver.capture_data()
-                        if response["message"] == "Success":
-                            logger.warning("Success")
-                            continue
-                        elif response["message"] == "Fail":
-                            logger.warning("failed")
-                            continue
-                        elif response["message"] == "Abort":
-                            raise InterruptedError(
-                                "aborted by isaacsim, stop current action"
+                            if response is not None and response["message"] == "Abort":
+                                raise InterruptedError(
+                                    "aborted by isaacsim, stop current action"
+                                )
+                            sender.send_data(full_acts)
+                            # wait for isaacsim's good news
+                            while response is None:
+                                response = receiver.capture_data()
+                            if response["message"] == "Success":
+                                logger.warning("Success")
+                                break
+                            elif response["message"] == "Fail":
+                                logger.warning("failed")
+                                continue
+                            elif response["message"] == "Abort":
+                                raise InterruptedError(
+                                    "aborted by isaacsim, stop current action"
+                                )
+                    else: # Need GraspGen
+                        while True:
+                            grasps = grasp_generator.generate_grasp(scene_data, action)
+                            full_acts = act_with_name(
+                                action["action"],
+                                action["target_name"],
+                                grasps,
+                                action["args"],
+                                scene_data,
                             )
-                    while True:
-                        grasps = grasp_generator.generate_grasp(scene_data, action)
-                        full_acts = act_with_name(
-                            action["action"],
-                            action["target_name"],
-                            grasps,
-                            action["args"],
-                            scene_data,
-                        )
-                        if args.save_fullact:
-                            save_json("fullact", "fullact_", full_acts)
-                        response = receiver.capture_data()
-                        if response is not None and response["message"] == "Abort":
-                            raise InterruptedError(
-                                "aborted by isaacsim, stop current action"
-                            )
-                        sender.send_data(full_acts)
-                        # wait for isaacsim's good news
-                        while response is None:
+                            if args.save_fullact:
+                                save_json("fullact", "fullact_", full_acts)
                             response = receiver.capture_data()
-                        if response["message"] == "Success":
-                            logger.warning("Success")
-                            break
-                        elif response["message"] == "Fail":
-                            logger.warning("failed")
-                            continue
-                        elif response["message"] == "Abort":
-                            raise InterruptedError(
-                                "aborted by isaacsim, stop current action"
-                            )
+                            if response is not None and response["message"] == "Abort":
+                                raise InterruptedError(
+                                    "aborted by isaacsim, stop current action"
+                                )
+                            sender.send_data(full_acts)
+                            # wait for isaacsim's good news
+                            while response is None:
+                                response = receiver.capture_data()
+                            if response["message"] == "Success":
+                                logger.warning("Success")
+                                break
+                            elif response["message"] == "Fail":
+                                logger.warning("failed")
+                                continue
+                            elif response["message"] == "Abort":
+                                raise InterruptedError(
+                                    "aborted by isaacsim, stop current action"
+                                )
                 except KeyboardInterrupt:
                     logger.info("Manual stopping current action.")
                     break
