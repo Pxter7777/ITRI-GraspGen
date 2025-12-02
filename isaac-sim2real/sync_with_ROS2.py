@@ -368,6 +368,13 @@ def action_handler(
                 # )
                 # temp_cuboid_paths.append(prim_path)
                 cuboids = []
+                cuboids.append(
+                    Cuboid(
+                        name=f"table",
+                        pose=[0,0,-1.97] + [1, 0, 0, 0],
+                        dims=[4,4,4],
+                    )
+                )
                 for i, obstacle_name in enumerate(graspgen_data["obstacles"]):
                     if not (
                         "ignore_obstacles" in move
