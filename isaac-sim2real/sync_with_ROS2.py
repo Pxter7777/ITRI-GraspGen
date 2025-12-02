@@ -29,7 +29,7 @@ import os
 import json
 import time
 import queue
-from threading import Thread
+from threading import Thread, Lock
 import numpy as np
 from isaacsim_utils.socket_communication import (
     NonBlockingJSONSender,
@@ -283,7 +283,7 @@ class Move:
         self.ROS2_move = ROS2_move
         self.cmd_plan = cmd_plan
 
-def action_handler(stage, usd_help, robot_prim_path, motion_gen, tensor_args, plan_config, pose_metric, sim_js, sim_js_names, robot, planned_action_queue: queue.Queue):
+def action_handler(stage, usd_help, robot_prim_path, motion_gen, tensor_args, plan_config, pose_metric, sim_js, sim_js_names, robot, planned_action_queue: queue.Queue, motion_gen_lock: Lock):
     graspgen_receiver = NonBlockingJSONReceiver(port=port_config.GRASPGEN_TO_ISAACSIM)
     graspgen_sender = NonBlockingJSONSender(port=port_config.ISAACSIM_TO_GRASPGEN)
     zero_obstacles = usd_help.get_obstacles_from_stage(
@@ -296,6 +296,18 @@ def action_handler(stage, usd_help, robot_prim_path, motion_gen, tensor_args, pl
             "/World/table",
         ],
     ).get_collision_check_world()
+    default_config = [
+        1.37296326,
+        0.08553859,
+        1.05554023,
+        2.76803983,
+        -1.48792809,
+        3.09947786,
+    ]
+    last_joint_states = default_config
+    temp_cuboid_paths = []
+    idx_list = [0,1,2,3,4,5]
+    common_js_names = ['joint_1', 'joint_2', 'joint_3', 'joint_4', 'joint_5', 'joint_6']
     while True:
         time.sleep(0.1)
         graspgen_datas = graspgen_receiver.capture_data()
@@ -310,18 +322,18 @@ def action_handler(stage, usd_help, robot_prim_path, motion_gen, tensor_args, pl
                 # handle temp obstacles
                 if temp_cuboid_paths:
                     for path in temp_cuboid_paths:
-                        stage.RemovePrim(path)
+                        stage.RemovePrim(path) # this may race condition
                     temp_cuboid_paths = []
-                # Table
-                prim_path = "/World/temp_obstacle_table"
-                cuboid.FixedCuboid(
-                    prim_path=prim_path,
-                    position=np.array([0, 0, -1.97]),
-                    scale=np.array([4, 4, 4]),
-                    color=np.array([0.0, 0.0, 1.0]),  # Blue
-                    # physics=True,
-                )
-                temp_cuboid_paths.append(prim_path)
+                # Table # race condition, I guess? Yes this shit will race condition
+                # prim_path = "/World/temp_obstacle_table"
+                # cuboid.FixedCuboid(
+                #     prim_path=prim_path,
+                #     position=np.array([0, 0, -1.97]),
+                #     scale=np.array([4, 4, 4]),
+                #     color=np.array([0.0, 0.0, 1.0]),  # Blue
+                #     # physics=True,
+                # )
+                # temp_cuboid_paths.append(prim_path)
                 for i, obstacle_name in enumerate(graspgen_data["obstacles"]):
                     if not (
                         "ignore_obstacles" in move
@@ -343,15 +355,16 @@ def action_handler(stage, usd_help, robot_prim_path, motion_gen, tensor_args, pl
                         ) - np.array(
                             graspgen_data["obstacles"][obstacle_name]["min"]
                         )
-                        prim_path = f"/World/temp_obstacle_{i}"
-                        cuboid.FixedCuboid(
-                            prim_path=prim_path,
-                            position=np.array(middle_point),
-                            scale=[scale[0], scale[1], scale[2] * 1.1],
-                            color=np.array([0.0, 0.0, 1.0]),  # Blue
-                            # physics=True,
-                        )
-                        temp_cuboid_paths.append(prim_path)
+                        # Race condition
+                        # prim_path = f"/World/temp_obstacle_{i}" 
+                        # cuboid.FixedCuboid(
+                        #     prim_path=prim_path,
+                        #     position=np.array(middle_point),
+                        #     scale=[scale[0], scale[1], scale[2] * 1.1],
+                        #     color=np.array([0.0, 0.0, 1.0]),  # Blue
+                        #     # physics=True,
+                        # )
+                        # temp_cuboid_paths.append(prim_path)
                 # Get all obstacles from the stage, including the new temporary ones
                 obstacles = usd_help.get_obstacles_from_stage(
                     only_paths=["/World"],
@@ -364,9 +377,11 @@ def action_handler(stage, usd_help, robot_prim_path, motion_gen, tensor_args, pl
                     ],
                 ).get_collision_check_world()
                 if "no_obstacles" in move:
-                    motion_gen.update_world(zero_obstacles)
+                    with motion_gen_lock:
+                        motion_gen.update_world(zero_obstacles)
                 else:
-                    motion_gen.update_world(obstacles)
+                    with motion_gen_lock:
+                        motion_gen.update_world(obstacles)
                 # start handle move
                 if move["type"] == "gripper":
                     ROS2_move = move
@@ -401,9 +416,10 @@ def action_handler(stage, usd_help, robot_prim_path, motion_gen, tensor_args, pl
                         joint_names=sim_js_names,
                     )
 
-                    result = motion_gen.plan_single(
-                        cu_js.unsqueeze(0), ik_goal, plan_config
-                    )
+                    with motion_gen_lock:
+                        result = motion_gen.plan_single(
+                            cu_js.unsqueeze(0), ik_goal, plan_config
+                        )
                 elif "joints_goal" in move:
                     print("ALRIGHT?0")
                     joints_goal = JointState(
@@ -428,26 +444,28 @@ def action_handler(stage, usd_help, robot_prim_path, motion_gen, tensor_args, pl
                         joint_names=sim_js_names,
                     )
                     print("ALRIGHT?2")
-                    result = motion_gen.plan_single_js(
-                        cu_js.unsqueeze(0),
-                        joints_goal.unsqueeze(0),
-                        plan_config,
-                    )
+                    with motion_gen_lock:
+                        result = motion_gen.plan_single_js(
+                            cu_js.unsqueeze(0),
+                            joints_goal.unsqueeze(0),
+                            plan_config,
+                        )
                     print("ALRIGHT?3")
 
                 succ = result.success.item()  # ik_result.success.item()
 
                 if succ:
                     print("YES YES YES?")
-                    new_cmd_plan = result.get_interpolated_plan()
-                    new_cmd_plan = motion_gen.get_full_js(new_cmd_plan)
+                    with motion_gen_lock:
+                        new_cmd_plan = result.get_interpolated_plan()
+                        new_cmd_plan = motion_gen.get_full_js(new_cmd_plan)
                     # get only joint names that are in both:
-                    idx_list = []
-                    common_js_names = []
-                    for x in sim_js_names:
-                        if x in new_cmd_plan.joint_names:
-                            idx_list.append(robot.get_dof_index(x))
-                            common_js_names.append(x)
+                    # idx_list = []
+                    # common_js_names = []
+                    # for x in sim_js_names:
+                    #     if x in new_cmd_plan.joint_names:
+                    #         idx_list.append(robot.get_dof_index(x))
+                    #         common_js_names.append(x)
 
                     new_cmd_plan = new_cmd_plan.get_ordered_joint_state(
                         common_js_names
@@ -634,6 +652,7 @@ def main():
     )
 
     motion_gen = MotionGen(motion_gen_config)
+    motion_gen_lock = Lock()
     if not args.reactive:
         print("warming up...")
         motion_gen.warmup(enable_graph=True, warmup_js_trajopt=False)
@@ -698,7 +717,7 @@ def main():
     planned_action:list = []
     gui_thread = Thread(
         target=action_handler,
-        args=(stage, usd_help, robot_prim_path, motion_gen, tensor_args, plan_config, pose_metric, sim_js, sim_js_names, robot, planned_action_queue),
+        args=(stage, usd_help, robot_prim_path, motion_gen, tensor_args, plan_config, pose_metric, sim_js, sim_js_names, robot, planned_action_queue, motion_gen_lock),
         daemon=True,
     )
     gui_thread.start()
@@ -798,10 +817,12 @@ def main():
             cu_js.position[:] = past_cmd.position
             cu_js.velocity[:] = past_cmd.velocity
             cu_js.acceleration[:] = past_cmd.acceleration
-        cu_js = cu_js.get_ordered_joint_state(motion_gen.kinematics.joint_names)
+        with motion_gen_lock:
+            cu_js = cu_js.get_ordered_joint_state(motion_gen.kinematics.joint_names)
 
         if args.visualize_spheres and step_index % 2 == 0:
-            sph_list = motion_gen.kinematics.get_robot_as_spheres(cu_js.position)
+            with motion_gen_lock:
+                sph_list = motion_gen.kinematics.get_robot_as_spheres(cu_js.position)
 
             if spheres is None:
                 spheres = []
