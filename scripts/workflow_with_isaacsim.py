@@ -144,6 +144,10 @@ def main():
             text = input("./actions/<name>.json: ")
             if text == "end":
                 break
+            # eat abort if there is any
+            for _ in range(5):
+                receiver.capture_data()
+
             actions_filepath = os.path.join(project_root_dir, "actions", text + ".json")
 
             actions = None

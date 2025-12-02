@@ -283,7 +283,7 @@ class Move:
         self.ROS2_move = ROS2_move
         self.cmd_plan = cmd_plan
 
-def action_handler(stage, usd_help, robot_prim_path, motion_gen, tensor_args, plan_config, pose_metric, sim_js, sim_js_names, robot, planned_action_queue: queue.Queue, motion_gen_lock: Lock):
+def action_handler(stage, usd_help, robot_prim_path, motion_gen, tensor_args, plan_config, pose_metric, sim_js, sim_js_names, planned_action_queue: queue.Queue, motion_gen_lock: Lock, ROS2_fail_queue: queue.Queue):
     graspgen_receiver = NonBlockingJSONReceiver(port=port_config.GRASPGEN_TO_ISAACSIM)
     graspgen_sender = NonBlockingJSONSender(port=port_config.ISAACSIM_TO_GRASPGEN)
     zero_obstacles = usd_help.get_obstacles_from_stage(
@@ -310,6 +310,24 @@ def action_handler(stage, usd_help, robot_prim_path, motion_gen, tensor_args, pl
     common_js_names = ['joint_1', 'joint_2', 'joint_3', 'joint_4', 'joint_5', 'joint_6']
     while True:
         time.sleep(0.1)
+        # handle abort
+        # set robot state back to default
+        if not ROS2_fail_queue.empty():
+            graspgen_sender.send_data({"message": "Abort"})
+            last_joint_states = default_config
+            # clear plan
+            while not planned_action_queue.empty():
+                planned_action_queue.get()
+            ROS2_fail_queue.get() # Finish handling the Fail
+            graspgen_datas = graspgen_receiver.capture_data() # eat the new plan if there is any
+            if graspgen_datas is not None:
+                print(f"ate the data {graspgen_datas}")
+            else:
+                print("no data to eat")
+            continue
+
+
+
         graspgen_datas = graspgen_receiver.capture_data()
         if graspgen_datas is None:
             continue
@@ -390,7 +408,7 @@ def action_handler(stage, usd_help, robot_prim_path, motion_gen, tensor_args, pl
                         motion_gen.update_world(obstacles)
                 # start handle move
                 if move["type"] == "gripper":
-                    ROS2_move = move
+                    planned_action.append(Move(move, None))
                     continue
                 ## start serious curobo motion planning
                 # if "constraint" in move:
@@ -699,6 +717,7 @@ def main():
     # idle = 0
 
     planned_action_queue = queue.Queue()
+    ROS2_fail_queue = queue.Queue() # put message in if ROS2 fail
     cmd_plan = None
     cmd_idx = 0
     # my_world.scene.add_default_ground_plane()
@@ -723,43 +742,39 @@ def main():
     planned_action:list = []
     gui_thread = Thread(
         target=action_handler,
-        args=(stage, usd_help, robot_prim_path, motion_gen, tensor_args, plan_config, pose_metric, sim_js, sim_js_names, robot, planned_action_queue, motion_gen_lock),
+        args=(stage, usd_help, robot_prim_path, motion_gen, tensor_args, plan_config, pose_metric, sim_js, sim_js_names, planned_action_queue, motion_gen_lock, ROS2_fail_queue),
         daemon=True,
     )
     gui_thread.start()
     while simulation_app.is_running():
-
-        
+        # make sure the thread has catched and handled the issue 
+        if not ROS2_fail_queue.empty():
+            continue
         
 
         if wait_ros2:
             ros2_response = ros2_receiver.capture_data()
             if ros2_response is not None:
+                wait_ros2 = False
                 if ros2_response["message"] == "Success":
                     print("receiver successfulness.")
-
+                    # Can continue to do the following steps, no need to stuck
                 elif ros2_response["message"] == "Fail":
                     print("receiver failedness.")
-                    # send abort to graspgen
-                    graspgen_sender.send_data({"message": "Abort"})
-                    # set robot state back to default
-                    last_joint_states = default_config
+                    # reset simulation robot position
                     robot.set_joint_positions(default_config, idx_list)
                     robot._articulation_view.set_max_efforts(
                         values=np.array([5000 for i in range(len(idx_list))]),
                         joint_indices=idx_list,
                     )
-                    # clear plan
-                    graspgen_datas = (
-                        graspgen_receiver.capture_data()
-                    )  # eat the new plan if there is any
-                    if graspgen_datas is not None:
-                        print(f"ate the data {graspgen_datas}")
-                    else:
-                        print("no data to eat")
-                    plans = []
-                    cmd_plans = []
-                wait_ros2 = False
+                    cmd_plan = None
+                    planned_action = []
+                    # Finished handled
+                    ROS2_fail_queue.put({"message": "Abort"}) # tell that thread to handle
+                    continue # Go and please stuck
+
+                    
+                
         # Step
         my_world.step(render=True)
         step_index = my_world.current_time_step_index
