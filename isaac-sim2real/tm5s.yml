@@ -54,13 +54,13 @@ robot_cfg:
           "radius": 0.05
       link_6:
         - "center": [0.0, 0.0, 0.0]
-          "radius": 0.05
+          "radius": 0.04
         - "center": [0.0, 0.075, -0.03]
-          "radius": 0.04
+          "radius": 0.03
         - "center": [0.0, 0.075, 0.02]
-          "radius": 0.04
+          "radius": 0.03
         - "center": [0.0, 0.0, 0.07]
-          "radius": 0.05
+          "radius": 0.04
       link_5:
         - "center": [-0.0, 0.02, 0.0]
           "radius": 0.05

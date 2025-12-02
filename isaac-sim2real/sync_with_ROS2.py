@@ -177,7 +177,7 @@ from omni.isaac.core.utils.types import ArticulationAction  # noqa: E402
 ######### CuRobo ########
 # from curobo.wrap.reacher.ik_solver import IKSolver, IKSolverConfig
 from curobo.geom.sdf.world import CollisionCheckerType  # noqa: E402
-from curobo.geom.types import WorldConfig  # noqa: E402
+from curobo.geom.types import Cuboid, WorldConfig  # noqa: E402
 from curobo.types.base import TensorDeviceType  # noqa: E402
 from curobo.types.math import Pose  # noqa: E402
 from curobo.types.robot import JointState  # noqa: E402
@@ -334,6 +334,7 @@ def action_handler(stage, usd_help, robot_prim_path, motion_gen, tensor_args, pl
                 #     # physics=True,
                 # )
                 # temp_cuboid_paths.append(prim_path)
+                cuboids = []
                 for i, obstacle_name in enumerate(graspgen_data["obstacles"]):
                     if not (
                         "ignore_obstacles" in move
@@ -355,6 +356,8 @@ def action_handler(stage, usd_help, robot_prim_path, motion_gen, tensor_args, pl
                         ) - np.array(
                             graspgen_data["obstacles"][obstacle_name]["min"]
                         )
+                        cuboids.append(Cuboid(name=f"obs_{i}", pose= middle_point.tolist() + [1, 0, 0, 0], dims=scale.tolist()))
+                        
                         # Race condition
                         # prim_path = f"/World/temp_obstacle_{i}" 
                         # cuboid.FixedCuboid(
@@ -366,16 +369,19 @@ def action_handler(stage, usd_help, robot_prim_path, motion_gen, tensor_args, pl
                         # )
                         # temp_cuboid_paths.append(prim_path)
                 # Get all obstacles from the stage, including the new temporary ones
-                obstacles = usd_help.get_obstacles_from_stage(
-                    only_paths=["/World"],
-                    reference_prim_path=robot_prim_path,
-                    ignore_substring=[
-                        robot_prim_path,
-                        "/World/defaultGroundPlane",
-                        "/curobo",
-                        "/World/table",
-                    ],
-                ).get_collision_check_world()
+                # obstacles = usd_help.get_obstacles_from_stage(
+                #     only_paths=["/World"],
+                #     reference_prim_path=robot_prim_path,
+                #     ignore_substring=[
+                #         robot_prim_path,
+                #         "/World/defaultGroundPlane",
+                #         "/curobo",
+                #         "/World/table",
+                #     ],
+                # ).get_collision_check_world()
+                obstacles = WorldConfig(cuboid=cuboids)
+
+                #motion_gen.update_world(world)
                 if "no_obstacles" in move:
                     with motion_gen_lock:
                         motion_gen.update_world(zero_obstacles)
