@@ -221,7 +221,7 @@ class TMRobotController(Node):
         # reach detection
         if (
             self.reached_time > current_time
-            and current_time - self.start_command_time > 0.3
+            and current_time - self.start_command_time > 1.0
         ):  # hasn't reached yet
             if self.current_moving_type == "arm" and is_pose_identical(
                 msg.joint_pos, self.goal_joints
