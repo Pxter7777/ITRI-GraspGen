@@ -494,33 +494,10 @@ def main():
         # Catpure info from both ROS2 and GraspGen
         if len(plans) == 0:  # accept new plans
             graspgen_datas = graspgen_receiver.capture_data()
-            # print("---------------------------",graspgen_data, "---------------------------")
             if graspgen_datas is not None:
                 print("-------------Received new action--------------")
                 for graspgen_data in graspgen_datas:
-                    # Create new temporary obstacles in the Isaac Sim stage
-                    # if "obstacles" in graspgen_data and graspgen_data["obstacles"]:
-                    #     for i, obs_data in enumerate(graspgen_data["obstacles"]):
-                    #         middle_point = np.mean(
-                    #             [obs_data["max"], obs_data["min"]], axis=0
-                    #         )
-                    #         scale = np.array(obs_data["max"]) - np.array(
-                    #             obs_data["min"]
-                    #         )
-                    #         # std = obs_data["std"]
-                    #         prim_path = f"/World/temp_obstacle_{i}"
-                    #         cuboid.FixedCuboid(
-                    #             prim_path=prim_path,
-                    #             position=np.array(middle_point),
-                    #             scale=scale * 1.2,
-                    #             color=np.array([0.0, 0.0, 1.0]),  # Blue
-                    #             # physics=True,
-                    #         )
-                    #         temp_cuboid_paths.append(prim_path)
-
-                    # Update the motion planner's world
-                    # motion_gen.update_world(obstacles)
-                    print(graspgen_data)
+                    # print(graspgen_data)
                     before_move_joints = last_joint_states
                     for move in graspgen_data["moves"]:
                         # handle temp obstacles
@@ -559,7 +536,6 @@ def main():
                                 ) - np.array(
                                     graspgen_data["obstacles"][obstacle_name]["min"]
                                 )
-                                # std = obs_data["std"]
                                 prim_path = f"/World/temp_obstacle_{i}"
                                 cuboid.FixedCuboid(
                                     prim_path=prim_path,
@@ -589,16 +565,16 @@ def main():
                             plans.append(move)
                             continue
                         ## start serious curobo motion planning
-                        if "constraint" in move:
-                            pose_metric = PoseCostMetric(
-                                hold_partial_pose=True,
-                                hold_vec_weight=motion_gen.tensor_args.to_device(
-                                    move["constraint"]
-                                ),
-                            )
-                            print(
-                                "CONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINT"
-                            )
+                        # if "constraint" in move:
+                        #     pose_metric = PoseCostMetric(
+                        #         hold_partial_pose=True,
+                        #         hold_vec_weight=motion_gen.tensor_args.to_device(
+                        #             move["constraint"]
+                        #         ),
+                        #     )
+                        #     print(
+                        #         "CONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINT"
+                        #     )
                         # else:
                         #     pose_metric = None
                         if "goal" in move:
