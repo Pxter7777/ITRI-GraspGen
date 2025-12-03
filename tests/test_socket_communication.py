@@ -280,6 +280,7 @@ def test_raise_occupying_socket():
     assert isinstance(excinfo.value.__cause__, OSError)
     receiver2.disconnect()
 
+
 def test_send_to_opened_captured_and_disconnected_nonblocking_receiver_socket():
     """
     It's here because I found a weird bug, that receiver.disconnect only closed the listening socket, but kept the conn socket
@@ -291,6 +292,7 @@ def test_send_to_opened_captured_and_disconnected_nonblocking_receiver_socket():
     receiver.disconnect()
     succ = sender.send_data(SAMPLE_DATAS[0])
     assert not succ
+
 
 def test_send_to_opened_captured_and_disconnected_blocking_receiver_socket():
     """
@@ -305,6 +307,7 @@ def test_send_to_opened_captured_and_disconnected_blocking_receiver_socket():
     succ = sender.send_data(SAMPLE_DATAS[0])
     assert not succ
 
+
 def test_send_to_connected_but_not_accepted_socket_with_nonblocking_receiver():
     """
     This may happen because the socket was only connected, but not accepted.
@@ -317,8 +320,10 @@ def test_send_to_connected_but_not_accepted_socket_with_nonblocking_receiver():
     receiver.disconnect()
     receiver2 = NonBlockingJSONReceiver(port=port)
     succ = sender.send_data(SAMPLE_DATAS[0])
+    assert succ
     data = receiver2.capture_data()
-    assert data==SAMPLE_DATAS[0]
+    assert data == SAMPLE_DATAS[0]
+
 
 def test_send_to_connected_but_not_accepted_socket_with_blocking_receiver():
     """
@@ -333,7 +338,8 @@ def test_send_to_connected_but_not_accepted_socket_with_blocking_receiver():
     succ = sender.send_data(SAMPLE_DATAS[0])
     assert succ
     data = receiver2.capture_data()
-    assert data==SAMPLE_DATAS[0]
+    assert data == SAMPLE_DATAS[0]
+
 
 if __name__ == "__main__":
     print("HELLO")

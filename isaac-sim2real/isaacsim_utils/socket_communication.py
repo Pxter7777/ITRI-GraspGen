@@ -119,7 +119,7 @@ class NonBlockingJSONSender:
                 return self.send_data(data)  # Retry sending
             else:
                 return False
-            
+
         except Exception as e:
             logger.exception(f"An error occurred while checking socket status: {e}")
             return False
