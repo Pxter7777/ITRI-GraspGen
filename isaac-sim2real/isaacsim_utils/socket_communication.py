@@ -112,6 +112,14 @@ class NonBlockingJSONSender:
                 return self.send_data(data)  # Retry sending
             else:
                 return False
+        except ConnectionResetError:
+            # This happens when the sender's socket is connected but never accepted(triggered by receiver's capture data)
+            # Handle same as BrokenPipeError, reconnect and retry
+            if self.reconnect():
+                return self.send_data(data)  # Retry sending
+            else:
+                return False
+
         except Exception as e:
             logger.exception(f"An error occurred while checking socket status: {e}")
             return False
@@ -185,7 +193,10 @@ class NonBlockingJSONReceiver:
         if self.socket:
             self.socket.close()
             self.socket = None
-            logger.info("receiver disconnected")
+        if self.conn:
+            self.conn.close()
+            self.conn = None
+        logger.info("receiver disconnected")
 
     def capture_data(self):
         try:
@@ -279,7 +290,10 @@ class BlockingJSONReceiver:
         if self.socket:
             self.socket.close()
             self.socket = None
-            logger.info("receiver disconnected")
+        if self.conn:
+            self.conn.close()
+            self.conn = None
+        logger.info("receiver disconnected")
 
     def _read_blocking(self, n):
         """Helper to read exactly n bytes from a blocking socket."""

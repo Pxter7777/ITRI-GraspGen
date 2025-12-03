@@ -281,5 +281,65 @@ def test_raise_occupying_socket():
     receiver2.disconnect()
 
 
+def test_send_to_opened_captured_and_disconnected_nonblocking_receiver_socket():
+    """
+    It's here because I found a weird bug, that receiver.disconnect only closed the listening socket, but kept the conn socket
+    """
+    port = 9881
+    receiver = NonBlockingJSONReceiver(port=port)
+    sender = NonBlockingJSONSender(port=port)
+    receiver.capture_data()
+    receiver.disconnect()
+    succ = sender.send_data(SAMPLE_DATAS[0])
+    assert not succ
+
+
+def test_send_to_opened_captured_and_disconnected_blocking_receiver_socket():
+    """
+    Same as above. Without the fix, it would fail.
+    """
+    port = 9882
+    receiver = BlockingJSONReceiver(port=port)
+    sender = NonBlockingJSONSender(port=port)
+    sender.send_data(SAMPLE_DATAS[0])
+    receiver.capture_data()
+    receiver.disconnect()
+    succ = sender.send_data(SAMPLE_DATAS[0])
+    assert not succ
+
+
+def test_send_to_connected_but_not_accepted_socket_with_nonblocking_receiver():
+    """
+    This may happen because the socket was only connected, but not accepted.
+    Sender will notice the other peer's socket manager has closed, but since the sender's socket itself is never accepted, it pops out ConnectionResetError, and we should just handle that.
+    """
+    port = 9883
+    receiver = NonBlockingJSONReceiver(port=port)
+    sender = NonBlockingJSONSender(port=port)
+    # receiver.capture_data()
+    receiver.disconnect()
+    receiver2 = NonBlockingJSONReceiver(port=port)
+    succ = sender.send_data(SAMPLE_DATAS[0])
+    assert succ
+    data = receiver2.capture_data()
+    assert data == SAMPLE_DATAS[0]
+
+
+def test_send_to_connected_but_not_accepted_socket_with_blocking_receiver():
+    """
+    Same as above, and be careful that it will just die if not handle right.
+    """
+    port = 9884
+    receiver = BlockingJSONReceiver(port=port)
+    sender = NonBlockingJSONSender(port=port)
+    # receiver.capture_data()
+    receiver.disconnect()
+    receiver2 = BlockingJSONReceiver(port=port)
+    succ = sender.send_data(SAMPLE_DATAS[0])
+    assert succ
+    data = receiver2.capture_data()
+    assert data == SAMPLE_DATAS[0]
+
+
 if __name__ == "__main__":
-    test_raise_occupying_socket()
+    print("HELLO")
