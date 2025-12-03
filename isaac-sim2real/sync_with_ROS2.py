@@ -554,7 +554,9 @@ def action_handler(
             else:  # success!
                 print("-------------Successfully handled new action--------------")
                 graspgen_sender.send_data({"message": "Success"})
-                planned_action_queue.put({"moves":planned_action_moves, "obstacles": cuboids})
+                planned_action_queue.put(
+                    {"moves": planned_action_moves, "obstacles": cuboids}
+                )
                 break  # stop trying other acts
         else:  # all graspgen_datas failed
             graspgen_sender.send_data({"message": "Fail"})
@@ -949,7 +951,7 @@ def main():
                 for path in temp_cuboid_paths:
                     stage.RemovePrim(path)  # this may race condition
                 temp_cuboid_paths = []
-            cube:Cuboid
+            cube: Cuboid
             for i, cube in enumerate(planned_action["obstacles"]):
                 # race condition???
                 prim_path = f"/World/temp_obstacle_{i}"
