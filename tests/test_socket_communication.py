@@ -280,6 +280,18 @@ def test_raise_occupying_socket():
     assert isinstance(excinfo.value.__cause__, OSError)
     receiver2.disconnect()
 
+def test_send_to_opened_captured_and_disconnected_nonblocking_receiver_socket():
+    """
+    It's here because I found a weird bug, that receiver.disconnect only closed the listening socket, but kept the conn socket
+    """
+    port = 9881
+    receiver = NonBlockingJSONReceiver(port=port)
+    sender = NonBlockingJSONSender(port=port)
+    receiver.capture_data()
+    receiver.disconnect()
+    succ = sender.send_data(SAMPLE_DATAS[0])
+    assert not succ
 
 if __name__ == "__main__":
-    test_raise_occupying_socket()
+    test_send_to_opened_captured_and_disconnected_nonblocking_receiver_socket()
+    print("HELLO")
