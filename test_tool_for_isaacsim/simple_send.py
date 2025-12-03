@@ -33,7 +33,9 @@ try:
     with open(filepath, "rb") as f:
         data3 = json.load(f)
 
-    datas = [data1, data2, data3]
+    data4 = ["EOF"]
+
+    datas = [data1, data2, data3, data4]
 
     for data in datas:
         sender.send_data(data)

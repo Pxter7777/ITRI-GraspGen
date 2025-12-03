@@ -323,17 +323,27 @@ def action_handler(
     temp_cuboid_paths = []
     # idx_list = [0,1,2,3,4,5]
     common_js_names = ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"]
+    graspgen_eof = False
     while True:
         time.sleep(0.1)
         # handle abort
         # set robot state back to default
         if not ROS2_fail_queue.empty():
-            graspgen_sender.send_data({"message": "Abort"})
-            last_joint_states = default_config
             # clear plan
             while not planned_action_queue.empty():
                 planned_action_queue.get()
-            ROS2_fail_queue.get()  # Finish handling the Fail
+            notice = ROS2_fail_queue.get() # catch the fail, let isaacsim continue to move
+            if notice["message"] == "Abort":
+                graspgen_sender.send_data({"message": "Abort"})
+            elif notice["message"] == "ROS2 Complete":
+                if graspgen_eof:
+                    graspgen_sender.send_data({"message": "EOF and ROS2 Complete"})
+                else:
+                    print("ROS2 complete but not EOF yet.")
+            else:
+                raise ValueError("Unknown message")
+            
+            last_joint_states = default_config
             graspgen_datas = (
                 graspgen_receiver.capture_data()
             )  # eat the new plan if there is any
@@ -346,8 +356,11 @@ def action_handler(
         graspgen_datas = graspgen_receiver.capture_data()
         if graspgen_datas is None:
             continue
+        if graspgen_datas[0] == "EOF":
+            graspgen_eof = True
+            continue
         print("-------------Received new action--------------")
-
+        graspgen_eof = False
         for graspgen_data in graspgen_datas:
             before_move_joints = last_joint_states
             planned_action: list[Move] = []
@@ -787,6 +800,8 @@ def main():
                 wait_ros2 = False
                 if ros2_response["message"] == "Success":
                     print("receiver successfulness.")
+                    if len(planned_action) == 0 and planned_action_queue.empty():
+                        ROS2_fail_queue.put({"message": "ROS2 Complete"})
                     # Can continue to do the following steps, no need to stuck
                 elif ros2_response["message"] == "Fail":
                     print("receiver failedness.")
