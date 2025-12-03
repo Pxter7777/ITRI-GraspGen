@@ -17,3 +17,12 @@ e.g.,
 ```bash
 ln -sf /home/j300/ITRI-GraspGen/isaac-sim2real/tm5s.yml /home/j300/curobo/src/curobo/content/configs/robot/tm5s.yml
 ```
+
+## To make tm5s.urdf a symlink for curobo inference:
+```bash
+ln -sf <path_to_tm5s.urdf> <path_to_curobo>/src/curobo/content/assets/robot/tm_description/tm5s.urdf
+```
+e.g.,
+```bash
+ln -sf /home/j300/ITRI-GraspGen/isaac-sim2real/tm5s.urdf /home/j300/curobo/src/curobo/content/assets/robot/tm_description/tm5s.urdf
+```

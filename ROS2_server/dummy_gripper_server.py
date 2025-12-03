@@ -30,18 +30,21 @@ sender = NonBlockingJSONSender(port=port_config.ROS2_TO_ISAACSIM)
 # if it says [socket_communication][ERROR] Connection failed. Is the bridge.py script running on localhost:9877? when started, it's normal and can be ignored.
 receiver = NonBlockingJSONReceiver(port=port_config.ISAACSIM_TO_ROS2)
 
-while True:
-    time.sleep(0.1)
-    data = receiver.capture_data()
-    if data is None:
-        continue
-    logger.info("Received data!")
-    try:
-        if data["type"] == "arm":
-            time.sleep(2)
-        time.sleep(data["wait_time"])
-    except KeyError as e:
-        logger.exception(
-            f"{e}, key error, please make sure the signal format is correct."
-        )
-    sender.send_data({"message": "Success"})
+try:
+    while True:
+        time.sleep(0.1)
+        data = receiver.capture_data()
+        if data is None:
+            continue
+        logger.info("Received data!")
+        try:
+            if data["type"] == "arm":
+                time.sleep(2)
+            time.sleep(data["wait_time"])
+        except KeyError as e:
+            logger.exception(
+                f"{e}, key error, please make sure the signal format is correct."
+            )
+        sender.send_data({"message": "Success"})
+except KeyboardInterrupt:
+    sender.send_data({"message": "Fail"})
