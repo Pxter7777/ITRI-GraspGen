@@ -168,7 +168,7 @@ simulation_app = SimulationApp(  # noqa: E402
 
 from isaacsim_utils.helper import add_extensions, add_robot_to_scene  # noqa: E402
 from omni.isaac.core import World  # noqa: E402
-from omni.isaac.core.objects import sphere  # noqa: E402
+from omni.isaac.core.objects import cuboid, sphere  # noqa: E402
 
 # import omni.isaac.core.utils.prims as prims_utils  # noqa: E402
 from omni.isaac.core.utils.types import ArticulationAction  # noqa: E402
@@ -363,7 +363,7 @@ def action_handler(
         graspgen_eof = False
         for graspgen_data in graspgen_datas:
             before_move_joints = last_joint_states
-            planned_action: list[Move] = []
+            planned_action_moves: list[Move] = []
             for move in graspgen_data["moves"]:
                 # handle temp obstacles
                 if temp_cuboid_paths:
@@ -443,7 +443,7 @@ def action_handler(
                         motion_gen.update_world(obstacles)
                 # start handle move
                 if move["type"] == "gripper":
-                    planned_action.append(Move(move, None))
+                    planned_action_moves.append(Move(move, None))
                     continue
                 ## start serious curobo motion planning
                 # if "constraint" in move:
@@ -544,7 +544,7 @@ def action_handler(
                         "joints_values": positions,
                     }
 
-                    planned_action.append(Move(ROS2_move, new_cmd_plan))
+                    planned_action_moves.append(Move(ROS2_move, new_cmd_plan))
                     last_joint_states = positions[-1]
                 else:
                     print("This plan failed.")
@@ -554,7 +554,7 @@ def action_handler(
             else:  # success!
                 print("-------------Successfully handled new action--------------")
                 graspgen_sender.send_data({"message": "Success"})
-                planned_action_queue.put(planned_action)
+                planned_action_queue.put({"moves":planned_action_moves, "obstacles": cuboids})
                 break  # stop trying other acts
         else:  # all graspgen_datas failed
             graspgen_sender.send_data({"message": "Fail"})
@@ -768,7 +768,7 @@ def main():
     # temp_cuboid_paths = []
     sim_js = robot.get_joints_state()
     sim_js_names = robot.dof_names
-    planned_action: list = []
+    planned_action_moves: list = []
     gui_thread = Thread(
         target=action_handler,
         args=(
@@ -789,6 +789,7 @@ def main():
     )
     gui_thread.start()
     idx_list = [0, 1, 2, 3, 4, 5]
+    temp_cuboid_paths = []
     while simulation_app.is_running():
         # make sure the thread has catched and handled the issue
         if not ROS2_fail_queue.empty():
@@ -800,7 +801,7 @@ def main():
                 wait_ros2 = False
                 if ros2_response["message"] == "Success":
                     print("receiver successfulness.")
-                    if len(planned_action) == 0 and planned_action_queue.empty():
+                    if len(planned_action_moves) == 0 and planned_action_queue.empty():
                         ROS2_fail_queue.put({"message": "ROS2 Complete"})
                     # Can continue to do the following steps, no need to stuck
                 elif ros2_response["message"] == "Fail":
@@ -812,7 +813,7 @@ def main():
                         joint_indices=idx_list,
                     )
                     cmd_plan = None
-                    planned_action = []
+                    planned_action_moves = []
                     # Finished handled
                     ROS2_fail_queue.put(
                         {"message": "Abort"}
@@ -929,20 +930,36 @@ def main():
                 cmd_idx = 0
                 cmd_plan = None
                 past_cmd = None
-        if not wait_ros2 and len(planned_action) > 0:
+        if not wait_ros2 and len(planned_action_moves) > 0:
             # planned action
             wait_ros2 = True
-            move: Move = planned_action.pop(0)
+            move: Move = planned_action_moves.pop(0)
             # For ROS2
             ros2_sender.send_data(move.ROS2_move)
             # For isaac sim animation
             cmd_idx = 0
             cmd_plan = move.cmd_plan
 
-        if len(planned_action) == 0 and not planned_action_queue.empty():
+        if len(planned_action_moves) == 0 and not planned_action_queue.empty():
             # currently no plan but we have more in queue, can start grab a new planned_action and apply here.
-            planned_action: list = planned_action_queue.get()
-
+            planned_action = planned_action_queue.get()
+            planned_action_moves: list = planned_action["moves"]
+            # visualize cuboids
+            if temp_cuboid_paths:
+                for path in temp_cuboid_paths:
+                    stage.RemovePrim(path)  # this may race condition
+                temp_cuboid_paths = []
+            cube:Cuboid
+            for i, cube in enumerate(planned_action["obstacles"]):
+                # race condition???
+                prim_path = f"/World/temp_obstacle_{i}"
+                cuboid.VisualCuboid(
+                    prim_path=prim_path,
+                    position=np.array(cube.pose[:3]),
+                    scale=np.array(cube.dims),
+                    color=np.array([0.0, 0.0, 1.0]),  # Blue
+                )
+                temp_cuboid_paths.append(prim_path)
     simulation_app.close()
 
 
