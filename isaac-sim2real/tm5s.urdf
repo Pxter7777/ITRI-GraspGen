@@ -191,7 +191,7 @@
     <origin rpy="0.000000 -0.000000 0.000000" xyz="0.429000 0.000000 0.000000"/>
     <axis xyz="0 0 1"/>
     <!--limit-->
-    <limit effort="170" lower="-2.7576202181510405" upper="2.7576202181510405" velocity="0.73"/>
+    <limit effort="170" lower="-0.8" upper="2.7576202181510405" velocity="0.73"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="link_3">
@@ -243,7 +243,7 @@
     <origin rpy="1.570796 -0.000000 0.000000" xyz="0.000000 -0.131500 0.000000"/>
     <axis xyz="0 0 1"/>
     <!--limit-->
-    <limit effort="45" lower="-6.283185307179586" upper="6.283185307179586" velocity="0.78"/>
+    <limit effort="45" lower="-6.283185307179586" upper="2.5" velocity="0.78"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="link_5">
@@ -269,7 +269,7 @@
     <origin rpy="1.570796 -0.000000 0.000000" xyz="0.000000 -0.134950 0.000000"/>
     <axis xyz="0 0 1"/>
     <!--limit-->
-    <limit effort="45" lower="-6.283185307179586" upper="6.283185307179586" velocity="1.56"/>
+    <limit effort="45" lower="-1.5" upper="6.283185307179586" velocity="1.56"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="link_6">
