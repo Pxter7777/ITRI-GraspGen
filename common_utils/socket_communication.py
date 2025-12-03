@@ -185,7 +185,10 @@ class NonBlockingJSONReceiver:
         if self.socket:
             self.socket.close()
             self.socket = None
-            logger.info("receiver disconnected")
+        if self.conn:
+            self.conn.close()
+            self.conn = None
+        logger.info("receiver disconnected")
 
     def capture_data(self):
         try:
@@ -279,7 +282,10 @@ class BlockingJSONReceiver:
         if self.socket:
             self.socket.close()
             self.socket = None
-            logger.info("receiver disconnected")
+        if self.conn:
+            self.conn.close()
+            self.conn = None
+        logger.info("receiver disconnected")
 
     def _read_blocking(self, n):
         """Helper to read exactly n bytes from a blocking socket."""
