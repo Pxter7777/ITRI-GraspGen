@@ -332,7 +332,9 @@ def action_handler(
             # clear plan
             while not planned_action_queue.empty():
                 planned_action_queue.get()
-            notice = ROS2_fail_queue.get() # catch the fail, let isaacsim continue to move
+            notice = (
+                ROS2_fail_queue.get()
+            )  # catch the fail, let isaacsim continue to move
             if notice["message"] == "Abort":
                 graspgen_sender.send_data({"message": "Abort"})
             elif notice["message"] == "ROS2 Complete":
@@ -342,7 +344,7 @@ def action_handler(
                     print("ROS2 complete but not EOF yet.")
             else:
                 raise ValueError("Unknown message")
-            
+
             last_joint_states = default_config
             graspgen_datas = (
                 graspgen_receiver.capture_data()
@@ -383,9 +385,9 @@ def action_handler(
                 cuboids = []
                 cuboids.append(
                     Cuboid(
-                        name=f"table",
-                        pose=[0,0,-1.97] + [1, 0, 0, 0],
-                        dims=[4,4,4],
+                        name="table",
+                        pose=[0, 0, -1.97] + [1, 0, 0, 0],
+                        dims=[4, 4, 4],
                     )
                 )
                 for i, obstacle_name in enumerate(graspgen_data["obstacles"]):

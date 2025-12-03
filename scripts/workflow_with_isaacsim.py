@@ -265,9 +265,7 @@ def main():
                     logger.warning("Success")
                 elif response["message"] == "Abort":
                     logger.warning("Abort")
-                    raise InterruptedError(
-                        "aborted by isaacsim, stop current action"
-                    )
+                    raise InterruptedError("aborted by isaacsim, stop current action")
                 else:
                     raise ValueError(f"Unknown message {response['message']}")
             except KeyboardInterrupt:

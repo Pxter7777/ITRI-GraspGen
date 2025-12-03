@@ -270,9 +270,7 @@ def main():
                 elif response["message"] == "Abort":
                     logger.warning("Abort")
                     main_sender.send_data({"message": "Fail"})
-                    raise InterruptedError(
-                        "aborted by isaacsim, stop current action"
-                    )
+                    raise InterruptedError("aborted by isaacsim, stop current action")
                 else:
                     raise ValueError(f"Unknown message {response['message']}")
             except KeyboardInterrupt:
