@@ -112,6 +112,14 @@ class NonBlockingJSONSender:
                 return self.send_data(data)  # Retry sending
             else:
                 return False
+        except ConnectionResetError:
+            # This happens when the sender's socket is connected but never accepted(triggered by receiver's capture data)
+            # Handle same as BrokenPipeError, reconnect and retry
+            if self.reconnect():
+                return self.send_data(data)  # Retry sending
+            else:
+                return False
+            
         except Exception as e:
             logger.exception(f"An error occurred while checking socket status: {e}")
             return False
