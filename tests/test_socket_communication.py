@@ -292,6 +292,20 @@ def test_send_to_opened_captured_and_disconnected_nonblocking_receiver_socket():
     succ = sender.send_data(SAMPLE_DATAS[0])
     assert not succ
 
+def test_send_to_opened_captured_and_disconnected_blocking_receiver_socket():
+    """
+    Same as above. Without the fix, it would fail.
+    """
+    port = 9882
+    receiver = BlockingJSONReceiver(port=port)
+    sender = NonBlockingJSONSender(port=port)
+    sender.send_data(SAMPLE_DATAS[0])
+    receiver.capture_data()
+    receiver.disconnect()
+    succ = sender.send_data(SAMPLE_DATAS[0])
+    assert not succ
+
+
 if __name__ == "__main__":
-    test_send_to_opened_captured_and_disconnected_nonblocking_receiver_socket()
+    test_send_to_opened_captured_and_disconnected_blocking_receiver_socket()
     print("HELLO")
