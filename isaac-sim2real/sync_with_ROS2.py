@@ -337,6 +337,10 @@ def action_handler(
             )  # catch the fail, let isaacsim continue to move
             if notice["message"] == "Abort":
                 graspgen_sender.send_data({"message": "Abort"})
+                # eat datas
+                for _ in range(5):
+                    time.sleep(0.1)
+                    graspgen_receiver.capture_data()
             elif notice["message"] == "ROS2 Complete":
                 if graspgen_eof:
                     graspgen_sender.send_data({"message": "EOF and ROS2 Complete"})
@@ -346,13 +350,7 @@ def action_handler(
                 raise ValueError("Unknown message")
 
             last_joint_states = default_config
-            graspgen_datas = (
-                graspgen_receiver.capture_data()
-            )  # eat the new plan if there is any
-            if graspgen_datas is not None:
-                print(f"ate the data {graspgen_datas}")
-            else:
-                print("no data to eat")
+
             continue
 
         graspgen_datas = graspgen_receiver.capture_data()
