@@ -270,17 +270,15 @@ def main():
                     raise ValueError(f"Unknown message {response['message']}")
             except KeyboardInterrupt:
                 logger.info("Manual stopping current action.")
-                break
             except InterruptedError as e:
                 name = action["target_name"]
                 logger.exception(f"Action for {name} interrupted, stopping. {e}")
-                break
             except Exception as e:
                 name = action["target_name"]
                 logger.exception(
                     f"Unknown Error while generating grasp for {name}, stopping. {e}"
                 )
-                break
+                raise e
     finally:
         logger.info("turning off zed camera")
         pc_generator.close()
