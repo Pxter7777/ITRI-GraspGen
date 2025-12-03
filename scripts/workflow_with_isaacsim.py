@@ -164,17 +164,6 @@ def main():
             # start to generate pointcloud
             scene_data = None
             track_names = list(actions["track"])
-            # try:
-            #     blockages = actions.get("blockages")
-            #     scene_data = pc_generator.generate_pointcloud(
-            #         track_names, need_confirm=not args.no_confirm, blockages=blockages
-            #     )
-            # except ValueError as e:
-            #     logger.exception(e)
-            #     continue
-            # except Exception as e:
-            #     logger.exception(f"Unexcpected exception: {e}")
-            #     continue
             # try five times
             for _ in range(5):
                 try:
@@ -200,8 +189,8 @@ def main():
             )
             scene_data = create_obstacle_info(scene_data, actions["extra_obstacles"])
             # GraspGen
-            for action in actions["actions"]:
-                try:
+            try:
+                for action in actions["actions"]:
                     # Don't need GraspGen
                     if action["action"] in [
                         "move_to_curobo",
@@ -268,25 +257,32 @@ def main():
                                 raise InterruptedError(
                                     "aborted by isaacsim, stop current action"
                                 )
-                except KeyboardInterrupt:
-                    logger.info("Manual stopping current action.")
-                    break
-                except InterruptedError as e:
-                    name = action["target_name"]
-                    logger.exception(f"Action for {name} interrupted, stopping. {e}")
-                    break
-                except Exception as e:
-                    name = action["target_name"]
-                    logger.exception(
-                        f"Unknown Error while generating grasp for {name}, stopping. {e}"
+                sender.send_data(["EOF"])
+                response = receiver.capture_data()
+                while response is None:
+                    response = receiver.capture_data()
+                if response["message"] == "EOF and ROS2 Complete":
+                    logger.warning("Success")
+                elif response["message"] == "Abort":
+                    logger.warning("Abort")
+                    raise InterruptedError(
+                        "aborted by isaacsim, stop current action"
                     )
-                    break
-                # send the grasp to gripper
-                # try:
-                #     send_moves_to_robot(moves)
-                # except KeyboardInterrupt:
-                #     logger.info("Manual stopping gripper.")
-                #     break
+                else:
+                    raise ValueError(f"Unknown message {response['message']}")
+            except KeyboardInterrupt:
+                logger.info("Manual stopping current action.")
+                break
+            except InterruptedError as e:
+                name = action["target_name"]
+                logger.exception(f"Action for {name} interrupted, stopping. {e}")
+                break
+            except Exception as e:
+                name = action["target_name"]
+                logger.exception(
+                    f"Unknown Error while generating grasp for {name}, stopping. {e}"
+                )
+                break
     finally:
         logger.info("turning off zed camera")
         pc_generator.close()

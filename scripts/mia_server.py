@@ -181,6 +181,7 @@ def main():
                     time.sleep(0.1)
                     continue
             else:
+                logger.error("Failed to detect using groundingDINO")
                 main_sender.send_data({"message": "Failed to detect targets."})
                 continue
 
@@ -191,8 +192,8 @@ def main():
             )
             scene_data = create_obstacle_info(scene_data, actions["extra_obstacles"])
             # GraspGen
-            for action in actions["actions"]:
-                try:
+            try:
+                for action in actions["actions"]:
                     # Don't need GraspGen
                     if action["action"] in [
                         "move_to_curobo",
@@ -259,23 +260,34 @@ def main():
                                 raise InterruptedError(
                                     "aborted by isaacsim, stop current action"
                                 )
-                except KeyboardInterrupt:
-                    logger.info("Manual stopping current action.")
-                    break
-                except InterruptedError as e:
-                    name = action["target_name"]
-                    logger.exception(f"Action for {name} interrupted, stopping. {e}")
-                    break
-                except Exception as e:
-                    name = action["target_name"]
-                    logger.exception(
-                        f"Unknown Error while generating grasp for {name}, stopping. {e}"
+                sender.send_data(["EOF"])
+                response = receiver.capture_data()
+                while response is None:
+                    response = receiver.capture_data()
+                if response["message"] == "EOF and ROS2 Complete":
+                    logger.warning("Success")
+                    main_sender.send_data({"message": "Success"})
+                elif response["message"] == "Abort":
+                    logger.warning("Abort")
+                    main_sender.send_data({"message": "Fail"})
+                    raise InterruptedError(
+                        "aborted by isaacsim, stop current action"
                     )
-                    break
-            else:
-                main_sender.send_data({"message": "Success"})
-                continue
-            main_sender.send_data({"message": "Fail"})
+                else:
+                    raise ValueError(f"Unknown message {response['message']}")
+            except KeyboardInterrupt:
+                logger.info("Manual stopping current action.")
+                break
+            except InterruptedError as e:
+                name = action["target_name"]
+                logger.exception(f"Action for {name} interrupted, stopping. {e}")
+                break
+            except Exception as e:
+                name = action["target_name"]
+                logger.exception(
+                    f"Unknown Error while generating grasp for {name}, stopping. {e}"
+                )
+                break
     finally:
         logger.info("turning off zed camera")
         pc_generator.close()
