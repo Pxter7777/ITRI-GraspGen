@@ -175,7 +175,7 @@ from omni.isaac.core.utils.types import ArticulationAction  # noqa: E402
 
 
 ######### CuRobo ########
-# from curobo.wrap.reacher.ik_solver import IKSolver, IKSolverConfig
+from curobo.wrap.reacher.ik_solver import IKSolver, IKSolverConfig
 from curobo.geom.sdf.world import CollisionCheckerType  # noqa: E402
 from curobo.geom.types import Cuboid, WorldConfig  # noqa: E402
 from curobo.types.base import TensorDeviceType  # noqa: E402
@@ -289,8 +289,9 @@ def action_handler(
     stage,
     usd_help,
     robot_prim_path,
-    motion_gen,
-    tensor_args,
+    motion_gen: MotionGen,
+    ik_solver: IKSolver,
+    tensor_args: TensorDeviceType,
     plan_config,
     pose_metric,
     sim_js,
@@ -475,9 +476,14 @@ def action_handler(
                     )
 
                     with motion_gen_lock:
-                        result = motion_gen.plan_single(
-                            cu_js.unsqueeze(0), ik_goal, plan_config
-                        )
+                        if "no_curobo" in move:
+                            print("start solving...")
+                            result = ik_solver.solve_single(ik_goal)
+                            print("solved!")
+                        else:
+                            result = motion_gen.plan_single(
+                                cu_js.unsqueeze(0), ik_goal, plan_config
+                            )
                 elif "joints_goal" in move:
                     print("ALRIGHT?0")
                     joints_goal = JointState(
@@ -511,31 +517,31 @@ def action_handler(
                 succ = result.success.item()  # ik_result.success.item()
 
                 if succ:
-                    print("YES YES YES?")
-                    with motion_gen_lock:
-                        new_cmd_plan = result.get_interpolated_plan()
-                        new_cmd_plan = motion_gen.get_full_js(new_cmd_plan)
-                    # get only joint names that are in both:
-                    # idx_list = []
-                    # common_js_names = []
-                    # for x in sim_js_names:
-                    #     if x in new_cmd_plan.joint_names:
-                    #         idx_list.append(robot.get_dof_index(x))
-                    #         common_js_names.append(x)
-
-                    new_cmd_plan = new_cmd_plan.get_ordered_joint_state(common_js_names)
-                    # The following code block shows how to prune the plan to keep only the first and last waypoints
                     if "no_curobo" in move:
+                        print(last_joint_states, result.js_solution.position.squeeze(0).squeeze(0).cpu().numpy().tolist())
                         new_cmd_plan = JointState(
-                            position=new_cmd_plan.position[[0, -1]],
-                            velocity=new_cmd_plan.velocity[[0, -1]],
-                            acceleration=new_cmd_plan.acceleration[[0, -1]],
-                            jerk=new_cmd_plan.jerk[[0, -1]],
-                            joint_names=new_cmd_plan.joint_names,
+                            position=tensor_args.to_device([last_joint_states, result.js_solution.position.squeeze(0).squeeze(0).cpu().numpy().tolist()]),
+                            velocity=tensor_args.to_device([[0,0,0,0,0,0],[0,0,0,0,0,0]]),
+                            joint_names=sim_js_names,
                         )
-                        print(
-                            "---------------------------------------------------------only keep first and last"
-                        )
+                    else:
+                        with motion_gen_lock:
+                            new_cmd_plan = result.get_interpolated_plan()
+                            new_cmd_plan = motion_gen.get_full_js(new_cmd_plan)
+
+                        new_cmd_plan = new_cmd_plan.get_ordered_joint_state(common_js_names)
+                    # The following code block shows how to prune the plan to keep only the first and last waypoints
+                    # if "no_curobo" in move:
+                    #     new_cmd_plan = JointState(
+                    #         position=new_cmd_plan.position[[0, -1]],
+                    #         velocity=new_cmd_plan.velocity[[0, -1]],
+                    #         acceleration=new_cmd_plan.acceleration[[0, -1]],
+                    #         jerk=new_cmd_plan.jerk[[0, -1]],
+                    #         joint_names=new_cmd_plan.joint_names,
+                    #     )
+                    #     print(
+                    #         "---------------------------------------------------------only keep first and last"
+                    #     )
                     positions = cmd_to_move(new_cmd_plan)
                     ROS2_move = {
                         "type": move["type"],
@@ -769,6 +775,20 @@ def main():
     sim_js = robot.get_joints_state()
     sim_js_names = robot.dof_names
     planned_action: list = []
+    ik_config = IKSolverConfig.load_from_robot_config(
+        robot_cfg,
+        world_cfg,
+        rotation_threshold=0.05,
+        position_threshold=0.005,
+        num_seeds=10,
+        self_collision_check=False, # was True
+        self_collision_opt=False, # was True
+        tensor_args=tensor_args,
+        use_cuda_graph=False,
+        # use_fixed_samples=True,
+    )
+    ik_solver = IKSolver(ik_config)
+    ik_solver.update_world(WorldConfig(cuboid=[]))
     gui_thread = Thread(
         target=action_handler,
         args=(
@@ -776,6 +796,7 @@ def main():
             usd_help,
             robot_prim_path,
             motion_gen,
+            ik_solver,
             tensor_args,
             plan_config,
             pose_metric,
@@ -789,6 +810,7 @@ def main():
     )
     gui_thread.start()
     idx_list = [0, 1, 2, 3, 4, 5]
+    
     while simulation_app.is_running():
         # make sure the thread has catched and handled the issue
         if not ROS2_fail_queue.empty():
