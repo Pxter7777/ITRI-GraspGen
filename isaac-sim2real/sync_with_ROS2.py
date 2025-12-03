@@ -175,7 +175,7 @@ from omni.isaac.core.utils.types import ArticulationAction  # noqa: E402
 
 
 ######### CuRobo ########
-# from curobo.wrap.reacher.ik_solver import IKSolver, IKSolverConfig
+from curobo.wrap.reacher.ik_solver import IKSolver, IKSolverConfig
 from curobo.geom.sdf.world import CollisionCheckerType  # noqa: E402
 from curobo.geom.types import Cuboid, WorldConfig  # noqa: E402
 from curobo.types.base import TensorDeviceType  # noqa: E402
@@ -290,6 +290,7 @@ def action_handler(
     usd_help,
     robot_prim_path,
     motion_gen,
+    ik_solver,
     tensor_args,
     plan_config,
     pose_metric,
@@ -446,96 +447,88 @@ def action_handler(
                     planned_action.append(Move(move, None))
                     continue
                 ## start serious curobo motion planning
-                # if "constraint" in move:
-                #     pose_metric = PoseCostMetric(
-                #         hold_partial_pose=True,
-                #         hold_vec_weight=motion_gen.tensor_args.to_device(
-                #             move["constraint"]
-                #         ),
-                #     )
-                #     print(
-                #         "CONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINT"
-                #     )
-                # else:
-                #     pose_metric = None
-                if "goal" in move:
-                    ik_goal = Pose(
-                        position=tensor_args.to_device(move["goal"][:3]),
-                        quaternion=tensor_args.to_device(move["goal"][3:]),
-                    )
+                succ = False
+                new_cmd_plan = None
+                
+                # Check for no_curobo case first, which uses IK solver for efficiency
+                if "no_curobo" in move:
+                    if "goal" in move:
+                        print("Handling no_curobo request with IK solver.")
+                        ik_goal = Pose(
+                            position=tensor_args.to_device(move["goal"][:3]),
+                            quaternion=tensor_args.to_device(move["goal"][3:]),
+                        )
+                        
+                        # Use IK Solver
+                        with motion_gen_lock:
+                            ik_solver.update_world(motion_gen.world_coll_checker)
+                            start_q = tensor_args.to_device(last_joint_states).unsqueeze(0)
+                            ik_result = ik_solver.solve_single(goal_pose=ik_goal, seed_q=start_q)
 
-                    plan_config.pose_cost_metric = pose_metric
+                        succ = ik_result.success.item()
+                        if succ:
+                            print("IK solution found.")
+                            goal_q = ik_result.solution.squeeze(0) # Shape: [dof]
+                            start_q_tensor = tensor_args.to_device(last_joint_states)
+                            
+                            # Create a 2-point trajectory (start and goal)
+                            trajectory_positions = torch.stack([start_q_tensor, goal_q])
+                            
+                            new_cmd_plan = JointState(
+                                position=trajectory_positions,
+                                velocity=torch.zeros_like(trajectory_positions),
+                                acceleration=torch.zeros_like(trajectory_positions),
+                                jerk=torch.zeros_like(trajectory_positions),
+                                joint_names=sim_js_names,
+                            ).get_ordered_joint_state(common_js_names)
+                    else:
+                        print("Error: 'no_curobo' requires a 'goal' pose, but none was provided.")
+
+                # Fallback to full motion planning if not a no_curobo case
+                elif "goal" in move or "joints_goal" in move:
+                    print("Handling request with full motion planner.")
                     cu_js = JointState(
                         position=tensor_args.to_device(last_joint_states),
-                        velocity=tensor_args.to_device(sim_js.velocities)
-                        * 0.0,  # * 0.0,
+                        velocity=tensor_args.to_device(sim_js.velocities) * 0.0,
                         acceleration=tensor_args.to_device(sim_js.velocities) * 0.0,
                         jerk=tensor_args.to_device(sim_js.velocities) * 0.0,
                         joint_names=sim_js_names,
                     )
-
-                    with motion_gen_lock:
-                        result = motion_gen.plan_single(
-                            cu_js.unsqueeze(0), ik_goal, plan_config
-                        )
-                elif "joints_goal" in move:
-                    print("ALRIGHT?0")
-                    joints_goal = JointState(
-                        position=tensor_args.to_device(move["joints_goal"]),
-                        velocity=tensor_args.to_device(sim_js.velocities)
-                        * 0.0,  # * 0.0,
-                        acceleration=tensor_args.to_device(sim_js.velocities) * 0.0,
-                        jerk=tensor_args.to_device(sim_js.velocities) * 0.0,
-                        joint_names=sim_js_names,
-                    )
-                    print("ALRIGHT?1")
-
                     plan_config.pose_cost_metric = pose_metric
-                    cu_js = JointState(
-                        position=tensor_args.to_device(last_joint_states),
-                        velocity=tensor_args.to_device(sim_js.velocities)
-                        * 0.0,  # * 0.0,
-                        acceleration=tensor_args.to_device(sim_js.velocities) * 0.0,
-                        jerk=tensor_args.to_device(sim_js.velocities) * 0.0,
-                        joint_names=sim_js_names,
-                    )
-                    print("ALRIGHT?2")
+
                     with motion_gen_lock:
-                        result = motion_gen.plan_single_js(
-                            cu_js.unsqueeze(0),
-                            joints_goal.unsqueeze(0),
-                            plan_config,
-                        )
-                    print("ALRIGHT?3")
+                        if "goal" in move:
+                            ik_goal = Pose(
+                                position=tensor_args.to_device(move["goal"][:3]),
+                                quaternion=tensor_args.to_device(move["goal"][3:]),
+                            )
+                            result = motion_gen.plan_single(
+                                cu_js.unsqueeze(0), ik_goal, plan_config
+                            )
+                        else: # "joints_goal" in move
+                            joints_goal = JointState(
+                                position=tensor_args.to_device(move["joints_goal"]),
+                                velocity=tensor_args.to_device(sim_js.velocities) * 0.0,
+                                acceleration=tensor_args.to_device(sim_js.velocities) * 0.0,
+                                jerk=tensor_args.to_device(sim_js.velocities) * 0.0,
+                                joint_names=sim_js_names,
+                            )
+                            result = motion_gen.plan_single_js(
+                                cu_js.unsqueeze(0),
+                                joints_goal.unsqueeze(0),
+                                plan_config,
+                            )
+                    
+                    succ = result.success.item()
+                    if succ:
+                        with motion_gen_lock:
+                            new_cmd_plan = result.get_interpolated_plan()
+                            new_cmd_plan = motion_gen.get_full_js(new_cmd_plan)
+                        new_cmd_plan = new_cmd_plan.get_ordered_joint_state(common_js_names)
 
-                succ = result.success.item()  # ik_result.success.item()
-
+                # This part is now common for both successful paths
                 if succ:
                     print("YES YES YES?")
-                    with motion_gen_lock:
-                        new_cmd_plan = result.get_interpolated_plan()
-                        new_cmd_plan = motion_gen.get_full_js(new_cmd_plan)
-                    # get only joint names that are in both:
-                    # idx_list = []
-                    # common_js_names = []
-                    # for x in sim_js_names:
-                    #     if x in new_cmd_plan.joint_names:
-                    #         idx_list.append(robot.get_dof_index(x))
-                    #         common_js_names.append(x)
-
-                    new_cmd_plan = new_cmd_plan.get_ordered_joint_state(common_js_names)
-                    # The following code block shows how to prune the plan to keep only the first and last waypoints
-                    if "no_curobo" in move:
-                        new_cmd_plan = JointState(
-                            position=new_cmd_plan.position[[0, -1]],
-                            velocity=new_cmd_plan.velocity[[0, -1]],
-                            acceleration=new_cmd_plan.acceleration[[0, -1]],
-                            jerk=new_cmd_plan.jerk[[0, -1]],
-                            joint_names=new_cmd_plan.joint_names,
-                        )
-                        print(
-                            "---------------------------------------------------------only keep first and last"
-                        )
                     positions = cmd_to_move(new_cmd_plan)
                     ROS2_move = {
                         "type": move["type"],
@@ -705,12 +698,21 @@ def main():
     )
 
     motion_gen = MotionGen(motion_gen_config)
+    ik_config = IKSolverConfig.load_from_robot_config(
+        robot_cfg,
+        world_cfg,
+        tensor_args,
+        use_cuda_graph=True,
+    )
+    ik_solver = IKSolver(ik_config)
     motion_gen_lock = Lock()
     if not args.reactive:
         print("warming up...")
         motion_gen.warmup(enable_graph=True, warmup_js_trajopt=False)
+        ik_solver.warmup()
 
     print("Curobo is Ready")
+    print("IK Solver is Ready")
 
     add_extensions(simulation_app, args.headless_mode)
 
@@ -776,6 +778,7 @@ def main():
             usd_help,
             robot_prim_path,
             motion_gen,
+            ik_solver,
             tensor_args,
             plan_config,
             pose_metric,
