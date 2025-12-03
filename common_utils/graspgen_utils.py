@@ -447,7 +447,7 @@ class GraspGeneratorUI:
         Returns:
             Qualified grasps, A list of that contains multiple np.ndarray s of shape(4, 4).
         """
-        GRASPS_BATCH_SIZE = 4
+        # GRASPS_BATCH_SIZE = 4 # stop using this method, just send all to curobo to try
         num_try = 0
         qualified_grasps = []
         while True:
@@ -459,9 +459,9 @@ class GraspGeneratorUI:
             qualified_grasps.extend(
                 list(all_grasps[custom_filter_mask & collision_free_mask])
             )
-            if len(qualified_grasps) >= GRASPS_BATCH_SIZE:
+            if len(qualified_grasps) > 0:
                 qualified_grasps = sorted(qualified_grasps, key=angle_offset_rad)
-                return qualified_grasps[:GRASPS_BATCH_SIZE]
+                return qualified_grasps
 
     def generate_grasp(self, scene_data: dict, action: dict) -> list[np.ndarray]:
         """
