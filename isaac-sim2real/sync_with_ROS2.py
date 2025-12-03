@@ -22,7 +22,7 @@ import torch
 
 a = torch.zeros(4, device="cuda:0")
 """
-
+import torch
 # Standard Library
 import argparse
 import os
@@ -461,14 +461,14 @@ def action_handler(
                         
                         # Use IK Solver
                         with motion_gen_lock:
-                            ik_solver.update_world(motion_gen.world_coll_checker)
+                            # ik_solver.update_world(motion_gen.world_coll_checker) No need to update
                             start_q = tensor_args.to_device(last_joint_states).unsqueeze(0)
-                            ik_result = ik_solver.solve_single(goal_pose=ik_goal, seed_q=start_q)
+                            ik_result = ik_solver.solve_single(goal_pose=ik_goal)
 
                         succ = ik_result.success.item()
                         if succ:
                             print("IK solution found.")
-                            goal_q = ik_result.solution.squeeze(0) # Shape: [dof]
+                            goal_q = ik_result.solution.squeeze(0).squeeze(0) # Shape: [dof]
                             start_q_tensor = tensor_args.to_device(last_joint_states)
                             
                             # Create a 2-point trajectory (start and goal)
@@ -502,9 +502,11 @@ def action_handler(
                                 position=tensor_args.to_device(move["goal"][:3]),
                                 quaternion=tensor_args.to_device(move["goal"][3:]),
                             )
+                            print("planing single")
                             result = motion_gen.plan_single(
                                 cu_js.unsqueeze(0), ik_goal, plan_config
                             )
+                            print("Finish planing single")
                         else: # "joints_goal" in move
                             joints_goal = JointState(
                                 position=tensor_args.to_device(move["joints_goal"]),
@@ -705,11 +707,12 @@ def main():
         use_cuda_graph=True,
     )
     ik_solver = IKSolver(ik_config)
+    ik_solver.update_world(WorldConfig(cuboid=[])) # ignore everything
     motion_gen_lock = Lock()
     if not args.reactive:
         print("warming up...")
         motion_gen.warmup(enable_graph=True, warmup_js_trajopt=False)
-        ik_solver.warmup()
+        # ik_solver.warmup()
 
     print("Curobo is Ready")
     print("IK Solver is Ready")
