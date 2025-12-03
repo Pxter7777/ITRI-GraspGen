@@ -140,6 +140,12 @@ class TMRobotController(Node):
         self.wait_time = data["wait_time"]
         self.current_moving_type = data["type"]
         if data["type"] == "arm":
+            vel = data.get("custom_vel")
+            if vel is None:
+                vel = 40
+            acc = data.get("custom_acc")
+            if acc is None:
+                acc = 20
             self.goal_joints = data["joints_values"][-1]
             joints_values_degree = [
                 np.rad2deg(joints) for joints in data["joints_values"]
@@ -156,8 +162,8 @@ class TMRobotController(Node):
                 ):
                     accepted_joints.append(joints)
             for joints in accepted_joints:
-                self.append_jpp(joints)
-            self.append_jpp(goal_degree)
+                self.append_jpp(joints, vel=vel, acc=acc)
+            self.append_jpp(goal_degree, vel=vel, acc=acc)
         elif data["type"] == "PTP":
             cartesian_poses_mm_degree = data["cartesian_poses"]
             self.goal_cartesian_pose = cartesian_poses_mm_degree.pop()
@@ -215,7 +221,7 @@ class TMRobotController(Node):
         # reach detection
         if (
             self.reached_time > current_time
-            and current_time - self.start_command_time > 0.3
+            and current_time - self.start_command_time > 1.0
         ):  # hasn't reached yet
             if self.current_moving_type == "arm" and is_pose_identical(
                 msg.joint_pos, self.goal_joints
@@ -358,7 +364,7 @@ class TMRobotController(Node):
             )
 
     def append_jpp(
-        self, joint_values: list, vel=20, acc=20, coord=80, fine=False, wait_time=0.0
+        self, joint_values: list, vel, acc, coord=80, fine=False, wait_time=0.0
     ):
         if len(joint_values) != 6:
             logger.error("TCP 必須 6 個數字")
@@ -367,7 +373,7 @@ class TMRobotController(Node):
         script = (
             f'PTP("JPP",{joint_values[0]:.2f}, {joint_values[1]:.2f}, {joint_values[2]:.2f}, '
             f"{joint_values[3]:.2f}, {joint_values[4]:.2f}, {joint_values[5]:.2f},"
-            f"40,20,100,true)"
+            f"{vel},{acc},100,true)"
         )
         self.tcp_queue.append({"script": script, "wait_time": wait_time})
         if wait_time > 0:

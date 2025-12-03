@@ -145,7 +145,9 @@ def main():
             task_signal = main_receiver.capture_data()
             if task_signal is None or task_signal.get("actions") != "Grasp_and_Dump":
                 continue
-
+            # eat abort if there is any
+            for _ in range(5):
+                receiver.capture_data()
             actions_filepath = os.path.join(
                 project_root_dir, "actions", "Grasp_and_Dump" + ".json"
             )
@@ -179,6 +181,7 @@ def main():
                     time.sleep(0.1)
                     continue
             else:
+                logger.error("Failed to detect using groundingDINO")
                 main_sender.send_data({"message": "Failed to detect targets."})
                 continue
 
@@ -189,83 +192,100 @@ def main():
             )
             scene_data = create_obstacle_info(scene_data, actions["extra_obstacles"])
             # GraspGen
-            for action in actions["actions"]:
-                try:
+            try:
+                for action in actions["actions"]:
+                    # Don't need GraspGen
                     if action["action"] in [
                         "move_to_curobo",
                         "joints_rad_move_to_curobo",
+                        "open_grip",
                     ]:
-                        full_acts = act_with_name(
-                            action["action"], None, [None], action["args"], scene_data
-                        )
-                        if args.save_fullact:
-                            save_json("fullact", "fullact", full_acts)
-                        response = receiver.capture_data()
-                        if response is not None and response["message"] == "Abort":
-                            raise InterruptedError(
-                                "aborted by isaacsim, stop current action"
+                        while True:
+                            full_acts = act_with_name(
+                                action["action"],
+                                None,
+                                [None],
+                                action["args"],
+                                scene_data,
                             )
-                        sender.send_data(full_acts)
-                        # wait for isaacsim's good news
-                        while response is None:
+                            if args.save_fullact:
+                                save_json("fullact", "fullact", full_acts)
                             response = receiver.capture_data()
-                        if response["message"] == "Success":
-                            logger.warning("Success")
-                            continue
-                        elif response["message"] == "Fail":
-                            logger.warning("failed")
-                            continue
-                        elif response["message"] == "Abort":
-                            raise InterruptedError(
-                                "aborted by isaacsim, stop current action"
+                            if response is not None and response["message"] == "Abort":
+                                raise InterruptedError(
+                                    "aborted by isaacsim, stop current action"
+                                )
+                            sender.send_data(full_acts)
+                            # wait for isaacsim's good news
+                            while response is None:
+                                response = receiver.capture_data()
+                            if response["message"] == "Success":
+                                logger.warning("Success")
+                                break
+                            elif response["message"] == "Fail":
+                                logger.warning("failed")
+                                continue
+                            elif response["message"] == "Abort":
+                                raise InterruptedError(
+                                    "aborted by isaacsim, stop current action"
+                                )
+                    else:  # Need GraspGen
+                        while True:
+                            grasps = grasp_generator.generate_grasp(scene_data, action)
+                            full_acts = act_with_name(
+                                action["action"],
+                                action["target_name"],
+                                grasps,
+                                action["args"],
+                                scene_data,
                             )
-                    while True:
-                        grasps = grasp_generator.generate_grasp(scene_data, action)
-                        full_acts = act_with_name(
-                            action["action"],
-                            action["target_name"],
-                            grasps,
-                            action["args"],
-                            scene_data,
-                        )
-                        if args.save_fullact:
-                            save_json("fullact", "fullact_", full_acts)
-                        response = receiver.capture_data()
-                        if response is not None and response["message"] == "Abort":
-                            raise InterruptedError(
-                                "aborted by isaacsim, stop current action"
-                            )
-                        sender.send_data(full_acts)
-                        # wait for isaacsim's good news
-                        while response is None:
+                            if args.save_fullact:
+                                save_json("fullact", "fullact_", full_acts)
                             response = receiver.capture_data()
-                        if response["message"] == "Success":
-                            logger.warning("Success")
-                            break
-                        elif response["message"] == "Fail":
-                            logger.warning("failed")
-                            continue
-                        elif response["message"] == "Abort":
-                            raise InterruptedError(
-                                "aborted by isaacsim, stop current action"
-                            )
-                except KeyboardInterrupt:
-                    logger.info("Manual stopping current action.")
-                    break
-                except InterruptedError as e:
-                    name = action["target_name"]
-                    logger.exception(f"Action for {name} interrupted, stopping. {e}")
-                    break
-                except Exception as e:
-                    name = action["target_name"]
-                    logger.exception(
-                        f"Unknown Error while generating grasp for {name}, stopping. {e}"
-                    )
-                    break
-            else:
-                main_sender.send_data({"message": "Success"})
-                continue
-            main_sender.send_data({"message": "Fail"})
+                            if response is not None and response["message"] == "Abort":
+                                raise InterruptedError(
+                                    "aborted by isaacsim, stop current action"
+                                )
+                            sender.send_data(full_acts)
+                            # wait for isaacsim's good news
+                            while response is None:
+                                response = receiver.capture_data()
+                            if response["message"] == "Success":
+                                logger.warning("Success")
+                                break
+                            elif response["message"] == "Fail":
+                                logger.warning("failed")
+                                continue
+                            elif response["message"] == "Abort":
+                                raise InterruptedError(
+                                    "aborted by isaacsim, stop current action"
+                                )
+                sender.send_data(["EOF"])
+                response = receiver.capture_data()
+                while response is None:
+                    response = receiver.capture_data()
+                if response["message"] == "EOF and ROS2 Complete":
+                    logger.warning("Success")
+                    main_sender.send_data({"message": "Success"})
+                elif response["message"] == "Abort":
+                    logger.warning("Abort")
+                    main_sender.send_data({"message": "Fail"})
+                    raise InterruptedError("aborted by isaacsim, stop current action")
+                else:
+                    raise ValueError(f"Unknown message {response['message']}")
+            except KeyboardInterrupt:
+                logger.info("Manual stopping current action.")
+                break
+            except InterruptedError as e:
+                name = action["target_name"]
+                logger.exception(f"Action for {name} interrupted, stopping. {e}")
+                break
+            except Exception as e:
+                name = action["target_name"]
+                logger.exception(
+                    f"Unknown Error while generating grasp for {name}, stopping. {e}"
+                )
+                break
     finally:
         logger.info("turning off zed camera")
         pc_generator.close()
