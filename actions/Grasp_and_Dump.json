@@ -3,6 +3,7 @@
     [
         [915, 242, 1279, 719]
     ],
+    "valid_region":[363, 238, 846,504],
     "track": ["green cup", "blue cup"],
     "extra_obstacles": {
         "pot": {

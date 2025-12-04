@@ -170,10 +170,12 @@ def main():
             for _ in range(20):
                 try:
                     blockages = actions.get("blockages")
+                    valid_region = actions.get("valid_region")
                     scene_data = pc_generator.generate_pointcloud(
                         track_names,
                         need_confirm=not args.no_confirm,
                         blockages=blockages,
+                        valid_region = valid_region
                     )
                     break  # Success
                 except ValueError as e:
