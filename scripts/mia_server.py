@@ -167,7 +167,7 @@ def main():
             scene_data = None
             track_names = list(actions["track"])
             # try five times
-            for _ in range(5):
+            for _ in range(20):
                 try:
                     blockages = actions.get("blockages")
                     scene_data = pc_generator.generate_pointcloud(
