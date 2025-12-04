@@ -458,6 +458,7 @@ def action_handler(
                 #     )
                 # else:
                 #     pose_metric = None
+                print("curoboing")
                 if "goal" in move:
                     ik_goal = Pose(
                         position=tensor_args.to_device(move["goal"][:3]),
@@ -509,7 +510,10 @@ def action_handler(
                     print("ALRIGHT?3")
 
                 succ = result.success.item()  # ik_result.success.item()
-
+                if succ:
+                    print("successful")
+                else:
+                    print("not successful")
                 if succ:
                     print("YES YES YES?")
                     with motion_gen_lock:
