@@ -863,7 +863,7 @@ def main():
             graspgen_eof = False
             for graspgen_data in graspgen_datas:
                 before_move_joints = last_joint_states
-                planned_action_moves: list[Move] = []
+                curobo_planned_action_moves: list[Move] = []
                 for move in graspgen_data["moves"]:
                     # handle temp obstacles
                     # if temp_cuboid_paths:
@@ -943,7 +943,7 @@ def main():
                             motion_gen.update_world(obstacles)
                     # start handle move
                     if move["type"] == "gripper":
-                        planned_action_moves.append(Move(move, None))
+                        curobo_planned_action_moves.append(Move(move, None))
                         continue
                     ## start serious curobo motion planning
                     # if "constraint" in move:
@@ -966,7 +966,7 @@ def main():
                         )
 
                         plan_config.pose_cost_metric = pose_metric
-                        cu_js = JointState(
+                        curobo_cu_js = JointState(
                             position=tensor_args.to_device(last_joint_states),
                             velocity=tensor_args.to_device(sim_js.velocities)
                             * 0.0,  # * 0.0,
@@ -977,7 +977,7 @@ def main():
 
                         with motion_gen_lock:
                             result = motion_gen.plan_single(
-                                cu_js.unsqueeze(0), ik_goal, plan_config
+                                curobo_cu_js.unsqueeze(0), ik_goal, plan_config
                             )
                     elif "joints_goal" in move:
                         print("ALRIGHT?0")
@@ -992,7 +992,7 @@ def main():
                         print("ALRIGHT?1")
 
                         plan_config.pose_cost_metric = pose_metric
-                        cu_js = JointState(
+                        curobo_cu_js = JointState(
                             position=tensor_args.to_device(last_joint_states),
                             velocity=tensor_args.to_device(sim_js.velocities)
                             * 0.0,  # * 0.0,
@@ -1003,7 +1003,7 @@ def main():
                         print("ALRIGHT?2")
                         with motion_gen_lock:
                             result = motion_gen.plan_single_js(
-                                cu_js.unsqueeze(0),
+                                curobo_cu_js.unsqueeze(0),
                                 joints_goal.unsqueeze(0),
                                 plan_config,
                             )
@@ -1048,7 +1048,7 @@ def main():
                             "joints_values": positions,
                         }
 
-                        planned_action_moves.append(Move(ROS2_move, new_cmd_plan))
+                        curobo_planned_action_moves.append(Move(ROS2_move, new_cmd_plan))
                         last_joint_states = positions[-1]
                     else:
                         print("This plan failed.")
@@ -1059,15 +1059,15 @@ def main():
                     print("-------------Successfully handled new action--------------")
                     graspgen_sender.send_data({"message": "Success"})
                     planned_action_queue.put(
-                        {"moves": planned_action_moves, "obstacles": cuboids}
+                        {"moves": curobo_planned_action_moves, "obstacles": cuboids}
                     )
                     break  # stop trying other acts
             else:  # all graspgen_datas failed
                 graspgen_sender.send_data({"message": "Fail"})
         # end of handle section
         # make sure the thread has catched and handled the issue
-        if not ROS2_fail_queue.empty():
-            continue
+        # if not ROS2_fail_queue.empty():
+            # continue
 
         if wait_ros2:
             ros2_response = ros2_receiver.capture_data()
