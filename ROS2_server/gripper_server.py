@@ -146,6 +146,9 @@ class TMRobotController(Node):
             acc = data.get("custom_acc")
             if acc is None:
                 acc = 20
+            blend = data.get("custom_blend")
+            if blend is None:
+                blend = 100
             self.goal_joints = data["joints_values"][-1]
             joints_values_degree = [
                 np.rad2deg(joints) for joints in data["joints_values"]
@@ -162,8 +165,8 @@ class TMRobotController(Node):
                 ):
                     accepted_joints.append(joints)
             for joints in accepted_joints:
-                self.append_jpp(joints, vel=vel, acc=acc)
-            self.append_jpp(goal_degree, vel=vel, acc=acc)
+                self.append_jpp(joints, vel=vel, acc=acc, blend=blend)
+            self.append_jpp(goal_degree, vel=vel, acc=acc, blend=blend)
         elif data["type"] == "PTP":
             cartesian_poses_mm_degree = data["cartesian_poses"]
             self.goal_cartesian_pose = cartesian_poses_mm_degree.pop()
@@ -364,7 +367,7 @@ class TMRobotController(Node):
             )
 
     def append_jpp(
-        self, joint_values: list, vel, acc, coord=80, fine=False, wait_time=0.0
+        self, joint_values: list, vel, acc, coord=80, fine=False, wait_time=0.0, blend:int=100
     ):
         if len(joint_values) != 6:
             logger.error("TCP 必須 6 個數字")
@@ -373,7 +376,7 @@ class TMRobotController(Node):
         script = (
             f'PTP("JPP",{joint_values[0]:.2f}, {joint_values[1]:.2f}, {joint_values[2]:.2f}, '
             f"{joint_values[3]:.2f}, {joint_values[4]:.2f}, {joint_values[5]:.2f},"
-            f"{vel},{acc},100,true)"
+            f"{vel},{acc},{blend},true)"
         )
         self.tcp_queue.append({"script": script, "wait_time": wait_time})
         if wait_time > 0:
