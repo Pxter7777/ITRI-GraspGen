@@ -165,24 +165,31 @@ def main():
             scene_data = None
             track_names = list(actions["track"])
             # try five times
-            for _ in range(20):
-                try:
-                    blockages = actions.get("blockages")
-                    valid_region = actions.get("valid_region")
-                    scene_data = pc_generator.generate_pointcloud(
-                        track_names,
-                        need_confirm=not args.no_confirm,
-                        blockages=blockages,
-                        valid_region = valid_region
-                    )
-                    break  # Success
-                except ValueError as e:
-                    logger.exception(f"{e}, try again")
-                    time.sleep(0.1)
+            detection_success = False
+            while True:
+                for _ in range(20):
+                    try:
+                        blockages = actions.get("blockages")
+                        valid_region = actions.get("valid_region")
+                        scene_data = pc_generator.generate_pointcloud(
+                            track_names,
+                            need_confirm=not args.no_confirm,
+                            blockages=blockages,
+                            valid_region = valid_region
+                        )
+                        detection_success = True
+                        break  # Success
+                    except ValueError as e:
+                        logger.exception(f"{e}, try again")
+                        time.sleep(0.1)
+                        continue
+                else:
+                    logger.error("Failed to detect using groundingDINO")
                     continue
-            else:
-                logger.error("Failed to detect using groundingDINO")
-                continue
+                if detection_success:
+                    break
+                else:
+                    try_again = input("Try Again:")
 
             logger.info(scene_data)
             # transform
