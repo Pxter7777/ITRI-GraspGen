@@ -32,7 +32,7 @@ def create_obstacle_info(scene_data: dict, extra_obstacles: dict = None) -> dict
         )
         middle_point = np.mean([pc_max, pc_min], axis=0)
         width = pc_max - middle_point
-        mod_width = np.array([width[0]*1.6, width[1]*1.6, width[2]*1.9])
+        mod_width = np.array([width[0] * 1.6, width[1] * 1.6, width[2] * 1.9])
         pc_max = middle_point + mod_width
         pc_min = middle_point - mod_width
         new_scene_data["obstacles"][object_name] = {

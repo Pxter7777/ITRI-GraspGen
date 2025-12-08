@@ -367,7 +367,14 @@ class TMRobotController(Node):
             )
 
     def append_jpp(
-        self, joint_values: list, vel, acc, coord=80, fine=False, wait_time=0.0, blend:int=100
+        self,
+        joint_values: list,
+        vel,
+        acc,
+        coord=80,
+        fine=False,
+        wait_time=0.0,
+        blend: int = 100,
     ):
         if len(joint_values) != 6:
             logger.error("TCP 必須 6 個數字")

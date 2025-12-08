@@ -29,7 +29,7 @@ import os
 import json
 import time
 import queue
-from threading import Thread, Lock
+from threading import Lock
 import numpy as np
 from isaacsim_utils.socket_communication import (
     NonBlockingJSONSender,
@@ -797,7 +797,6 @@ def main():
     idx_list = [0, 1, 2, 3, 4, 5]
     temp_cuboid_paths = []
 
-
     graspgen_receiver = NonBlockingJSONReceiver(port=port_config.GRASPGEN_TO_ISAACSIM)
     graspgen_sender = NonBlockingJSONSender(port=port_config.ISAACSIM_TO_GRASPGEN)
     zero_obstacles = usd_help.get_obstacles_from_stage(
@@ -902,7 +901,9 @@ def main():
                             )
                             scale = np.array(
                                 graspgen_data["obstacles"][obstacle_name]["max"]
-                            ) - np.array(graspgen_data["obstacles"][obstacle_name]["min"])
+                            ) - np.array(
+                                graspgen_data["obstacles"][obstacle_name]["min"]
+                            )
                             cuboids.append(
                                 Cuboid(
                                     name=f"obs_{i}",
@@ -1027,7 +1028,9 @@ def main():
                         #         idx_list.append(robot.get_dof_index(x))
                         #         common_js_names.append(x)
 
-                        new_cmd_plan = new_cmd_plan.get_ordered_joint_state(common_js_names)
+                        new_cmd_plan = new_cmd_plan.get_ordered_joint_state(
+                            common_js_names
+                        )
                         # The following code block shows how to prune the plan to keep only the first and last waypoints
                         if "no_curobo" in move:
                             new_cmd_plan = JointState(
@@ -1048,7 +1051,9 @@ def main():
                             "joints_values": positions,
                         }
 
-                        curobo_planned_action_moves.append(Move(ROS2_move, new_cmd_plan))
+                        curobo_planned_action_moves.append(
+                            Move(ROS2_move, new_cmd_plan)
+                        )
                         last_joint_states = positions[-1]
                     else:
                         print("This plan failed.")
@@ -1067,7 +1072,7 @@ def main():
         # end of handle section
         # make sure the thread has catched and handled the issue
         # if not ROS2_fail_queue.empty():
-            # continue
+        # continue
 
         if wait_ros2:
             ros2_response = ros2_receiver.capture_data()

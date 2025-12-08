@@ -175,7 +175,7 @@ def main():
                             track_names,
                             need_confirm=not args.no_confirm,
                             blockages=blockages,
-                            valid_region = valid_region
+                            valid_region=valid_region,
                         )
                         detection_success = True
                         break  # Success
@@ -189,7 +189,7 @@ def main():
                 if detection_success:
                     break
                 else:
-                    try_again = input("Try Again:")
+                    input("Try Again:")
 
             logger.info(scene_data)
             # transform
