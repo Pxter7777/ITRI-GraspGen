@@ -185,7 +185,7 @@ def main():
                         continue
                 else:
                     logger.error("Failed to detect using groundingDINO")
-                    continue
+                    # continue
                 if detection_success:
                     break
                 else:
