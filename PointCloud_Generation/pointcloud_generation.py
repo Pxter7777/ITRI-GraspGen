@@ -491,7 +491,11 @@ class PointCloudGenerator:
         self.zed = ZedCamera(args.use_png)
 
     def generate_pointcloud(
-        self, target_names: list[str], need_confirm=True, blockages: list = None
+        self,
+        target_names: list[str],
+        need_confirm=True,
+        blockages: list = None,
+        valid_region: list = None,
     ):
         """
         bloackages[
@@ -541,6 +545,14 @@ class PointCloudGenerator:
             if target_boxes[box.phrase] is not None:
                 logger.error(f"More than one {box.phrase} detected")
                 raise ValueError
+            if valid_region is not None:
+                if (
+                    box.box[0] < valid_region[0]
+                    or box.box[1] < valid_region[1]
+                    or box.box[2] > valid_region[2]
+                    or box.box[3] > valid_region[3]
+                ):
+                    raise ValueError(f"Detected {box.phrase} out of region {box.box}")
             target_boxes[box.phrase] = box
             print(box.box, box.logits, box.phrase)
         for target_box in target_boxes:

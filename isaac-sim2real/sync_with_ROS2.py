@@ -29,7 +29,7 @@ import os
 import json
 import time
 import queue
-from threading import Thread, Lock
+from threading import Lock
 import numpy as np
 from isaacsim_utils.socket_communication import (
     NonBlockingJSONSender,
@@ -168,7 +168,7 @@ simulation_app = SimulationApp(  # noqa: E402
 
 from isaacsim_utils.helper import add_extensions, add_robot_to_scene  # noqa: E402
 from omni.isaac.core import World  # noqa: E402
-from omni.isaac.core.objects import sphere  # noqa: E402
+from omni.isaac.core.objects import cuboid, sphere  # noqa: E402
 
 # import omni.isaac.core.utils.prims as prims_utils  # noqa: E402
 from omni.isaac.core.utils.types import ArticulationAction  # noqa: E402
@@ -363,7 +363,7 @@ def action_handler(
         graspgen_eof = False
         for graspgen_data in graspgen_datas:
             before_move_joints = last_joint_states
-            planned_action: list[Move] = []
+            planned_action_moves: list[Move] = []
             for move in graspgen_data["moves"]:
                 # handle temp obstacles
                 if temp_cuboid_paths:
@@ -443,7 +443,7 @@ def action_handler(
                         motion_gen.update_world(obstacles)
                 # start handle move
                 if move["type"] == "gripper":
-                    planned_action.append(Move(move, None))
+                    planned_action_moves.append(Move(move, None))
                     continue
                 ## start serious curobo motion planning
                 # if "constraint" in move:
@@ -458,6 +458,7 @@ def action_handler(
                 #     )
                 # else:
                 #     pose_metric = None
+                print("curoboing")
                 if "goal" in move:
                     ik_goal = Pose(
                         position=tensor_args.to_device(move["goal"][:3]),
@@ -509,7 +510,10 @@ def action_handler(
                     print("ALRIGHT?3")
 
                 succ = result.success.item()  # ik_result.success.item()
-
+                if succ:
+                    print("successful")
+                else:
+                    print("not successful")
                 if succ:
                     print("YES YES YES?")
                     with motion_gen_lock:
@@ -544,7 +548,7 @@ def action_handler(
                         "joints_values": positions,
                     }
 
-                    planned_action.append(Move(ROS2_move, new_cmd_plan))
+                    planned_action_moves.append(Move(ROS2_move, new_cmd_plan))
                     last_joint_states = positions[-1]
                 else:
                     print("This plan failed.")
@@ -554,7 +558,9 @@ def action_handler(
             else:  # success!
                 print("-------------Successfully handled new action--------------")
                 graspgen_sender.send_data({"message": "Success"})
-                planned_action_queue.put(planned_action)
+                planned_action_queue.put(
+                    {"moves": planned_action_moves, "obstacles": cuboids}
+                )
                 break  # stop trying other acts
         else:  # all graspgen_datas failed
             graspgen_sender.send_data({"message": "Fail"})
@@ -768,31 +774,305 @@ def main():
     # temp_cuboid_paths = []
     sim_js = robot.get_joints_state()
     sim_js_names = robot.dof_names
-    planned_action: list = []
-    gui_thread = Thread(
-        target=action_handler,
-        args=(
-            stage,
-            usd_help,
-            robot_prim_path,
-            motion_gen,
-            tensor_args,
-            plan_config,
-            pose_metric,
-            sim_js,
-            sim_js_names,
-            planned_action_queue,
-            motion_gen_lock,
-            ROS2_fail_queue,
-        ),
-        daemon=True,
-    )
-    gui_thread.start()
+    planned_action_moves: list = []
+    # gui_thread = Thread(
+    #     target=action_handler,
+    #     args=(
+    #         stage,
+    #         usd_help,
+    #         robot_prim_path,
+    #         motion_gen,
+    #         tensor_args,
+    #         plan_config,
+    #         pose_metric,
+    #         sim_js,
+    #         sim_js_names,
+    #         planned_action_queue,
+    #         motion_gen_lock,
+    #         ROS2_fail_queue,
+    #     ),
+    #     daemon=True,
+    # )
+    # gui_thread.start()
     idx_list = [0, 1, 2, 3, 4, 5]
+    temp_cuboid_paths = []
+
+    graspgen_receiver = NonBlockingJSONReceiver(port=port_config.GRASPGEN_TO_ISAACSIM)
+    graspgen_sender = NonBlockingJSONSender(port=port_config.ISAACSIM_TO_GRASPGEN)
+    zero_obstacles = usd_help.get_obstacles_from_stage(
+        only_paths=["/World"],
+        reference_prim_path=robot_prim_path,
+        ignore_substring=[
+            robot_prim_path,
+            "/World/defaultGroundPlane",
+            "/curobo",
+            "/World/table",
+        ],
+    ).get_collision_check_world()
+    default_config = [
+        1.37296326,
+        0.08553859,
+        1.05554023,
+        2.76803983,
+        -1.48792809,
+        3.09947786,
+    ]
+    last_joint_states = default_config
+    temp_cuboid_paths = []
+    # idx_list = [0,1,2,3,4,5]
+    common_js_names = ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"]
+    graspgen_eof = False
+
     while simulation_app.is_running():
+        # try handle first
+        for _ in range(1):
+            if not ROS2_fail_queue.empty():
+                # clear plan
+                while not planned_action_queue.empty():
+                    planned_action_queue.get()
+                notice = (
+                    ROS2_fail_queue.get()
+                )  # catch the fail, let isaacsim continue to move
+                print("get Notice", notice)
+                if notice["message"] == "Abort":
+                    graspgen_sender.send_data({"message": "Abort"})
+                    # eat datas
+                    for _ in range(5):
+                        time.sleep(0.1)
+                        graspgen_receiver.capture_data()
+                elif notice["message"] == "ROS2 Complete":
+                    if graspgen_eof:
+                        graspgen_sender.send_data({"message": "EOF and ROS2 Complete"})
+                    else:
+                        print("ROS2 complete but not EOF yet.")
+                else:
+                    raise ValueError("Unknown message")
+
+                last_joint_states = default_config
+
+                continue
+
+            graspgen_datas = graspgen_receiver.capture_data()
+            if graspgen_datas is None:
+                continue
+            if graspgen_datas[0] == "EOF":
+                graspgen_eof = True
+                continue
+            print("-------------Received new action--------------")
+            graspgen_eof = False
+            for graspgen_data in graspgen_datas:
+                before_move_joints = last_joint_states
+                curobo_planned_action_moves: list[Move] = []
+                for move in graspgen_data["moves"]:
+                    # handle temp obstacles
+                    # if temp_cuboid_paths:
+                    #     for path in temp_cuboid_paths:
+                    #         stage.RemovePrim(path)  # this may race condition
+                    #     temp_cuboid_paths = []
+                    # Table # race condition, I guess? Yes this shit will race condition
+                    # prim_path = "/World/temp_obstacle_table"
+                    # cuboid.FixedCuboid(
+                    #     prim_path=prim_path,
+                    #     position=np.array([0, 0, -1.97]),
+                    #     scale=np.array([4, 4, 4]),
+                    #     color=np.array([0.0, 0.0, 1.0]),  # Blue
+                    #     # physics=True,
+                    # )
+                    # temp_cuboid_paths.append(prim_path)
+                    cuboids = []
+                    cuboids.append(
+                        Cuboid(
+                            name="table",
+                            pose=[0, 0, -1.97] + [1, 0, 0, 0],
+                            dims=[4, 4, 4],
+                        )
+                    )
+                    for i, obstacle_name in enumerate(graspgen_data["obstacles"]):
+                        if not (
+                            "ignore_obstacles" in move
+                            and obstacle_name in move["ignore_obstacles"]
+                        ):
+                            middle_point = np.mean(
+                                [
+                                    graspgen_data["obstacles"][obstacle_name]["max"],
+                                    graspgen_data["obstacles"][obstacle_name]["min"],
+                                ],
+                                axis=0,
+                            )
+                            scale = np.array(
+                                graspgen_data["obstacles"][obstacle_name]["max"]
+                            ) - np.array(
+                                graspgen_data["obstacles"][obstacle_name]["min"]
+                            )
+                            cuboids.append(
+                                Cuboid(
+                                    name=f"obs_{i}",
+                                    pose=middle_point.tolist() + [1, 0, 0, 0],
+                                    dims=scale.tolist(),
+                                )
+                            )
+
+                            # Race condition
+                            # prim_path = f"/World/temp_obstacle_{i}"
+                            # cuboid.FixedCuboid(
+                            #     prim_path=prim_path,
+                            #     position=np.array(middle_point),
+                            #     scale=[scale[0], scale[1], scale[2] * 1.1],
+                            #     color=np.array([0.0, 0.0, 1.0]),  # Blue
+                            #     # physics=True,
+                            # )
+                            # temp_cuboid_paths.append(prim_path)
+                    # Get all obstacles from the stage, including the new temporary ones
+                    # obstacles = usd_help.get_obstacles_from_stage(
+                    #     only_paths=["/World"],
+                    #     reference_prim_path=robot_prim_path,
+                    #     ignore_substring=[
+                    #         robot_prim_path,
+                    #         "/World/defaultGroundPlane",
+                    #         "/curobo",
+                    #         "/World/table",
+                    #     ],
+                    # ).get_collision_check_world()
+                    obstacles = WorldConfig(cuboid=cuboids)
+
+                    # motion_gen.update_world(world)
+                    if "no_obstacles" in move:
+                        with motion_gen_lock:
+                            motion_gen.update_world(zero_obstacles)
+                    else:
+                        with motion_gen_lock:
+                            motion_gen.update_world(obstacles)
+                    # start handle move
+                    if move["type"] == "gripper":
+                        curobo_planned_action_moves.append(Move(move, None))
+                        continue
+                    ## start serious curobo motion planning
+                    # if "constraint" in move:
+                    #     pose_metric = PoseCostMetric(
+                    #         hold_partial_pose=True,
+                    #         hold_vec_weight=motion_gen.tensor_args.to_device(
+                    #             move["constraint"]
+                    #         ),
+                    #     )
+                    #     print(
+                    #         "CONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINT"
+                    #     )
+                    # else:
+                    #     pose_metric = None
+                    print("curoboing")
+                    if "goal" in move:
+                        ik_goal = Pose(
+                            position=tensor_args.to_device(move["goal"][:3]),
+                            quaternion=tensor_args.to_device(move["goal"][3:]),
+                        )
+
+                        plan_config.pose_cost_metric = pose_metric
+                        curobo_cu_js = JointState(
+                            position=tensor_args.to_device(last_joint_states),
+                            velocity=tensor_args.to_device(sim_js.velocities)
+                            * 0.0,  # * 0.0,
+                            acceleration=tensor_args.to_device(sim_js.velocities) * 0.0,
+                            jerk=tensor_args.to_device(sim_js.velocities) * 0.0,
+                            joint_names=sim_js_names,
+                        )
+
+                        with motion_gen_lock:
+                            result = motion_gen.plan_single(
+                                curobo_cu_js.unsqueeze(0), ik_goal, plan_config
+                            )
+                    elif "joints_goal" in move:
+                        print("ALRIGHT?0")
+                        joints_goal = JointState(
+                            position=tensor_args.to_device(move["joints_goal"]),
+                            velocity=tensor_args.to_device(sim_js.velocities)
+                            * 0.0,  # * 0.0,
+                            acceleration=tensor_args.to_device(sim_js.velocities) * 0.0,
+                            jerk=tensor_args.to_device(sim_js.velocities) * 0.0,
+                            joint_names=sim_js_names,
+                        )
+                        print("ALRIGHT?1")
+
+                        plan_config.pose_cost_metric = pose_metric
+                        curobo_cu_js = JointState(
+                            position=tensor_args.to_device(last_joint_states),
+                            velocity=tensor_args.to_device(sim_js.velocities)
+                            * 0.0,  # * 0.0,
+                            acceleration=tensor_args.to_device(sim_js.velocities) * 0.0,
+                            jerk=tensor_args.to_device(sim_js.velocities) * 0.0,
+                            joint_names=sim_js_names,
+                        )
+                        print("ALRIGHT?2")
+                        with motion_gen_lock:
+                            result = motion_gen.plan_single_js(
+                                curobo_cu_js.unsqueeze(0),
+                                joints_goal.unsqueeze(0),
+                                plan_config,
+                            )
+                        print("ALRIGHT?3")
+
+                    succ = result.success.item()  # ik_result.success.item()
+                    if succ:
+                        print("successful")
+                    else:
+                        print("not successful")
+                    if succ:
+                        print("YES YES YES?")
+                        with motion_gen_lock:
+                            new_cmd_plan = result.get_interpolated_plan()
+                            new_cmd_plan = motion_gen.get_full_js(new_cmd_plan)
+                        # get only joint names that are in both:
+                        # idx_list = []
+                        # common_js_names = []
+                        # for x in sim_js_names:
+                        #     if x in new_cmd_plan.joint_names:
+                        #         idx_list.append(robot.get_dof_index(x))
+                        #         common_js_names.append(x)
+
+                        new_cmd_plan = new_cmd_plan.get_ordered_joint_state(
+                            common_js_names
+                        )
+                        # The following code block shows how to prune the plan to keep only the first and last waypoints
+                        if "no_curobo" in move:
+                            new_cmd_plan = JointState(
+                                position=new_cmd_plan.position[[0, -1]],
+                                velocity=new_cmd_plan.velocity[[0, -1]],
+                                acceleration=new_cmd_plan.acceleration[[0, -1]],
+                                jerk=new_cmd_plan.jerk[[0, -1]],
+                                joint_names=new_cmd_plan.joint_names,
+                            )
+                            print(
+                                "---------------------------------------------------------only keep first and last"
+                            )
+                        positions = cmd_to_move(new_cmd_plan)
+                        ROS2_move = {
+                            "type": move["type"],
+                            "wait_time": move["wait_time"],
+                            # "cmd_plan": cmd_plan, # only for later reuse by isaacsim, not for ROS2
+                            "joints_values": positions,
+                        }
+
+                        curobo_planned_action_moves.append(
+                            Move(ROS2_move, new_cmd_plan)
+                        )
+                        last_joint_states = positions[-1]
+                    else:
+                        print("This plan failed.")
+                        last_joint_states = before_move_joints
+                        break
+
+                else:  # success!
+                    print("-------------Successfully handled new action--------------")
+                    graspgen_sender.send_data({"message": "Success"})
+                    planned_action_queue.put(
+                        {"moves": curobo_planned_action_moves, "obstacles": cuboids}
+                    )
+                    break  # stop trying other acts
+            else:  # all graspgen_datas failed
+                graspgen_sender.send_data({"message": "Fail"})
+        # end of handle section
         # make sure the thread has catched and handled the issue
-        if not ROS2_fail_queue.empty():
-            continue
+        # if not ROS2_fail_queue.empty():
+        # continue
 
         if wait_ros2:
             ros2_response = ros2_receiver.capture_data()
@@ -800,8 +1080,9 @@ def main():
                 wait_ros2 = False
                 if ros2_response["message"] == "Success":
                     print("receiver successfulness.")
-                    if len(planned_action) == 0 and planned_action_queue.empty():
+                    if len(planned_action_moves) == 0 and planned_action_queue.empty():
                         ROS2_fail_queue.put({"message": "ROS2 Complete"})
+                        print("ROS2 Complete, go check that!")
                     # Can continue to do the following steps, no need to stuck
                 elif ros2_response["message"] == "Fail":
                     print("receiver failedness.")
@@ -812,7 +1093,7 @@ def main():
                         joint_indices=idx_list,
                     )
                     cmd_plan = None
-                    planned_action = []
+                    planned_action_moves = []
                     # Finished handled
                     ROS2_fail_queue.put(
                         {"message": "Abort"}
@@ -929,20 +1210,36 @@ def main():
                 cmd_idx = 0
                 cmd_plan = None
                 past_cmd = None
-        if not wait_ros2 and len(planned_action) > 0:
+        if not wait_ros2 and len(planned_action_moves) > 0:
             # planned action
             wait_ros2 = True
-            move: Move = planned_action.pop(0)
+            move: Move = planned_action_moves.pop(0)
             # For ROS2
             ros2_sender.send_data(move.ROS2_move)
             # For isaac sim animation
             cmd_idx = 0
             cmd_plan = move.cmd_plan
 
-        if len(planned_action) == 0 and not planned_action_queue.empty():
+        if len(planned_action_moves) == 0 and not planned_action_queue.empty():
             # currently no plan but we have more in queue, can start grab a new planned_action and apply here.
-            planned_action: list = planned_action_queue.get()
-
+            planned_action = planned_action_queue.get()
+            planned_action_moves: list = planned_action["moves"]
+            # visualize cuboids
+            if temp_cuboid_paths:
+                for path in temp_cuboid_paths:
+                    stage.RemovePrim(path)  # this may race condition
+                temp_cuboid_paths = []
+            cube: Cuboid
+            for i, cube in enumerate(planned_action["obstacles"]):
+                # race condition???
+                prim_path = f"/World/temp_obstacle_{i}"
+                cuboid.VisualCuboid(
+                    prim_path=prim_path,
+                    position=np.array(cube.pose[:3]),
+                    scale=np.array(cube.dims),
+                    color=np.array([0.0, 0.0, 1.0]),  # Blue
+                )
+                temp_cuboid_paths.append(prim_path)
     simulation_app.close()
 
 
