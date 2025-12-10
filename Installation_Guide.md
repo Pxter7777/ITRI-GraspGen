@@ -36,7 +36,7 @@ git clone git@github.com:Pxter7777/ITRI-GraspGen.git
 ```
 #### Update submodules
 ```bash
-git submodule update --init
+git submodule update --init --recursive
 ```
 
 #### Install the venv
@@ -100,5 +100,7 @@ Do you want to run the ZED Diagnostic to download all AI models [Y/n] ? n
 
 ## Download Models
 ```bash
-bash download_model.sh
+bash download_models.sh
 ```
+
+## IsaacSim related installation see [here](./isaac-sim2real/README.md)
