@@ -7,7 +7,6 @@ HOME_SIGNAL = [326.8, -140.2, 212.6, 90.0, 0, 90.0]
 
 logger = logging.getLogger(__name__)
 
-
 def pick_and_pour_and_put_back(grasp: np.array) -> list[dict]:
     moves = []
     # fetch basic infos
@@ -216,6 +215,10 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
     position = grasp[:3, 3].tolist()
     logger.debug(position)
     quaternion_orientation = list(trimesh.transformations.quaternion_from_matrix(grasp))
+    
+    if quaternion_orientation[3] < 0:
+        quaternion_orientation = [-x for x in quaternion_orientation]
+
     _, _, front = get_left_up_and_front(grasp)
     front = front.tolist()
 
@@ -270,6 +273,7 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
     ready_pour_rotation = trimesh.transformations.quaternion_multiply(
         q_z_rotation, q_base_tilt
     ).tolist()
+
     if angle_diff < 0:  # Clockwise
         pour_angle = np.deg2rad(45)
     else:  # Counter-clockwise
@@ -294,7 +298,9 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
         raise ValueError(f"axis_norm={axis_norm}")
         # pour_rotation = [-0.271, 0.653, -0.271, 0.653]
 
-    ready_pour_pose = ready_pour_position + ready_pour_rotation
+    # ready_pour_pose = ready_pour_position + ready_pour_rotation
+    ready_pour_pose = ready_pour_position + quaternion_orientation
+
     # pour_pose1 = ready_pour_position + pour_rotation1
     # pour_pose2 = ready_pour_position + pour_rotation2
     pour_pose3 = ready_pour_position + pour_rotation3
@@ -309,6 +315,8 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
             "type": "arm",
             "goal": before_grasp_position + quaternion_orientation,
             "wait_time": 0.0,
+            "no_curobo": True,
+            "ignore_obstacles": [target_name],
         }
     )
     moves.append(
@@ -322,52 +330,29 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
         }
     )
     moves.append({"type": "gripper", "grip_type": "close", "wait_time": 1.0})
-    # moves.append(
-    #     {
-    #         "type": "arm",
-    #         "goal": after_grasp_position + quaternion_orientation,
-    #         "wait_time": 0.0,
-    #     }
-    # )
+    
     moves.append(
         {
             "type": "arm",
             "goal": ready_pour_pose,
             "wait_time": 0.0,
             "ignore_obstacles": [target_name],
+            "no_curobo": True,
         }
     )
-    # moves.append(
-    #     {"type": "arm", "goal": pour_pose1, "no_curobo": True, "wait_time": 0.0}
-    # )
-    # moves.append(
-    #     {"type": "arm", "goal": pour_pose2, "no_curobo": True, "wait_time": 0.0}
-    # )
     moves.append(
         {"type": "arm", "goal": pour_pose3, "no_curobo": True, "wait_time": 1.0}
     )
-    # moves.append(
-    #     {"type": "arm", "goal": pour_pose2, "no_curobo": True, "wait_time": 0.0}
-    # )
-    # moves.append(
-    #     {"type": "arm", "goal": pour_pose1, "no_curobo": True, "wait_time": 0.0}
-    # )
     moves.append(
         {"type": "arm", "goal": ready_pour_pose, "no_curobo": True, "wait_time": 0.0}
     )
-    # moves.append(
-    #     {
-    #         "type": "arm",
-    #         "goal": after_grasp_position + quaternion_orientation,
-    #         "wait_time": 0.0,
-    #     }
-    # )
     moves.append(
         {
             "type": "arm",
             "goal": release_position + quaternion_orientation,
             "wait_time": 0.0,
             "ignore_obstacles": [target_name],
+            "no_curobo": True,
         }
     )
     moves.append({"type": "gripper", "grip_type": "open", "wait_time": 1.0})
@@ -394,7 +379,6 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
 
     full_act = {"moves": moves, "obstacles": obstacles}
     return full_act
-
 
 def grab_and_drop(grasp: np.array, args: list, scene_data: dict) -> list[dict]:
     moves = []
@@ -510,7 +494,10 @@ def grab_place_curobo(
     grasp_position = [p + f * 0.048 for p, f in zip(position, front, strict=False)]
 
     release_position = args[0]
-    after_release_position = [release_position[0] - 0.05] + [release_position[1] - 0.05] + [release_position[2]]
+    after_release_position = [
+        p - f * 0.05 for p, f in zip(release_position, front, strict=False)
+    ]
+
     moves.append(
         {
             "type": "arm",
