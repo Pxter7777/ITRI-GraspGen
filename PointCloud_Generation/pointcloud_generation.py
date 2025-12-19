@@ -561,6 +561,13 @@ class PointCloudGenerator:
                 raise ValueError
         boxes = [target_boxes[target_name] for target_name in target_names]
 
+        if hasattr(self, 'sample_matcher'):
+            ok, scores = self.sample_matcher.validate_boxes(color_np_org, boxes, target_names)
+            if not ok:
+                logger.error(f"Detection validation failed. Scores: {scores}")
+                raise ValueError("Selected objects do not match sample references")
+            logger.info(f"Validation passed. Scores: {scores}")
+
         # SAM2 inference
         named_masks = []
         for box in boxes:
