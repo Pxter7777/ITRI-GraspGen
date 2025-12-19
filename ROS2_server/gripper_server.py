@@ -113,7 +113,7 @@ class TMRobotController(Node):
         self.num_response_to_send_back = (
             0  # it's enough because we're not using multi-threading
         )
-        self.current_IO_states = [0, 0, 0]
+        self.current_IO_states = [0, 0, 1]
 
     def _capture_command(self):
         if self.moving:
@@ -220,6 +220,8 @@ class TMRobotController(Node):
 
     def feedback_callback(self, msg: FeedbackState) -> None:
         self.current_IO_states = list(msg.ee_digital_output)[:3]
+        if self.current_IO_states == [0,0,0]:
+            self.current_IO_states = [0,0,1]
         if not self.moving:
             return
         current_time = time.time()
@@ -316,6 +318,7 @@ class TMRobotController(Node):
             future.add_done_callback(_done)
 
     def append_gripper_states(self, states):
+        logger.warning(f"{self.current_IO_states} -> {states}")
         if self.current_IO_states == states:
             logger.warning("set wait time to 0 since gripper already in target state")
             self._handle_success()
