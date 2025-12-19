@@ -5,7 +5,7 @@
         [413, 205, 500, 300]
     ],
     "valid_region":[363, 238, 846,504],
-    "track": ["green water bottle", "blue water bottle"],
+    "track": ["green cylindrical bottle", "blue cylindrical bottle"],
     "extra_obstacles": {
         "pot": {
             "max": [
@@ -68,7 +68,7 @@
             ]
         },
         {
-            "target_name": "green water bottle",
+            "target_name": "green cylindrical bottle",
             "qualifier": "cup_qualifier",
             "action": "grab_and_pour_and_place_back_curobo",
             "args": [
@@ -76,7 +76,7 @@
             ]
         },
         {
-            "target_name": "blue water bottle",
+            "target_name": "blue cylindrical bottle",
             "qualifier": "cup_qualifier",
             "action": "grab_place_curobo",
             "args": [
