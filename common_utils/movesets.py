@@ -298,8 +298,8 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
         raise ValueError(f"axis_norm={axis_norm}")
         # pour_rotation = [-0.271, 0.653, -0.271, 0.653]
 
-    # ready_pour_pose = ready_pour_position + ready_pour_rotation
-    ready_pour_pose = ready_pour_position + quaternion_orientation
+    ready_pour_pose = ready_pour_position + ready_pour_rotation
+    # ready_pour_pose = ready_pour_position + quaternion_orientation
 
     # pour_pose1 = ready_pour_position + pour_rotation1
     # pour_pose2 = ready_pour_position + pour_rotation2
@@ -337,7 +337,6 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
             "goal": ready_pour_pose,
             "wait_time": 0.0,
             "ignore_obstacles": [target_name],
-            "no_curobo": True,
         }
     )
     moves.append(
@@ -352,7 +351,6 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
             "goal": release_position + quaternion_orientation,
             "wait_time": 0.0,
             "ignore_obstacles": [target_name],
-            "no_curobo": True,
         }
     )
     moves.append({"type": "gripper", "grip_type": "open", "wait_time": 1.0})
