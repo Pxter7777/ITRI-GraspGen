@@ -12,7 +12,9 @@ logger = logging.getLogger(__name__)
 
 class SampleMatcher:
     def __init__(self, sample_dir: str = "sample_data/refs", threshold: float = 0.65):
-        self.sample_dir = Path(sample_dir)
+        repo_root = Path(__file__).resolve().parents[1]
+        default_dir = repo_root / "sample_data/refs"
+        self.sample_dir = Path(sample_dir) if sample_dir else default_dir
         self.threshold = threshold
         self.samples = {}
         self._load_samples()
