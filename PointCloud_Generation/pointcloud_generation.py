@@ -23,6 +23,7 @@ from PointCloud_Generation import visualization  # noqa: E402
 from PointCloud_Generation import sam_utils  # noqa: E402
 from PointCloud_Generation.stereo_utils import FoundationStereoModel  # noqa: E402
 from PointCloud_Generation.zed_utils import ZedCamera  # noqa: E402
+
 # from PointCloud_Generation.yolo_inference import YOLOv5Detector  # noqa: E402
 from PointCloud_Generation.sample_validation import SampleMatcher
 
@@ -493,8 +494,8 @@ class PointCloudGenerator:
 
         try:
             self.sample_matcher = SampleMatcher(
-            sample_dir="sample_data/refs",
-            threshold=0.65,
+                sample_dir="sample_data/refs",
+                threshold=0.65,
             )
         except Exception as e:
             logger.warning(f"SampleMatcher init failed: {e}")
