@@ -835,6 +835,7 @@ def main():
                 )  # catch the fail, let isaacsim continue to move
                 print("get Notice", notice)
                 if notice["message"] == "Abort":
+                    last_joint_states = default_config
                     graspgen_sender.send_data({"message": "Abort"})
                     # eat datas
                     for _ in range(5):
@@ -848,7 +849,6 @@ def main():
                 else:
                     raise ValueError("Unknown message")
 
-                last_joint_states = default_config
 
                 continue
 
