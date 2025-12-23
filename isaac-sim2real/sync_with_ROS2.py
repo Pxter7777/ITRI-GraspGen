@@ -858,6 +858,9 @@ def main():
             if graspgen_datas[0] == "EOF":
                 graspgen_eof = True
                 continue
+            elif graspgen_datas[0] == "Reset_to_default":
+                last_joint_states = default_config
+                continue
             print("-------------Received new action--------------")
             graspgen_eof = False
             for graspgen_data in graspgen_datas:
