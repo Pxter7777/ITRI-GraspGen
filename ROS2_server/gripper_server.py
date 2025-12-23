@@ -220,8 +220,8 @@ class TMRobotController(Node):
 
     def feedback_callback(self, msg: FeedbackState) -> None:
         self.current_IO_states = list(msg.ee_digital_output)[:3]
-        if self.current_IO_states == [0,0,0]:
-            self.current_IO_states = [0,0,1]
+        if self.current_IO_states == [0, 0, 0]:
+            self.current_IO_states = [0, 0, 1]
         if not self.moving:
             return
         current_time = time.time()

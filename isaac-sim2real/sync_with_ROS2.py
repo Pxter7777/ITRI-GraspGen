@@ -849,7 +849,6 @@ def main():
                 else:
                     raise ValueError("Unknown message")
 
-
                 continue
 
             graspgen_datas = graspgen_receiver.capture_data()
