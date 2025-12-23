@@ -322,7 +322,7 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
         }
     )
     moves.append({"type": "gripper", "grip_type": "close", "wait_time": 1.0})
-    
+
     moves.append(
         {
             "type": "arm",
@@ -466,6 +466,7 @@ def open_grip(
     full_act = {"moves": moves, "obstacles": obstacles}
     return full_act
 
+
 def grab_place_curobo(
     target_name: str, grasp: np.array, args: list, scene_data: dict
 ) -> dict:
@@ -507,7 +508,7 @@ def grab_place_curobo(
         }
     )
     moves.append({"type": "gripper", "grip_type": "close", "wait_time": 1.0})
-    
+
     moves.append(
         {
             "type": "arm",
@@ -540,6 +541,7 @@ def grab_place_curobo(
 
     full_act = {"moves": moves, "obstacles": obstacles}
     return full_act
+
 
 action_dict = {
     "grab_and_pour_and_place_back": grab_and_pour_and_place_back,
