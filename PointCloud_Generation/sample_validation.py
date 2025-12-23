@@ -136,3 +136,42 @@ class SampleMatcher:
                 logger.info(f"Validation passed for '{target_name}': score={score:.3f}")
         
         return all_passed, scores
+    
+    def filter_boxes(self, image: np.ndarray, target_names: dict) -> tuple[list, dict]:
+        """
+        Filter detected boxes based on validation scores.
+        """
+
+        if len(self.samples) == 0:
+            logger.error(f"No samples loaded from {self.sample_dir}; failing validation.")
+            return [], {}
+        
+        kept = []
+        scores = {}
+        for target_name, boxes_list in target_names.items():
+            sample_key = target_name.replace(" ", "_")
+            
+            if sample_key not in self.samples:
+                logger.warning(f"No reference sample for '{target_name}', skipping validation")
+                scores[target_name] = 1.0
+                continue
+            
+            for box in boxes_list:
+                x1, y1, x2, y2 = map(int, box.box)
+                cropped = image[y1:y2, x1:x2]
+            
+                if cropped.size == 0:
+                    logger.error(f"Empty crop for {target_name} at box {box.box}")
+                    scores[target_name] = 0.0
+                    continue
+                
+                detected_hist = self._compute_hsv_histogram(cropped)
+                score = self._compare_histograms(detected_hist, self.samples[sample_key])
+                scores[target_name] = score
+                
+                if score >= self.threshold:
+                    kept.append(box)
+                else:
+                    logger.warning(f"Filtering out '{target_name}': score={score:.3f} < threshold={self.threshold:.3f}")
+            
+        return kept, scores
