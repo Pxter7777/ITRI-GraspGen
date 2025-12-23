@@ -835,6 +835,7 @@ def main():
                 )  # catch the fail, let isaacsim continue to move
                 print("get Notice", notice)
                 if notice["message"] == "Abort":
+                    last_joint_states = default_config
                     graspgen_sender.send_data({"message": "Abort"})
                     # eat datas
                     for _ in range(5):
@@ -848,8 +849,6 @@ def main():
                 else:
                     raise ValueError("Unknown message")
 
-                last_joint_states = default_config
-
                 continue
 
             graspgen_datas = graspgen_receiver.capture_data()
@@ -857,6 +856,9 @@ def main():
                 continue
             if graspgen_datas[0] == "EOF":
                 graspgen_eof = True
+                continue
+            elif graspgen_datas[0] == "Reset_to_default":
+                last_joint_states = default_config
                 continue
             print("-------------Received new action--------------")
             graspgen_eof = False

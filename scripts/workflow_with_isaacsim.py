@@ -279,6 +279,7 @@ def main():
                     raise ValueError(f"Unknown message {response['message']}")
             except KeyboardInterrupt:
                 logger.info("Manual stopping current action.")
+                sender.send_data(["Reset_to_default"])
             except InterruptedError as e:
                 name = action["target_name"]
                 logger.exception(f"Action for {name} interrupted, stopping. {e}")
