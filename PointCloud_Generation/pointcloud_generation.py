@@ -1132,7 +1132,7 @@ class PointCloudGenerator:
             target_boxes[target] = None
         # Capture image
         try:
-            zed_status, left_image, right_image = self.zed.catarget_namespture_images()
+            zed_status, left_image, right_image = self.zed.capture_images()
         except Exception as e:
             logger.exception(f"error{e}")
             return RuntimeError
