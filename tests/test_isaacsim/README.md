@@ -1,0 +1,2 @@
+- execute these scripts when isaac-sim2real is running.
+- And since it's not really a small unit test, I think I can just leave these tests non-automated.
