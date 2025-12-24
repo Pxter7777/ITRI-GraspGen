@@ -3,7 +3,7 @@ import json
 import keyboard
 import time
 HOST = "192.168.1.33"   # 改成顯示電腦的 IP，例如 "192.168.1.123"
-PORT = 50007
+PORT = 50008
 
 TEST_LINES = """
 35.55,-43.31,119.41,115.86,-88.3,184.33,0,0,0
@@ -179,8 +179,8 @@ def send_traj(rows):
             print("Server:", resp.strip())
         end = time.time()
         print(f"Time taken: {end - start:.3f} seconds")
-    finally:
-        pass
+    except Exception as e:
+        print("Error sending trajectory:", e)
 
 
 if __name__ == "__main__":
