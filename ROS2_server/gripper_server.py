@@ -201,8 +201,10 @@ class TMRobotController(Node):
             command_lines = [self.current_joints_states + self.goal_gripper]
         try:
             send_traj(command_lines)
-        except TimeoutError as e:
-            logger.error(f"send_traj 失敗: {e}")
+        except OSError as e: # maybe, when the isaac-sim display pc is not reachable
+            logger.error(f"OSError, send_traj failed, not connected: {e}")
+        except TimeoutError as e: # maybe when the isaac-sim display pc is not listening
+            logger.error(f"TimeoutError, send_traj failed, not listening: {e}")
 
 
     def setup_services(self):
