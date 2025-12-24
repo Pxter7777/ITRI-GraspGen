@@ -305,9 +305,9 @@ class TMRobotController(Node):
             future.add_done_callback(_done)
 
     def append_gripper_states(self, states):
-        logger.warning(f"{self.current_IO_states} -> {states}")
+        logger.debug(f"{self.current_IO_states} -> {states}")
         if self.current_IO_states == states:
-            logger.warning("set wait time to 0 since gripper already in target state")
+            logger.info("set wait time to 0 since gripper already in target state")
             self._handle_success()
             return
         if not (isinstance(states, (list, tuple)) and len(states) == 3):
@@ -385,7 +385,7 @@ class TMRobotController(Node):
 
         # 動作指令
         script_to_run = cmd
-        logger.info(f"正在執行佇列中的腳本: {script_to_run} wait_time={wait_time}")
+        logger.debug(f"正在執行佇列中的腳本: {script_to_run} wait_time={wait_time}")
         self._send_script_async(script_to_run, wait_time)
 
     def _send_script_async(self, script: str, wait_time):
@@ -396,16 +396,14 @@ class TMRobotController(Node):
         req = SendScript.Request()
         req.id = "auto"
         req.script = script
-        logger.info("ready to call async")
         future = self.script_cli.call_async(req)
-        logger.info("called async")
 
         def _done(_):
             try:
                 res = future.result()
                 ok = bool(getattr(res, "ok", False))
                 if ok:
-                    logger.info("✅ successed")
+                    logger.debug("✅ successed")
                 else:
                     logger.error("⚠️ failed to send script.")
                     self._handle_failure()
