@@ -24,6 +24,7 @@ from PointCloud_Generation import sam_utils  # noqa: E402
 from PointCloud_Generation.stereo_utils import FoundationStereoModel  # noqa: E402
 from PointCloud_Generation.zed_utils import ZedCamera  # noqa: E402
 # from PointCloud_Generation.yolo_inference import YOLOv5Detector  # noqa: E402
+from PointCloud_Generation.sample_validation import SampleMatcher
 
 logger = logging.getLogger(__name__)
 
@@ -489,6 +490,15 @@ class PointCloudGenerator:
         self.stereo_model = FoundationStereoModel(args)
         self.groundingdino_predictor = GroundindDinoPredictor()
         self.zed = ZedCamera(args.use_png)
+
+        try:
+            self.sample_matcher = SampleMatcher(
+            sample_dir="../sample_data/refs",
+            threshold=0.65,
+            )
+        except Exception as e:
+            logger.warning(f"SampleMatcher init failed: {e}")
+            self.sample_matcher = None
 
     def generate_pointcloud(
         self,
