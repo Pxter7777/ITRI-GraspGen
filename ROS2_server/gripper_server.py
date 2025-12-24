@@ -273,30 +273,6 @@ class TMRobotController(Node):
             logger.error("Stuck detected.")
             self._handle_failure()
 
-    def _start_gripper_wait_timer(self):
-        # 建立 Timer，並在執行 callback 時自行取消
-        self._wait_timer = self.create_timer(1.0, self._gripper_wait_done)
-
-    def _gripper_wait_done(self):
-        logger.info("✅ 夾爪動作等待完成")
-        self._busy = False
-
-        if hasattr(self, "_wait_timer"):
-            self._wait_timer.cancel()
-            del self._wait_timer
-
-    def _start_arm_wait_timer(self, time):
-        # 建立 Timer，並在執行 callback 時自行取消
-        self._wait_timer_arm = self.create_timer(time, self._arm_wait_done)
-
-    def _arm_wait_done(self):
-        logger.info("✅ 夾爪動作等待完成")
-        self._busy = False
-
-        if hasattr(self, "_wait_timer_arm"):
-            self._wait_timer_arm.cancel()
-            del self._wait_timer_arm
-
     def set_io(self, states: list):
         """設定 End_DO0, End_DO1, End_DO2 狀態，例如 [1, 0, 0]"""
         for pin, state in enumerate(states):
@@ -339,33 +315,6 @@ class TMRobotController(Node):
             {"script": f"IO:{states[0]},{states[1]},{states[2]}", "wait_time": 0.0}
         )
 
-    def append_gripper_close(self):
-        self.append_gripper_states([1, 0, 0])
-
-    def append_gripper_half(self):
-        self.append_gripper_states([0, 1, 0])
-
-    def append_gripper_open(self):
-        self.append_gripper_states([0, 0, 1])
-
-    def append_tcp(
-        self, tcp_values: list, vel=20, acc=20, coord=80, fine=False, wait_time=0.0
-    ):
-        if len(tcp_values) != 6:
-            logger.error("TCP 必須 6 個數字")
-            return
-        fine_str = "true" if fine else "false"
-        script = (
-            f'PTP("CPP",{tcp_values[0]:.2f}, {tcp_values[1]:.2f}, {tcp_values[2]:.2f}, '
-            f"{tcp_values[3]:.2f}, {tcp_values[4]:.2f}, {tcp_values[5]:.2f},"
-            f"{vel},{acc},{coord},{fine_str})"
-        )
-        self.tcp_queue.append({"script": script, "wait_time": wait_time})
-        if wait_time > 0:
-            self.states_need_to_wait.append(
-                {"position": tcp_values, "time_to_wait": wait_time}
-            )
-
     def append_ptp(
         self, ptp_values: list, vel=20, acc=20, coord=80, fine=False, wait_time=0.0
     ):
@@ -397,7 +346,6 @@ class TMRobotController(Node):
         if len(joint_values) != 6:
             logger.error("TCP 必須 6 個數字")
             return
-        # fine_str = "true" if fine else "false"
         script = (
             f'PTP("JPP",{joint_values[0]:.2f}, {joint_values[1]:.2f}, {joint_values[2]:.2f}, '
             f"{joint_values[3]:.2f}, {joint_values[4]:.2f}, {joint_values[5]:.2f},"
@@ -420,7 +368,6 @@ class TMRobotController(Node):
         item = self.tcp_queue.popleft()
         cmd, wait_time = item["script"], item["wait_time"]
         self._last_send_ts = now
-        # self._busy = True
 
         # IO 指令
         if isinstance(cmd, str) and cmd.startswith("IO:"):
@@ -525,19 +472,6 @@ def main():
 
     try:
         node.setup_services()
-
-        # node.append_tcp([500.00, 300.00, 100.00, 90.00, 0.00, 90.00])
-        # node.append_tcp([523.00, 193.00, 148.00, 101.00, 1.85, -27.8])
-        # for move in data:
-        #     if move["type"] == "move_arm":
-        #         node.append_tcp(move["goal"], wait_time=move["wait_time"])
-        #     elif move["type"] == "gripper" and move["goal"] == "grab":
-        #         node.append_gripper_close()
-        #     elif move["type"] == "gripper" and move["goal"] == "release":
-        #         node.append_gripper_open()
-        # node.append_tcp([367.05, -140.73, 258.21, 91.85, 8.72, 73.71])
-        # node.append_gripper_open()
-
         rclpy.spin(node)
     except KeyboardInterrupt:
         logger.info("中斷程式")
