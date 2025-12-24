@@ -142,6 +142,7 @@ class TMRobotController(Node):
         self.moving = True
         self.wait_time = data["wait_time"]
         self.current_moving_type = data["type"]
+        command_lines = []
         if data["type"] == "arm":
             vel = data.get("custom_vel")
             if vel is None:
@@ -156,33 +157,7 @@ class TMRobotController(Node):
             joints_values_degree = [
                 np.rad2deg(joints) for joints in data["joints_values"]
             ]
-            """
-            -88.26,3.78,103.16,76.37,-106.55,181.45,0,1,0
-            -88.26,2.88,102.47,77.95,-106.55,181.45,0,1,0
-            -88.26,2.37,102.08,78.86,-106.56,181.45,0,1,0
-            -88.26,2.29,102.02,79.01,-106.56,181.45,0,1,0
-            -88.26,2.29,102.02,79.01,-106.56,181.45,0,1,0
-            """
-            command_lines = []
-            for joint in joints_values_degree:
-                command_lines.append(list(joint) + self.current_IO_states)
-            """
-            for joint in joints_values_degree:
-                # 轉成 list + 補 TCP (0,1,0)
-                row1 = list(joint) + [0, 1, 0]
-                row2 = [0, 0, 0]
-                # 每個數字轉成字串，用逗號串起來
-                line1 = ",".join(f"{v:.2f}" for v in row1)
-                # 
-                line2 = ",".join(f"{v:.2f}" for v in row1)
-
-                command_lines.append(line)
-            """
-            # 每行用 \n 串起來
-            # command_to_send = "\n".join(command_lines) + "\n"
-            send_traj(command_lines)
-            logger.warning(f"send {command_lines}")
-            # time.sleep(1.0)
+            command_lines = [list(joint) + self.current_IO_states for joint in joints_values_degree]
             goal_degree = joints_values_degree.pop()  # remove the goal
             accepted_joints = []
             for joints in joints_values_degree:
@@ -213,24 +188,22 @@ class TMRobotController(Node):
                 self.append_ptp(cartesian_pose)
             self.append_ptp(self.goal_cartesian_pose)
         elif data["type"] == "gripper":
-            print(data["grip_type"])
+            logger.debug(data["grip_type"])
             if data["grip_type"] == "close":
                 self.goal_gripper = [1, 0, 0]
-                self.append_gripper_states([1, 0, 0])
-                send_traj([self.current_joints_states + [1,0,0]])
             elif data["grip_type"] == "open":
                 self.goal_gripper = [0, 0, 1]
-                self.append_gripper_states([0, 0, 1])
-                send_traj([self.current_joints_states + [0,0,1]])
             elif data["grip_type"] == "half_open":
                 self.goal_gripper = [0, 1, 0]
-                self.append_gripper_states([0, 1, 0])
-                send_traj([self.current_joints_states + [0,1,0]])
             elif data["grip_type"] == "close_tight":
                 self.goal_gripper = [1, 1, 0]
-                self.append_gripper_states([1, 1, 0])
-                send_traj([self.current_joints_states + [1,1,0]])
-                
+            self.append_gripper_states(self.goal_gripper)
+            command_lines = [self.current_joints_states + self.goal_gripper]
+        try:
+            send_traj(command_lines)
+        except TimeoutError as e:
+            logger.error(f"send_traj 失敗: {e}")
+
 
     def setup_services(self):
         logger.info("等待 ROS 2 服務啟動...")
@@ -573,7 +546,7 @@ def main():
 
         rclpy.spin(node)
     except KeyboardInterrupt:
-        print("中斷程式")
+        logger.info("中斷程式")
     finally:
         node.destroy_node()
         rclpy.shutdown()
