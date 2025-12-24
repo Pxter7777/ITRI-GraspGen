@@ -13,6 +13,7 @@ import argparse
 import logging
 import os
 import sys
+from send_traj_socket import send_traj
 
 # Because this script isn't using itri-graspgen venv, we need to manually add the project root to sys.path
 current_file_dir = os.path.dirname(os.path.abspath(__file__))
@@ -114,6 +115,7 @@ class TMRobotController(Node):
             0  # it's enough because we're not using multi-threading
         )
         self.current_IO_states = [0, 0, 1]
+        self.current_joints_states = [0.0] * 6
 
     def _capture_command(self):
         if self.moving:
@@ -154,6 +156,33 @@ class TMRobotController(Node):
             joints_values_degree = [
                 np.rad2deg(joints) for joints in data["joints_values"]
             ]
+            """
+            -88.26,3.78,103.16,76.37,-106.55,181.45,0,1,0
+            -88.26,2.88,102.47,77.95,-106.55,181.45,0,1,0
+            -88.26,2.37,102.08,78.86,-106.56,181.45,0,1,0
+            -88.26,2.29,102.02,79.01,-106.56,181.45,0,1,0
+            -88.26,2.29,102.02,79.01,-106.56,181.45,0,1,0
+            """
+            command_lines = []
+            for joint in joints_values_degree:
+                command_lines.append(list(joint) + self.current_IO_states)
+            """
+            for joint in joints_values_degree:
+                # 轉成 list + 補 TCP (0,1,0)
+                row1 = list(joint) + [0, 1, 0]
+                row2 = [0, 0, 0]
+                # 每個數字轉成字串，用逗號串起來
+                line1 = ",".join(f"{v:.2f}" for v in row1)
+                # 
+                line2 = ",".join(f"{v:.2f}" for v in row1)
+
+                command_lines.append(line)
+            """
+            # 每行用 \n 串起來
+            # command_to_send = "\n".join(command_lines) + "\n"
+            send_traj(command_lines)
+            logger.warning(f"send {command_lines}")
+            # time.sleep(1.0)
             goal_degree = joints_values_degree.pop()  # remove the goal
             accepted_joints = []
             for joints in joints_values_degree:
@@ -184,18 +213,24 @@ class TMRobotController(Node):
                 self.append_ptp(cartesian_pose)
             self.append_ptp(self.goal_cartesian_pose)
         elif data["type"] == "gripper":
+            print(data["grip_type"])
             if data["grip_type"] == "close":
                 self.goal_gripper = [1, 0, 0]
                 self.append_gripper_states([1, 0, 0])
+                send_traj([self.current_joints_states + [1,0,0]])
             elif data["grip_type"] == "open":
                 self.goal_gripper = [0, 0, 1]
                 self.append_gripper_states([0, 0, 1])
+                send_traj([self.current_joints_states + [0,0,1]])
             elif data["grip_type"] == "half_open":
                 self.goal_gripper = [0, 1, 0]
                 self.append_gripper_states([0, 1, 0])
+                send_traj([self.current_joints_states + [0,1,0]])
             elif data["grip_type"] == "close_tight":
                 self.goal_gripper = [1, 1, 0]
                 self.append_gripper_states([1, 1, 0])
+                send_traj([self.current_joints_states + [1,1,0]])
+                
 
     def setup_services(self):
         logger.info("等待 ROS 2 服務啟動...")
@@ -220,6 +255,7 @@ class TMRobotController(Node):
 
     def feedback_callback(self, msg: FeedbackState) -> None:
         self.current_IO_states = list(msg.ee_digital_output)[:3]
+        self.current_joints_states = list(np.rad2deg(msg.joint_pos))
         if self.current_IO_states == [0, 0, 0]:
             self.current_IO_states = [0, 0, 1]
         if not self.moving:
