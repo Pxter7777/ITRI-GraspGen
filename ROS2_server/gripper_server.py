@@ -504,12 +504,6 @@ def parse_args():
         description="Visualize grasps on a scene point cloud after IsaacSim inference, for entire scene"
     )
     parser.add_argument(
-        "--input",
-        type=str,
-        default="",
-        help="Directory containing JSON files with point cloud data",
-    )
-    parser.add_argument(
         "--debug",
         action="store_true",
         help="show debug info",
