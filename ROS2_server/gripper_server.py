@@ -157,7 +157,9 @@ class TMRobotController(Node):
             joints_values_degree = [
                 np.rad2deg(joints) for joints in data["joints_values"]
             ]
-            command_lines = [list(joint) + self.current_IO_states for joint in joints_values_degree]
+            command_lines = [
+                list(joint) + self.current_IO_states for joint in joints_values_degree
+            ]
             goal_degree = joints_values_degree.pop()  # remove the goal
             accepted_joints = []
             for joints in joints_values_degree:
@@ -201,11 +203,12 @@ class TMRobotController(Node):
             command_lines = [self.current_joints_states + self.goal_gripper]
         try:
             send_traj(command_lines)
-        except OSError as e: # maybe, when the isaac-sim display pc is not reachable
+        except OSError as e:  # maybe, when the isaac-sim display pc is not reachable
             logger.error(f"OSError, send_traj failed, not connected: {e}")
-        except TimeoutError as e: # maybe when the isaac-sim display pc is not listening
+        except (
+            TimeoutError
+        ) as e:  # maybe when the isaac-sim display pc is not listening
             logger.error(f"TimeoutError, send_traj failed, not listening: {e}")
-
 
     def setup_services(self):
         logger.info("等待 ROS 2 服務啟動...")
