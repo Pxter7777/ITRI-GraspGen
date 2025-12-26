@@ -38,75 +38,25 @@ from isaacsim_utils.socket_communication import (
 from isaacsim_utils import port_config
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--visualize_spheres",
-    action="store_true",
-    help="When True, visualizes robot spheres",
-    default=False,
-)
-parser.add_argument(
-    "--headless_mode",
-    type=str,
-    default=None,
-    help="To run headless, use one of [native, websocket], webrtc might not work.",
-)
-parser.add_argument(
-    "--robot", type=str, default="tm5s.yml", help="robot configuration to load"
-)
-parser.add_argument(
-    "--external_asset_path",
-    type=str,
-    default=None,
-    help="Path to external assets when loading an externally located robot",
-)
-parser.add_argument(
-    "--external_robot_configs_path",
-    type=str,
-    default=None,
-    help="Path to external robot config when loading an external robot",
-)
-
-parser.add_argument(
-    "--reactive",
-    action="store_true",
-    help="When True, runs in reactive mode",
-    default=False,
-)
-
-parser.add_argument(
-    "--constrain_grasp_approach",
-    action="store_true",
-    help="When True, approaches grasp with fixed orientation and motion only along z axis.",
-    default=False,
-)
-
-parser.add_argument(
-    "--reach_partial_pose",
-    nargs=6,
-    metavar=("qx", "qy", "qz", "x", "y", "z"),
-    help="Reach partial pose",
-    type=float,
-    default=None,
-)
-parser.add_argument(
-    "--hold_partial_pose",
-    nargs=6,
-    metavar=("qx", "qy", "qz", "x", "y", "z"),
-    help="Hold partial pose while moving to goal",
-    type=float,
-    default=None,
-)
-args = parser.parse_args()
 
 ############################################################
 
 # Third Party
 from omni.isaac.kit import SimulationApp  # noqa: E402
 
+def get_headless_mode():
+    peek_parser = argparse.ArgumentParser(add_help=False)
+    peek_parser.add_argument(
+        "--headless_mode",
+        type=str,
+        default=None,
+        help="To run headless, use one of [native, websocket], webrtc might not work.",
+    )
+    peek_args, _ = peek_parser.parse_known_args()
+    return peek_args.headless_mode
 simulation_app = SimulationApp(  # noqa: E402
     {
-        "headless": args.headless_mode is not None,
+        "headless": get_headless_mode() is not None,
         "width": "1920",
         "height": "1080",
     }
@@ -197,7 +147,7 @@ def save_plan(moves):
     print(f"Successfully saved first motion plan to {plan_filename}")
 
 
-def init_pose_matric(motion_gen):
+def init_pose_matric(args, motion_gen):
     pose_metric = None
     if args.constrain_grasp_approach:
         pose_metric = PoseCostMetric.create_grasp_approach_metric()
@@ -498,9 +448,67 @@ def action_handler(
                 break  # stop trying other acts
         else:  # all graspgen_datas failed
             graspgen_sender.send_data({"message": "Fail"})
-
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--visualize_spheres",
+        action="store_true",
+        help="When True, visualizes robot spheres",
+        default=False,
+    )
+    parser.add_argument(
+        "--headless_mode",
+        type=str,
+        default=None,
+        help="To run headless, use one of [native, websocket], webrtc might not work.",
+    )
+    parser.add_argument(
+        "--robot", type=str, default="tm5s.yml", help="robot configuration to load"
+    )
+    parser.add_argument(
+        "--external_asset_path",
+        type=str,
+        default=None,
+        help="Path to external assets when loading an externally located robot",
+    )
+    parser.add_argument(
+        "--external_robot_configs_path",
+        type=str,
+        default=None,
+        help="Path to external robot config when loading an external robot",
+    )
+    parser.add_argument(
+        "--reactive",
+        action="store_true",
+        help="When True, runs in reactive mode",
+        default=False,
+    )
+    parser.add_argument(
+        "--constrain_grasp_approach",
+        action="store_true",
+        help="When True, approaches grasp with fixed orientation and motion only along z axis.",
+        default=False,
+    )
+    parser.add_argument(
+        "--reach_partial_pose",
+        nargs=6,
+        metavar=("qx", "qy", "qz", "x", "y", "z"),
+        help="Reach partial pose",
+        type=float,
+        default=None,
+    )
+    parser.add_argument(
+        "--hold_partial_pose",
+        nargs=6,
+        metavar=("qx", "qy", "qz", "x", "y", "z"),
+        help="Hold partial pose while moving to goal",
+        type=float,
+        default=None,
+    )
+    return parser.parse_args()
 
 def main():
+    args = parse_args()
     setup_curobo_logger("warn")
     # create a curobo motion gen instance:
     # num_targets = 0
@@ -595,7 +603,7 @@ def main():
 
     print("Curobo is Ready")
 
-    add_extensions(simulation_app, args.headless_mode)
+    add_extensions(simulation_app, get_headless_mode())
 
     plan_config = MotionGenPlanConfig(
         enable_graph=False,
@@ -621,7 +629,7 @@ def main():
     # ).get_collision_check_world()
 
     ###### Pose matrice initialization
-    pose_metric = init_pose_matric(motion_gen)
+    pose_metric = init_pose_matric(args, motion_gen)
 
     ###### states ######
 
