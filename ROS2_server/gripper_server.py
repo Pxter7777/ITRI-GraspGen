@@ -13,6 +13,7 @@ import argparse
 import logging
 import os
 import sys
+from send_traj_socket import send_traj
 
 # Because this script isn't using itri-graspgen venv, we need to manually add the project root to sys.path
 current_file_dir = os.path.dirname(os.path.abspath(__file__))
@@ -114,6 +115,7 @@ class TMRobotController(Node):
             0  # it's enough because we're not using multi-threading
         )
         self.current_IO_states = [0, 0, 1]
+        self.current_joints_states = [0.0] * 6
 
     def _capture_command(self):
         if self.moving:
@@ -140,6 +142,7 @@ class TMRobotController(Node):
         self.moving = True
         self.wait_time = data["wait_time"]
         self.current_moving_type = data["type"]
+        command_lines = []
         if data["type"] == "arm":
             vel = data.get("custom_vel")
             if vel is None:
@@ -153,6 +156,9 @@ class TMRobotController(Node):
             self.goal_joints = data["joints_values"][-1]
             joints_values_degree = [
                 np.rad2deg(joints) for joints in data["joints_values"]
+            ]
+            command_lines = [
+                list(joint) + self.current_IO_states for joint in joints_values_degree
             ]
             goal_degree = joints_values_degree.pop()  # remove the goal
             accepted_joints = []
@@ -184,18 +190,25 @@ class TMRobotController(Node):
                 self.append_ptp(cartesian_pose)
             self.append_ptp(self.goal_cartesian_pose)
         elif data["type"] == "gripper":
+            logger.debug(data["grip_type"])
             if data["grip_type"] == "close":
                 self.goal_gripper = [1, 0, 0]
-                self.append_gripper_states([1, 0, 0])
             elif data["grip_type"] == "open":
                 self.goal_gripper = [0, 0, 1]
-                self.append_gripper_states([0, 0, 1])
             elif data["grip_type"] == "half_open":
                 self.goal_gripper = [0, 1, 0]
-                self.append_gripper_states([0, 1, 0])
             elif data["grip_type"] == "close_tight":
                 self.goal_gripper = [1, 1, 0]
-                self.append_gripper_states([1, 1, 0])
+            self.append_gripper_states(self.goal_gripper)
+            command_lines = [self.current_joints_states + self.goal_gripper]
+        try:
+            send_traj(command_lines)
+        except OSError as e:  # maybe, when the isaac-sim display pc is not reachable
+            logger.error(f"OSError, send_traj failed, not connected: {e}")
+        except (
+            TimeoutError
+        ) as e:  # maybe when the isaac-sim display pc is not listening
+            logger.error(f"TimeoutError, send_traj failed, not listening: {e}")
 
     def setup_services(self):
         logger.info("等待 ROS 2 服務啟動...")
@@ -220,6 +233,7 @@ class TMRobotController(Node):
 
     def feedback_callback(self, msg: FeedbackState) -> None:
         self.current_IO_states = list(msg.ee_digital_output)[:3]
+        self.current_joints_states = list(np.rad2deg(msg.joint_pos))
         if self.current_IO_states == [0, 0, 0]:
             self.current_IO_states = [0, 0, 1]
         if not self.moving:
@@ -264,30 +278,6 @@ class TMRobotController(Node):
             logger.error("Stuck detected.")
             self._handle_failure()
 
-    def _start_gripper_wait_timer(self):
-        # 建立 Timer，並在執行 callback 時自行取消
-        self._wait_timer = self.create_timer(1.0, self._gripper_wait_done)
-
-    def _gripper_wait_done(self):
-        logger.info("✅ 夾爪動作等待完成")
-        self._busy = False
-
-        if hasattr(self, "_wait_timer"):
-            self._wait_timer.cancel()
-            del self._wait_timer
-
-    def _start_arm_wait_timer(self, time):
-        # 建立 Timer，並在執行 callback 時自行取消
-        self._wait_timer_arm = self.create_timer(time, self._arm_wait_done)
-
-    def _arm_wait_done(self):
-        logger.info("✅ 夾爪動作等待完成")
-        self._busy = False
-
-        if hasattr(self, "_wait_timer_arm"):
-            self._wait_timer_arm.cancel()
-            del self._wait_timer_arm
-
     def set_io(self, states: list):
         """設定 End_DO0, End_DO1, End_DO2 狀態，例如 [1, 0, 0]"""
         for pin, state in enumerate(states):
@@ -318,9 +308,9 @@ class TMRobotController(Node):
             future.add_done_callback(_done)
 
     def append_gripper_states(self, states):
-        logger.warning(f"{self.current_IO_states} -> {states}")
+        logger.debug(f"{self.current_IO_states} -> {states}")
         if self.current_IO_states == states:
-            logger.warning("set wait time to 0 since gripper already in target state")
+            logger.info("set wait time to 0 since gripper already in target state")
             self._handle_success()
             return
         if not (isinstance(states, (list, tuple)) and len(states) == 3):
@@ -329,33 +319,6 @@ class TMRobotController(Node):
         self.tcp_queue.append(
             {"script": f"IO:{states[0]},{states[1]},{states[2]}", "wait_time": 0.0}
         )
-
-    def append_gripper_close(self):
-        self.append_gripper_states([1, 0, 0])
-
-    def append_gripper_half(self):
-        self.append_gripper_states([0, 1, 0])
-
-    def append_gripper_open(self):
-        self.append_gripper_states([0, 0, 1])
-
-    def append_tcp(
-        self, tcp_values: list, vel=20, acc=20, coord=80, fine=False, wait_time=0.0
-    ):
-        if len(tcp_values) != 6:
-            logger.error("TCP 必須 6 個數字")
-            return
-        fine_str = "true" if fine else "false"
-        script = (
-            f'PTP("CPP",{tcp_values[0]:.2f}, {tcp_values[1]:.2f}, {tcp_values[2]:.2f}, '
-            f"{tcp_values[3]:.2f}, {tcp_values[4]:.2f}, {tcp_values[5]:.2f},"
-            f"{vel},{acc},{coord},{fine_str})"
-        )
-        self.tcp_queue.append({"script": script, "wait_time": wait_time})
-        if wait_time > 0:
-            self.states_need_to_wait.append(
-                {"position": tcp_values, "time_to_wait": wait_time}
-            )
 
     def append_ptp(
         self, ptp_values: list, vel=20, acc=20, coord=80, fine=False, wait_time=0.0
@@ -388,7 +351,6 @@ class TMRobotController(Node):
         if len(joint_values) != 6:
             logger.error("TCP 必須 6 個數字")
             return
-        # fine_str = "true" if fine else "false"
         script = (
             f'PTP("JPP",{joint_values[0]:.2f}, {joint_values[1]:.2f}, {joint_values[2]:.2f}, '
             f"{joint_values[3]:.2f}, {joint_values[4]:.2f}, {joint_values[5]:.2f},"
@@ -411,7 +373,6 @@ class TMRobotController(Node):
         item = self.tcp_queue.popleft()
         cmd, wait_time = item["script"], item["wait_time"]
         self._last_send_ts = now
-        # self._busy = True
 
         # IO 指令
         if isinstance(cmd, str) and cmd.startswith("IO:"):
@@ -427,7 +388,7 @@ class TMRobotController(Node):
 
         # 動作指令
         script_to_run = cmd
-        logger.info(f"正在執行佇列中的腳本: {script_to_run} wait_time={wait_time}")
+        logger.debug(f"正在執行佇列中的腳本: {script_to_run} wait_time={wait_time}")
         self._send_script_async(script_to_run, wait_time)
 
     def _send_script_async(self, script: str, wait_time):
@@ -438,16 +399,14 @@ class TMRobotController(Node):
         req = SendScript.Request()
         req.id = "auto"
         req.script = script
-        logger.info("ready to call async")
         future = self.script_cli.call_async(req)
-        logger.info("called async")
 
         def _done(_):
             try:
                 res = future.result()
                 ok = bool(getattr(res, "ok", False))
                 if ok:
-                    logger.info("✅ successed")
+                    logger.debug("✅ successed")
                 else:
                     logger.error("⚠️ failed to send script.")
                     self._handle_failure()
@@ -495,12 +454,6 @@ def parse_args():
         description="Visualize grasps on a scene point cloud after IsaacSim inference, for entire scene"
     )
     parser.add_argument(
-        "--input",
-        type=str,
-        default="",
-        help="Directory containing JSON files with point cloud data",
-    )
-    parser.add_argument(
         "--debug",
         action="store_true",
         help="show debug info",
@@ -522,22 +475,9 @@ def main():
 
     try:
         node.setup_services()
-
-        # node.append_tcp([500.00, 300.00, 100.00, 90.00, 0.00, 90.00])
-        # node.append_tcp([523.00, 193.00, 148.00, 101.00, 1.85, -27.8])
-        # for move in data:
-        #     if move["type"] == "move_arm":
-        #         node.append_tcp(move["goal"], wait_time=move["wait_time"])
-        #     elif move["type"] == "gripper" and move["goal"] == "grab":
-        #         node.append_gripper_close()
-        #     elif move["type"] == "gripper" and move["goal"] == "release":
-        #         node.append_gripper_open()
-        # node.append_tcp([367.05, -140.73, 258.21, 91.85, 8.72, 73.71])
-        # node.append_gripper_open()
-
         rclpy.spin(node)
     except KeyboardInterrupt:
-        print("中斷程式")
+        logger.info("中斷程式")
     finally:
         node.destroy_node()
         rclpy.shutdown()
