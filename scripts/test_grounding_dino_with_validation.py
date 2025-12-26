@@ -146,8 +146,8 @@ def main():
     parser.add_argument(
         "--threshold",
         type=float,
-        default=0.60,
-        help="Validation threshold (default: 0.60)",
+        default=0.50,
+        help="Validation threshold (default: 0.50)",
     )
     parser.add_argument(
         "--sample-dir",
@@ -209,7 +209,9 @@ def process_frame(image, gd_predictor, matcher, args, frame_num=None):
 
     # Run detection
     try:
-        boxes = gd_predictor.predict_boxes(image, prompt)
+        boxes = gd_predictor.predict_boxes(
+            image, prompt, box_threshold=0.4, text_threshold=0.4
+        )
     except Exception as e:
         logger.error(f"Detection failed: {e}")
         return None
@@ -383,7 +385,9 @@ def run_camera_mode(gd_predictor, matcher, args):
                 last_result_image = result_image  # Cache for display
             else:
                 # Display last processed result if available, otherwise raw image
-                result_image = last_result_image if last_result_image is not None else image
+                result_image = (
+                    last_result_image if last_result_image is not None else image
+                )
 
             # Display
             cv2.namedWindow("Camera - GroundingDINO + Validation", cv2.WINDOW_NORMAL)
