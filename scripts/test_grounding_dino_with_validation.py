@@ -350,6 +350,7 @@ def run_camera_mode(gd_predictor, matcher, args):
     paused = False
     camera_fps = 30  # Assuming camera runs at 30 FPS
     frame_interval = max(1, camera_fps // args.fps) if args.fps > 0 else 1
+    last_result_image = None  # Cache last processed result
 
     try:
         while True:
@@ -358,9 +359,9 @@ def run_camera_mode(gd_predictor, matcher, args):
             # Capture frame
             try:
                 status, left_img, right_img = zed.capture_images()
-                if status != 0:  # sl.ERROR_CODE.SUCCESS
-                    logger.error(f"Failed to capture image: {status}")
-                    continue
+                # if status != 0:  # sl.ERROR_CODE.SUCCESS
+                #     logger.error(f"Failed to capture image: {status}")
+                #     continue
             except Exception as e:
                 logger.error(f"Capture error: {e}")
                 break
@@ -379,8 +380,10 @@ def run_camera_mode(gd_predictor, matcher, args):
                 if result is None:
                     continue
                 result_image = result["image"]
+                last_result_image = result_image  # Cache for display
             else:
-                result_image = image
+                # Display last processed result if available, otherwise raw image
+                result_image = last_result_image if last_result_image is not None else image
 
             # Display
             cv2.namedWindow("Camera - GroundingDINO + Validation", cv2.WINDOW_NORMAL)
