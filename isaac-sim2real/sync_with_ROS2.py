@@ -97,59 +97,6 @@ parser.add_argument(
     type=float,
     default=None,
 )
-
-parser.add_argument(
-    "--graspfile",
-    type=str,
-    default="./grasps/isaac_grasp_scene_20251009_172355_transformed.yaml",
-    help="grasp file to load",
-)
-
-parser.add_argument(
-    "--pot",
-    type=str,
-    default="./scene/1027_pot.usdz",
-    help="object file to load",
-)
-
-parser.add_argument(
-    "--table",
-    type=str,
-    default="./scene/1029_table.usdz",
-    help="object file to load",
-)
-
-parser.add_argument(
-    "--bluecup",
-    type=str,
-    default="./scene/1027_Blue_thermos_cup.usdz",
-    help="object file to load",
-)
-
-parser.add_argument(
-    "--greencup",
-    type=str,
-    default="./scene/1029_Green_thermos_cup.usdz",
-    help="object file to load",
-)
-"""
-parser.add_argument(
-    "--object",
-    type=str,
-    default="./grasps/object_20250926_162723.usd",
-    help="object file to load",
-)
-parser.add_argument(
-    "--scene",
-    type=str,
-    default="./scene/1027_usdz.usdz",
-    help="scene file to load",
-)
-
-parser.add_argument("--graspfile", type=str, default="/home/j300/GenPointCloud/output/isaac_grasp_scene_20251007_104221.yaml", help="grasp file to load")
-parser.add_argument("--object", type=str, default="/home/j300/GenPointCloud/output/object_20251007_104221.usd", help="object file to load")
-parser.add_argument("--scene", type=str, default="/home/j300/GenPointCloud/output/scene_20251007_104221.usd", help="scene file to load")
-"""
 args = parser.parse_args()
 
 ############################################################
@@ -194,19 +141,6 @@ from curobo.wrap.reacher.motion_gen import (  # noqa: E402
     MotionGenConfig,
     MotionGenPlanConfig,
     PoseCostMetric,
-)
-
-
-############################################################
-MANUAL_MOVE = np.array([0.1, 0.0, 0.3])
-MANUAL_MOVE = np.array([0.0, 0.0, 0.0])
-MANUAL_MOVE_BLUECUP = np.array(
-    [0.026065930647736046, 1.636318075221711, 0.012234069244568768]
-)
-MANUAL_MOVE_GREENCUP = np.array([0.03982783504705867, 1.778285295774281, 0.0])
-MANUAL_MOVE_TABLE = np.array([-1.2361903358728599, 0.0, -0.7671155871219498])
-MANUAL_MOVE_POT = np.array(
-    [-0.8507747729708208, 0.3795653053965786, 0.006251720482707973]
 )
 
 
@@ -617,63 +551,6 @@ def main():
     world_cfg1.mesh[0].pose[2] = -10.5
     world_cfg = WorldConfig(cuboid=world_cfg_table.cuboid, mesh=world_cfg1.mesh)
 
-    ###### add our object and scene into the world ######
-    # only visual though
-    """
-    if args.table is not None:
-        table_path = os.path.abspath(args.table)
-        add_reference_to_stage(table_path, "/World/table")
-        table_prim = XFormPrim("/World/table")
-        current_pos_table, current_rot_table = table_prim.get_world_pose()
-        table_prim.set_world_pose(
-            position=current_pos_table + MANUAL_MOVE_TABLE,
-            orientation=current_rot_table,
-        )
-    if args.object is not None:
-        asset_path = os.path.abspath(args.object)
-        add_reference_to_stage(asset_path, "/World/object")
-        obj_prim = XFormPrim("/World/object")
-        current_pos, current_rot = obj_prim.get_world_pose()
-        obj_prim.set_world_pose(
-            position=current_pos + MANUAL_MOVE, orientation=current_rot
-        )
-    if args.scene is not None:
-        scene_path = os.path.abspath(args.scene)
-        add_reference_to_stage(scene_path, "/World/scene")
-        scene_prim = XFormPrim("/World/scene")
-        current_pos_scene, current_rot_scene = scene_prim.get_world_pose()
-        scene_prim.set_world_pose(
-            position=current_pos_scene + MANUAL_MOVE,
-            orientation=current_rot_scene,
-        )
-    if args.pot is not None:
-        pot_path = os.path.abspath(args.pot)
-        add_reference_to_stage(pot_path, "/World/pot")
-        pot_prim = XFormPrim("/World/pot")
-        current_pos_pot, current_rot_pot = pot_prim.get_world_pose()
-        pot_prim.set_world_pose(
-            position=current_pos_pot + MANUAL_MOVE_POT,
-            orientation=current_rot_pot,
-        )
-    if args.bluecup is not None:
-        bluecup_path = os.path.abspath(args.bluecup)
-        add_reference_to_stage(bluecup_path, "/World/bluecup")
-        bluecup_prim = XFormPrim("/World/bluecup")
-        current_pos_bluecup, current_rot_bluecup = bluecup_prim.get_world_pose()
-        bluecup_prim.set_world_pose(
-            position=current_pos_bluecup + MANUAL_MOVE_BLUECUP,
-            orientation=current_rot_bluecup,
-        )
-    if args.greencup is not None:
-        greencup_path = os.path.abspath(args.greencup)
-        add_reference_to_stage(greencup_path, "/World/greencup")
-        greencup_prim = XFormPrim("/World/greencup")
-        current_pos_greencup, current_rot_greencup = greencup_prim.get_world_pose()
-        greencup_prim.set_world_pose(
-            position=current_pos_greencup + MANUAL_MOVE_GREENCUP,
-            orientation=current_rot_greencup,
-        )
-    """
     ###### Motion Generation Config ######
     trajopt_tsteps = 32
     trajopt_dt = None
