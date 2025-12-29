@@ -82,7 +82,7 @@ successs = 0
 
 
 class TMRobotController(Node):
-    def __init__(self):
+    def __init__(self, real2sim: bool):
         super().__init__("tm_robot_controller")
         self.csv_receiver = NonBlockingJSONReceiver(port=port_config.MIA_TO_ROS2)
         self.csv_sender = NonBlockingJSONSender(port=port_config.ROS2_TO_MIA)
@@ -116,6 +116,7 @@ class TMRobotController(Node):
         )
         self.current_IO_states = [0, 0, 1]
         self.current_joints_states = [0.0] * 6
+        self.real2sim = real2sim
 
     def _capture_command(self):
         if self.moving:
@@ -201,14 +202,17 @@ class TMRobotController(Node):
                 self.goal_gripper = [1, 1, 0]
             self.append_gripper_states(self.goal_gripper)
             command_lines = [self.current_joints_states + self.goal_gripper]
-        try:
-            send_traj(command_lines)
-        except OSError as e:  # maybe, when the isaac-sim display pc is not reachable
-            logger.error(f"OSError, send_traj failed, not connected: {e}")
-        except (
-            TimeoutError
-        ) as e:  # maybe when the isaac-sim display pc is not listening
-            logger.error(f"TimeoutError, send_traj failed, not listening: {e}")
+        if self.real2sim:
+            try:
+                send_traj(command_lines)
+            except (
+                OSError
+            ) as e:  # maybe, when the isaac-sim display pc is not reachable
+                logger.error(f"OSError, send_traj failed, not connected: {e}")
+            except (
+                TimeoutError
+            ) as e:  # maybe when the isaac-sim display pc is not listening
+                logger.error(f"TimeoutError, send_traj failed, not listening: {e}")
 
     def setup_services(self):
         logger.info("等待 ROS 2 服務啟動...")
@@ -458,6 +462,11 @@ def parse_args():
         action="store_true",
         help="show debug info",
     )
+    parser.add_argument(
+        "--real2sim",
+        action="store_true",
+        help="enable sending trajectory to other device's isaacsim",
+    )
     return parser.parse_args()
 
 
@@ -471,7 +480,7 @@ def main():
         logging.basicConfig(level=logging.WARNING, handlers=[handler], force=True)
 
     rclpy.init()
-    node = TMRobotController()
+    node = TMRobotController(real2sim=args.real2sim)
 
     try:
         node.setup_services()
