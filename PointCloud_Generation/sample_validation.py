@@ -1,6 +1,8 @@
 """
 Sample-based validation for detected objects.
-Compares detected bounding boxes against reference images using color histograms.
+Compares detected bounding boxes against reference images using:
+- Global HSV color histograms (fast overall color signature)
+- Spatial HSV histograms (grid-based, preserves where colors appear)
 """
 
 import cv2
@@ -18,10 +20,13 @@ class SampleMatcher:
         self.sample_dir = Path(sample_dir) if sample_dir else default_dir
         self.threshold = threshold
         self.samples = {}
+        self.spatial_samples = {}
+        # Spatial histogram settings: 3x3 grid, reuse existing bin counts
+        self.grid_size = (3, 3)
         self._load_samples()
 
     def _load_samples(self):
-        """Load all reference images and compute their HSV histograms."""
+        """Load all reference images and compute their HSV and spatial HSV histograms."""
         if not self.sample_dir.exists():
             logger.warning(f"Sample directory {self.sample_dir} does not exist.")
             return
@@ -34,10 +39,15 @@ class SampleMatcher:
                 logger.warning(f"Failed to read image {img_path}. Skipping.")
                 continue
 
-            # Compute HSV histogram for the sample
+            # Compute global HSV histogram for the sample
             hist = self._compute_hsv_histogram(img)
             self.samples[name] = hist
-            logger.info(f"Loaded sample: {name}")
+
+            # Compute spatial HSV histograms (grid-based)
+            spatial_hists = self._compute_spatial_hsv_histograms(img, self.grid_size)
+            self.spatial_samples[name] = spatial_hists
+
+            logger.info(f"Loaded sample: {name} (spatial cells={len(spatial_hists)})")
 
         logger.info(f"Loaded {len(self.samples)} sample references")
 
@@ -62,6 +72,55 @@ class SampleMatcher:
         # Normalize
         hist = cv2.normalize(hist, hist).flatten()
         return hist
+
+    def _compute_spatial_hsv_histograms(
+        self, img: np.ndarray, grid_size: tuple[int, int] = (3, 3)
+    ) -> list[np.ndarray]:
+        """
+        Compute HSV histograms per grid cell to retain coarse spatial layout.
+
+        Args:
+            img: BGR image
+            grid_size: (rows, cols) for the grid
+
+        Returns:
+            List of normalized histograms, one per cell in row-major order
+        """
+        rows, cols = grid_size
+        h, w = img.shape[:2]
+        cell_h = max(1, h // rows)
+        cell_w = max(1, w // cols)
+
+        hists: list[np.ndarray] = []
+        for r in range(rows):
+            for c in range(cols):
+                y1 = r * cell_h
+                x1 = c * cell_w
+                # Last row/col consume remainder to cover full image
+                y2 = h if r == rows - 1 else (r + 1) * cell_h
+                x2 = w if c == cols - 1 else (c + 1) * cell_w
+                cell = img[y1:y2, x1:x2]
+                if cell.size == 0:
+                    # Fallback to zero histogram if unexpected empty cell
+                    hists.append(np.zeros((30 * 32 * 32,), dtype=np.float32))
+                    continue
+                hists.append(self._compute_hsv_histogram(cell))
+        return hists
+
+    def _compare_spatial_histograms(
+        self, hists_a: list[np.ndarray], hists_b: list[np.ndarray]
+    ) -> float:
+        """
+        Compare spatial histograms cell-by-cell and average the scores.
+        """
+        if not hists_a or not hists_b or len(hists_a) != len(hists_b):
+            return 0.0
+        scores = []
+        for ha, hb in zip(hists_a, hists_b, strict=False):
+            s = cv2.compareHist(ha, hb, cv2.HISTCMP_CORREL)
+            s = (s + 1) / 2  # map [-1,1] -> [0,1]
+            scores.append(max(0.0, min(1.0, float(s))))
+        return float(sum(scores) / len(scores))
 
     def _compare_histograms(self, hist1: np.ndarray, hist2: np.ndarray) -> float:
         """
@@ -140,7 +199,7 @@ class SampleMatcher:
 
     def filter_boxes(self, image: np.ndarray, target_names: dict) -> tuple[list, dict]:
         """
-        Filter detected boxes based on validation scores.
+        Filter detected boxes based on combined global + spatial histogram scores.
         """
 
         if len(self.samples) == 0:
@@ -170,17 +229,30 @@ class SampleMatcher:
                     scores[target_name] = 0.0
                     continue
 
+                # Global histogram score
                 detected_hist = self._compute_hsv_histogram(cropped)
-                score = self._compare_histograms(
+                global_score = self._compare_histograms(
                     detected_hist, self.samples[sample_key]
                 )
-                scores[target_name] = score
 
-                if score >= self.threshold:
+                # Spatial histogram score
+                det_spatial = self._compute_spatial_hsv_histograms(
+                    cropped, self.grid_size
+                )
+                ref_spatial = self.spatial_samples.get(sample_key)
+                spatial_score = self._compare_spatial_histograms(
+                    det_spatial, ref_spatial
+                )
+
+                # Combine: emphasize spatial layout to combat pixel shuffling
+                combined = 0.3 * global_score + 0.7 * spatial_score
+                scores[target_name] = combined
+
+                if combined >= self.threshold:
                     kept.append(box)
                 else:
                     logger.warning(
-                        f"Filtering out '{target_name}': score={score:.3f} < threshold={self.threshold:.3f}"
+                        f"Filtering out '{target_name}': score={combined:.3f} < threshold={self.threshold:.3f}"
                     )
 
         return kept, scores
