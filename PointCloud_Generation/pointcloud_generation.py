@@ -495,7 +495,7 @@ class PointCloudGenerator:
         try:
             self.sample_matcher = SampleMatcher(
                 sample_dir="sample_data/refs",
-                threshold=0.65,
+                threshold=0.5,
             )
         except Exception as e:
             logger.warning(f"SampleMatcher init failed: {e}")
