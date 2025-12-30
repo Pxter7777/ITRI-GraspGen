@@ -179,47 +179,9 @@ def parse_args():
     )
     return parser.parse_args()
 
-def main():
-    args = parse_args()
-    setup_curobo_logger("warn")
-    # create a curobo motion gen instance:
-    # num_targets = 0
-    # assuming obstacles are in objects_path:
-    my_world = World(stage_units_in_meters=1.0)
-    stage = my_world.stage
 
-    xform = stage.DefinePrim("/World", "Xform")
-    stage.SetDefaultPrim(xform)
-    stage.DefinePrim("/curobo", "Xform")
-    stage = my_world.stage
-
-    ###### Setup Robot ######
-    robot_cfg_path = get_robot_configs_path()
-    if args.external_robot_configs_path is not None:
-        robot_cfg_path = args.external_robot_configs_path
-    robot_cfg = load_yaml(join_path(robot_cfg_path, args.robot))["robot_cfg"]
-
-    if args.external_asset_path is not None:
-        robot_cfg["kinematics"]["external_asset_path"] = args.external_asset_path
-    if args.external_robot_configs_path is not None:
-        robot_cfg["kinematics"]["external_robot_configs_path"] = (
-            args.external_robot_configs_path
-        )
-    j_names = robot_cfg["kinematics"]["cspace"]["joint_names"]
-    # default_config = robot_cfg["kinematics"]["cspace"]["retract_config"]
-    # default_config = [-0.0031330717463317853, -0.782597719463971, 0.0013149953555822147, -2.3538521161513803, 0.006049369975929311, 1.5787788643767775, 0.7724911821319892, 1.0, 1.0]
-    default_config = [
-        1.37296326,
-        0.08553859,
-        1.05554023,
-        2.76803983,
-        -1.48792809,
-        3.09947786,
-    ]
-    robot, robot_prim_path = add_robot_to_scene(robot_cfg, my_world)
-
-    ###### Setup Collision table ######
-    # don't really understand, just keep it for now
+def basic_world_config():
+    # just a big table.
     world_cfg_table = WorldConfig.from_dict(
         load_yaml(join_path(get_world_configs_path(), "collision_table.yml"))
     )
@@ -229,28 +191,23 @@ def main():
     ).get_mesh_world()
     world_cfg1.mesh[0].name += "_mesh"
     world_cfg1.mesh[0].pose[2] = -10.5
-    world_cfg = WorldConfig(cuboid=world_cfg_table.cuboid, mesh=world_cfg1.mesh)
+    return WorldConfig(cuboid=world_cfg_table.cuboid, mesh=world_cfg1.mesh)
 
-    ###### Motion Generation Config ######
+
+def basic_motion_gen(reactive:bool, tensor_args, robot_cfg, world_cfg):
     trajopt_tsteps = 32
     trajopt_dt = None
     optimize_dt = True
-    max_attempts = 4
     trim_steps = None
     interpolation_dt = 0.05
-    enable_finetune_trajopt = True
-    if args.reactive:
+    n_obstacle_cuboids = 30
+    n_obstacle_mesh = 100
+    if reactive:
         trajopt_tsteps = 40
         trajopt_dt = 0.04
         optimize_dt = False
-        max_attempts = 1
         trim_steps = [1, None]
         interpolation_dt = trajopt_dt
-        enable_finetune_trajopt = False
-
-    n_obstacle_cuboids = 30
-    n_obstacle_mesh = 100
-    tensor_args = TensorDeviceType()
 
     motion_gen_config = MotionGenConfig.load_from_robot_config(
         robot_cfg,
@@ -266,8 +223,76 @@ def main():
         trajopt_tsteps=trajopt_tsteps,
         trim_steps=trim_steps,
     )
+    return MotionGen(motion_gen_config)
 
-    motion_gen = MotionGen(motion_gen_config)
+
+def basic_plan_config(reactive:bool):
+    max_attempts = 4
+    enable_finetune_trajopt = True
+    if reactive:
+        max_attempts = 1
+        enable_finetune_trajopt = False
+
+    return MotionGenPlanConfig(
+        enable_graph=False,
+        enable_graph_attempt=2,
+        max_attempts=max_attempts,
+        enable_finetune_trajopt=enable_finetune_trajopt,
+        time_dilation_factor=0.5 if not reactive else 1.0,
+    )
+
+
+def zero_obstacle_world_config(usd_help, robot_prim_path):
+    return usd_help.get_obstacles_from_stage(
+        only_paths=["/World"],
+        reference_prim_path=robot_prim_path,
+        ignore_substring=[
+            robot_prim_path,
+            "/World/defaultGroundPlane",
+            "/curobo",
+            "/World/table",
+        ],
+    ).get_collision_check_world()
+
+def main():
+
+    ###### Basic setup ######
+    args = parse_args()
+    setup_curobo_logger("warn")
+    my_world = World(stage_units_in_meters=1.0)
+    stage = my_world.stage
+    xform = stage.DefinePrim("/World", "Xform")
+    stage.SetDefaultPrim(xform)
+    stage.DefinePrim("/curobo", "Xform")
+    stage = my_world.stage
+
+    ###### Setup Robot ######
+    robot_cfg_path = get_robot_configs_path()
+    if args.external_robot_configs_path is not None:
+        robot_cfg_path = args.external_robot_configs_path
+    robot_cfg = load_yaml(join_path(robot_cfg_path, args.robot))["robot_cfg"]
+    if args.external_asset_path is not None:
+        robot_cfg["kinematics"]["external_asset_path"] = args.external_asset_path
+    if args.external_robot_configs_path is not None:
+        robot_cfg["kinematics"]["external_robot_configs_path"] = (
+            args.external_robot_configs_path
+        )
+    j_names = robot_cfg["kinematics"]["cspace"]["joint_names"]
+    default_config = [
+        1.37296326,
+        0.08553859,
+        1.05554023,
+        2.76803983,
+        -1.48792809,
+        3.09947786,
+    ]
+    robot, robot_prim_path = add_robot_to_scene(robot_cfg, my_world)
+
+    world_cfg = basic_world_config()
+    tensor_args = TensorDeviceType()
+    motion_gen = basic_motion_gen(args.reactive, tensor_args, robot_cfg, world_cfg)
+    plan_config = basic_plan_config(args.reactive)
+    
     motion_gen_lock = Lock()
     if not args.reactive:
         print("warming up...")
@@ -277,30 +302,10 @@ def main():
 
     add_extensions(simulation_app, get_headless_mode())
 
-    plan_config = MotionGenPlanConfig(
-        enable_graph=False,
-        enable_graph_attempt=2,
-        max_attempts=max_attempts,
-        enable_finetune_trajopt=enable_finetune_trajopt,
-        time_dilation_factor=0.5 if not args.reactive else 1.0,
-    )
     usd_help = UsdHelper()
     usd_help.load_stage(my_world.stage)
     usd_help.add_world_to_stage(world_cfg, base_frame="/World")
-
-    ### add a no obstacle world
-    # zero_obstacles = usd_help.get_obstacles_from_stage(
-    #     only_paths=["/World"],
-    #     reference_prim_path=robot_prim_path,
-    #     ignore_substring=[
-    #         robot_prim_path,
-    #         "/World/defaultGroundPlane",
-    #         "/curobo",
-    #         "/World/table",
-    #     ],
-    # ).get_collision_check_world()
-
-    ###### Pose matrice initialization
+    # zero_obstacles = zero_obstacle_world_config(usd_help, robot_prim_path)
     pose_metric = init_pose_matric(args, motion_gen)
 
     ###### states ######
