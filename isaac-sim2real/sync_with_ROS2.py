@@ -98,55 +98,6 @@ def cmd_to_move(cmd_plan):
     return cmd_plan.position.cpu().numpy().tolist()
 
 
-def save_plan(moves):
-    # Create a timestamp for the unique filename
-    timestamp = time.strftime("%Y%m%d_%H%M%S")
-    output_dir = "output"
-    os.makedirs(output_dir, exist_ok=True)
-    plan_filename = os.path.join(output_dir, f"motion_{timestamp}.json")
-    points = []
-    for move in moves:
-        point = {"positions": move.positions, "command": move.command, "duration": 2.0}
-        points.append(point)
-    """
-    # Find indices of finger joints
-    finger_joint_indices = [
-        i
-        for i, name in enumerate(cmd_plan.joint_names)
-        if "finger" in name
-    ]
-
-    # Get the number of joints to keep
-    num_joints = len(cmd_plan.joint_names) - len(finger_joint_indices)
-
-    # Prepare the data for saving in the new format
-    points = []
-    time_from_start = 2.0
-
-    positions_np = cmd_plan.position.cpu().numpy()
-
-    for i in range(len(positions_np)):
-        # Filter out finger joints from positions
-        positions = [
-            float(pos)
-            for j, pos in enumerate(positions_np[i])
-            if j not in finger_joint_indices
-        ]
-
-        point = {
-            "positions": positions,
-            "velocities": [0.005] * num_joints,
-            "time_from_start_sec": round(time_from_start, 2),
-        }
-        points.append(point)
-        time_from_start += 0.1
-    """
-    # Save the data to a JSON file
-    with open(plan_filename, "w") as f:
-        json.dump(points, f, indent=4)
-    print(f"Successfully saved first motion plan to {plan_filename}")
-
-
 def init_pose_matric(args, motion_gen):
     pose_metric = None
     if args.constrain_grasp_approach:
