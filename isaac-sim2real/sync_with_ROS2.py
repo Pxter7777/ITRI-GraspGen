@@ -305,53 +305,28 @@ def main():
     usd_help = UsdHelper()
     usd_help.load_stage(my_world.stage)
     usd_help.add_world_to_stage(world_cfg, base_frame="/World")
-    # zero_obstacles = zero_obstacle_world_config(usd_help, robot_prim_path)
+    zero_obstacles = zero_obstacle_world_config(usd_help, robot_prim_path)
     pose_metric = init_pose_matric(args, motion_gen)
 
     ###### states ######
-
-    # new_id = 0
-    # idle = 0
-
     planned_action_queue = queue.Queue()
     ROS2_fail_queue = queue.Queue()  # put message in if ROS2 fail
     cmd_plan = None
     cmd_idx = 0
-    # my_world.scene.add_default_ground_plane()
     articulation_controller = robot.get_articulation_controller()
     tick = 0
     spheres = None
     past_cmd = None
-
-    # pose_metric = None
     wait_ros2 = False
-    # graspgen_receiver = NonBlockingJSONReceiver(port=port_config.GRASPGEN_TO_ISAACSIM)
-    # graspgen_sender = NonBlockingJSONSender(port=port_config.ISAACSIM_TO_GRASPGEN)
+    graspgen_receiver = NonBlockingJSONReceiver(port=port_config.GRASPGEN_TO_ISAACSIM)
+    graspgen_sender = NonBlockingJSONSender(port=port_config.ISAACSIM_TO_GRASPGEN)
     ros2_receiver = NonBlockingJSONReceiver(port=port_config.ROS2_TO_ISAACSIM)
     ros2_sender = NonBlockingJSONSender(port=port_config.ISAACSIM_TO_ROS2)
-    # plans = []
-    # cmd_plans = []
-    # last_joint_states = default_config
-    # successs = 0
-    # temp_cuboid_paths = []
     sim_js = robot.get_joints_state()
     sim_js_names = robot.dof_names
     planned_action_moves: list = []
     idx_list = [0, 1, 2, 3, 4, 5]
     temp_cuboid_paths = []
-
-    graspgen_receiver = NonBlockingJSONReceiver(port=port_config.GRASPGEN_TO_ISAACSIM)
-    graspgen_sender = NonBlockingJSONSender(port=port_config.ISAACSIM_TO_GRASPGEN)
-    zero_obstacles = usd_help.get_obstacles_from_stage(
-        only_paths=["/World"],
-        reference_prim_path=robot_prim_path,
-        ignore_substring=[
-            robot_prim_path,
-            "/World/defaultGroundPlane",
-            "/curobo",
-            "/World/table",
-        ],
-    ).get_collision_check_world()
     default_config = [
         1.37296326,
         0.08553859,
@@ -362,7 +337,6 @@ def main():
     ]
     last_joint_states = default_config
     temp_cuboid_paths = []
-    # idx_list = [0,1,2,3,4,5]
     common_js_names = ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"]
     graspgen_eof = False
 
