@@ -283,7 +283,10 @@ def process_frame(image, gd_predictor, matcher, args, frame_num=None):
         "total": len(boxes),
     }
 
-def process_frame_VQA(image, gd_predictor, matcher, args, frame_num=None, model=None, processor=None):
+
+def process_frame_VQA(
+    image, gd_predictor, matcher, args, frame_num=None, model=None, processor=None
+):
     """Detect and validate objects in a single frame using VQA."""
     prompt = " . ".join(args.targets) + " ."
 
@@ -386,7 +389,9 @@ def run_static_mode(gd_predictor, matcher, args):
 
     if args.use_vqa:
         model, processor = matcher.get_vqa_model()
-        result = process_frame_VQA(image, gd_predictor, matcher, args, model=model, processor=processor)
+        result = process_frame_VQA(
+            image, gd_predictor, matcher, args, model=model, processor=processor
+        )
     else:
         result = process_frame(image, gd_predictor, matcher, args)
     if result is None:
@@ -469,9 +474,19 @@ def run_camera_mode(gd_predictor, matcher, args):
                 logger.info(f"Processing frame {frame_count}...")
                 if args.use_vqa:
                     model, processor = matcher.get_vqa_model()
-                    result = process_frame_VQA(image, gd_predictor, matcher, args, frame_count, model=model, processor=processor)
+                    result = process_frame_VQA(
+                        image,
+                        gd_predictor,
+                        matcher,
+                        args,
+                        frame_count,
+                        model=model,
+                        processor=processor,
+                    )
                 else:
-                    result = process_frame(image, gd_predictor, matcher, args, frame_count)
+                    result = process_frame(
+                        image, gd_predictor, matcher, args, frame_count
+                    )
                 if result is None:
                     continue
                 result_image = result["image"]
