@@ -120,6 +120,42 @@ class Move:
         self.cmd_plan = cmd_plan
 
 
+def get_cuboid_list(move:dict, obstacles:dict)->list:
+    cuboids = []
+    cuboids.append(
+        Cuboid(
+            name="table",
+            pose=[0, 0, -1.97] + [1, 0, 0, 0],
+            dims=[4, 4, 4],
+        )
+    )
+    for i, obstacle_name in enumerate(obstacles):
+        if not (
+            "ignore_obstacles" in move
+            and obstacle_name in move["ignore_obstacles"]
+        ):
+            middle_point = np.mean(
+                [
+                    obstacles[obstacle_name]["max"],
+                    obstacles[obstacle_name]["min"],
+                ],
+                axis=0,
+            )
+            scale = np.array(
+                obstacles[obstacle_name]["max"]
+            ) - np.array(
+                obstacles[obstacle_name]["min"]
+            )
+            cuboids.append(
+                Cuboid(
+                    name=f"obs_{i}",
+                    pose=middle_point.tolist() + [1, 0, 0, 0],
+                    dims=scale.tolist(),
+                )
+            )
+    return cuboids
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -343,6 +379,7 @@ def main():
     while simulation_app.is_running():
         # try handle first
         for _ in range(1):
+            ###### Got message from gripper_server.py ######
             if not ROS2_fail_queue.empty():
                 # clear plan
                 while not planned_action_queue.empty():
@@ -367,7 +404,7 @@ def main():
                     raise ValueError("Unknown message")
 
                 continue
-
+            ###### Got message from graspgen ######
             graspgen_datas = graspgen_receiver.capture_data()
             if graspgen_datas is None:
                 continue
@@ -383,78 +420,8 @@ def main():
                 before_move_joints = last_joint_states
                 curobo_planned_action_moves: list[Move] = []
                 for move in graspgen_data["moves"]:
-                    # handle temp obstacles
-                    # if temp_cuboid_paths:
-                    #     for path in temp_cuboid_paths:
-                    #         stage.RemovePrim(path)  # this may race condition
-                    #     temp_cuboid_paths = []
-                    # Table # race condition, I guess? Yes this shit will race condition
-                    # prim_path = "/World/temp_obstacle_table"
-                    # cuboid.FixedCuboid(
-                    #     prim_path=prim_path,
-                    #     position=np.array([0, 0, -1.97]),
-                    #     scale=np.array([4, 4, 4]),
-                    #     color=np.array([0.0, 0.0, 1.0]),  # Blue
-                    #     # physics=True,
-                    # )
-                    # temp_cuboid_paths.append(prim_path)
-                    cuboids = []
-                    cuboids.append(
-                        Cuboid(
-                            name="table",
-                            pose=[0, 0, -1.97] + [1, 0, 0, 0],
-                            dims=[4, 4, 4],
-                        )
-                    )
-                    for i, obstacle_name in enumerate(graspgen_data["obstacles"]):
-                        if not (
-                            "ignore_obstacles" in move
-                            and obstacle_name in move["ignore_obstacles"]
-                        ):
-                            middle_point = np.mean(
-                                [
-                                    graspgen_data["obstacles"][obstacle_name]["max"],
-                                    graspgen_data["obstacles"][obstacle_name]["min"],
-                                ],
-                                axis=0,
-                            )
-                            scale = np.array(
-                                graspgen_data["obstacles"][obstacle_name]["max"]
-                            ) - np.array(
-                                graspgen_data["obstacles"][obstacle_name]["min"]
-                            )
-                            cuboids.append(
-                                Cuboid(
-                                    name=f"obs_{i}",
-                                    pose=middle_point.tolist() + [1, 0, 0, 0],
-                                    dims=scale.tolist(),
-                                )
-                            )
-
-                            # Race condition
-                            # prim_path = f"/World/temp_obstacle_{i}"
-                            # cuboid.FixedCuboid(
-                            #     prim_path=prim_path,
-                            #     position=np.array(middle_point),
-                            #     scale=[scale[0], scale[1], scale[2] * 1.1],
-                            #     color=np.array([0.0, 0.0, 1.0]),  # Blue
-                            #     # physics=True,
-                            # )
-                            # temp_cuboid_paths.append(prim_path)
-                    # Get all obstacles from the stage, including the new temporary ones
-                    # obstacles = usd_help.get_obstacles_from_stage(
-                    #     only_paths=["/World"],
-                    #     reference_prim_path=robot_prim_path,
-                    #     ignore_substring=[
-                    #         robot_prim_path,
-                    #         "/World/defaultGroundPlane",
-                    #         "/curobo",
-                    #         "/World/table",
-                    #     ],
-                    # ).get_collision_check_world()
+                    cuboids = get_cuboid_list(move, graspgen_data["obstacles"])
                     obstacles = WorldConfig(cuboid=cuboids)
-
-                    # motion_gen.update_world(world)
                     if "no_obstacles" in move:
                         with motion_gen_lock:
                             motion_gen.update_world(zero_obstacles)
