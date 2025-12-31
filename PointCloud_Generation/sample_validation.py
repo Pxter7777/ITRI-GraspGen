@@ -3,12 +3,14 @@ Sample-based validation for detected objects.
 Compares detected bounding boxes against reference images using:
 - Global HSV color histograms (fast overall color signature)
 - Spatial HSV histograms (grid-based, preserves where colors appear)
+Optional: VQA model support for answering questions about crops.
 """
 
 import cv2
 import numpy as np
 import logging
 from pathlib import Path
+import torch
 
 logger = logging.getLogger(__name__)
 
@@ -51,23 +53,37 @@ class SampleMatcher:
 
         logger.info(f"Loaded {len(self.samples)} sample references")
 
-    def _compute_hsv_histogram(self, img: np.ndarray) -> np.ndarray:
+    def _compute_hsv_histogram(self, img: np.ndarray, use_hs_only: bool = True) -> np.ndarray:
         """
-        Compute normalized HSV histogram for color comparison.
+        Compute normalized HSV or HS histogram for color comparison.
+        HS-only (no V) is much more lighting-robust while still distinguishing colors.
 
         Args:
             img: BGR image (H, W, 3)
+            use_hs_only: If True, use HS histogram (lighting-robust); if False, use full HSV
 
         Returns:
             Normalized histogram
         """
+        # Mild blur to reduce noise
+        img = cv2.GaussianBlur(img, (3, 3), 0)
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
-        # Compute 3D histogram: Hue (180), Saturation (256), Value (256)
-        # Using reduced bins for efficiency: [30, 32, 32]
-        hist = cv2.calcHist(
-            [hsv], [0, 1, 2], None, [30, 32, 32], [0, 180, 0, 256, 0, 256]
-        )
+        # Mask out low saturation/value pixels (background/shadows)
+        s = hsv[:, :, 1]
+        v = hsv[:, :, 2]
+        mask = cv2.inRange(s, 30, 255) & cv2.inRange(v, 30, 255)
+
+        if use_hs_only:
+            # HS histogram only (drop Value channel for lighting invariance)
+            hist = cv2.calcHist(
+                [hsv], [0, 1], mask, [90, 128], [0, 180, 0, 256]
+            )
+        else:
+            # Full HSV histogram
+            hist = cv2.calcHist(
+                [hsv], [0, 1, 2], mask, [30, 32, 32], [0, 180, 0, 256, 0, 256]
+            )
 
         # Normalize
         hist = cv2.normalize(hist, hist).flatten()
@@ -243,7 +259,9 @@ class SampleMatcher:
                 spatial_score = self._compare_spatial_histograms(
                     det_spatial, ref_spatial
                 )
-
+                logger.info(
+                    f"Scores for '{target_name}': global={global_score:.3f}, spatial={spatial_score:.3f}"
+                )
                 # Combine: emphasize spatial layout to combat pixel shuffling
                 combined = 0.3 * global_score + 0.7 * spatial_score
                 scores[target_name] = combined
@@ -256,3 +274,128 @@ class SampleMatcher:
                     )
 
         return kept, scores
+
+    def get_vqa_model(
+        self,
+        model_name: str = "Salesforce/blip-vqa-base",
+        device: str = "cuda",
+    ):
+        """Load a BLIP VQA model and processor. Heavy; downloads on first call."""
+        try:
+            from transformers import BlipProcessor, BlipForQuestionAnswering
+        except Exception as exc:
+            raise ImportError(
+                "transformers is required for VQA; install via 'pip install transformers'"
+            ) from exc
+
+        processor = BlipProcessor.from_pretrained(model_name)
+        model = BlipForQuestionAnswering.from_pretrained(model_name)
+        model = model.to(device)
+        model.eval()
+        return model, processor
+
+    def vqa_answer(
+        self,
+        model,
+        processor,
+        image: np.ndarray,
+        question: str,
+        device: str = "cuda",
+        max_new_tokens: int = 32,
+    ) -> str:
+        """Run VQA on a BGR image crop and return the generated answer string."""
+        from PIL import Image
+
+        img_pil = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        inputs = processor(
+            images=img_pil,
+            text=question,
+            return_tensors="pt",
+        ).to(device)
+
+        with torch.no_grad():
+            out = model.generate(**inputs, max_new_tokens=max_new_tokens, output_scores=True, return_dict_in_generate=True)
+
+        answer = processor.decode(out.sequences[0], skip_special_tokens=True)
+
+        if hasattr(out, "scores") and out.scores:
+            logger.info("VQA generation scores available for confidence estimation.")
+            token_probs = []
+            for score in out.scores:
+                probs = torch.softmax(score, dim=-1)
+                max_prob = probs.max().item()
+                token_probs.append(max_prob)
+            confidence = sum(token_probs) / len(token_probs) if token_probs else 0.0
+        else:
+            confidence = 0.0
+
+        return answer.strip(), confidence
+
+    def validate_with_vqa(
+        self,
+        model,
+        processor,
+        image: np.ndarray,
+        target_names: dict,
+    ) -> tuple[list, dict]:
+        """
+        Validate detected boxes using VQA model to answer questions about the crops.
+
+        Args:
+            model: VQA model
+            processor: VQA processor
+            image: Captured BGR image (H, W, 3).
+            target_names: Dict of {name: [boxes]} for detected objects
+
+        Returns:
+            (kept_boxes, scores): List of boxes that passed and dict of {name: confidence}
+        """
+        kept_boxes = []
+        scores = {}
+
+        for target_name, boxes_list in target_names.items():
+            question = f"Is this a {target_name.replace('_', ' ')}?"
+            for box in boxes_list:
+                x1, y1, x2, y2 = map(int, box.box)
+                cropped = image[y1:y2, x1:x2]
+
+                if cropped.size == 0:
+                    logger.error(f"Empty crop for {target_name} at box {box.box}")
+                    scores[target_name] = 0.0
+                    continue
+
+                answer, confidence = self.vqa_answer(model, processor, cropped, question)
+                logger.info(f"VQA answer for '{target_name}': '{answer}' (confidence: {confidence:.3f})")
+
+                if "yes" in answer.lower() and confidence >= self.threshold:
+                    kept_boxes.append(box)
+                    scores[target_name] = confidence
+                else:
+                    logger.warning(
+                        f"Filtering out '{target_name}' via VQA: answer='{answer}' (confidence: {confidence:.3f})"
+                    )
+                    scores[target_name] = confidence
+
+        return kept_boxes, scores
+
+if __name__ == "__main__":
+    matcher = SampleMatcher()
+
+    base_target = "green_cup"
+    test_target = "blue_cup_old"
+    base_img = cv2.imread(f"sample_data/refs/{base_target}.jpg")
+    test_img = cv2.imread(f"sample_data/refs/{test_target}.jpg")
+
+    print(f"Comparing '{base_target}' with '{test_target}':")
+
+    base_hist = matcher._compute_hsv_histogram(base_img)
+    test_hist = matcher._compute_hsv_histogram(test_img)
+    hist_score = matcher._compare_histograms(base_hist, test_hist)
+    print(f"HSV histogram similarity: {hist_score:.3f}")
+
+    vqa_model, vqa_processor = matcher.get_vqa_model()
+    question = "Is this a green cup?"
+    base_answer, base_confidence = matcher.vqa_answer(vqa_model, vqa_processor, base_img, question)
+    test_answer, test_confidence = matcher.vqa_answer(vqa_model, vqa_processor, test_img, question)
+    print(f"VQA answer for base image: {base_answer} (confidence: {base_confidence:.3f})")
+    print(f"VQA answer for test image: {test_answer} (confidence: {test_confidence:.3f})")

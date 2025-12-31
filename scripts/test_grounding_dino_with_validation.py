@@ -173,6 +173,12 @@ def main():
         default=1,
         help="Frames per second for live camera (default: 1, set to 0 for all)",
     )
+    parser.add_argument(
+        "--use-vqa",
+        action="store_true",
+        help="Use VQA model for validation",
+        default=False,
+    )
 
     args = parser.parse_args()
 
@@ -238,11 +244,19 @@ def process_frame(image, gd_predictor, matcher, args, frame_num=None):
                 boxes_by_name[box.phrase].append(box)
 
     # Validate boxes
-    try:
-        filtered_boxes, scores = matcher.filter_boxes(image, boxes_by_name)
-    except Exception as e:
-        logger.error(f"Validation failed: {e}")
-        return None
+    if args.use_vqa:
+        try:
+            model, processor = matcher.get_vqa_model()
+            filtered_boxes, scores = matcher.validate_with_vqa(model=model, processor=processor, image=image, target_names=boxes_by_name)
+        except Exception as e:
+            logger.error(f"VQA validation failed: {e}")
+            return None
+    else:
+        try:
+            filtered_boxes, scores = matcher.filter_boxes(image, boxes_by_name)
+        except Exception as e:
+            logger.error(f"Validation failed: {e}")
+            return None
 
     logger.info(f"  Validation: {len(filtered_boxes)} passed, scores={scores}")
 
