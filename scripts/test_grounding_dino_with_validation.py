@@ -346,6 +346,7 @@ def process_frame_VQA(
         if box in filtered_boxes:
             kept_indices.add(idx)
         idx += 1
+    print(kept_indices)
 
     # Draw results
     result_image = draw_boxes_with_scores(
@@ -353,7 +354,7 @@ def process_frame_VQA(
         all_boxes,
         all_names,
         scores,
-        kept_indices=kept_indices if filtered_boxes else None,
+        kept_indices=kept_indices,
     )
 
     return {
