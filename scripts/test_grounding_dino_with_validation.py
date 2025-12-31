@@ -244,24 +244,90 @@ def process_frame(image, gd_predictor, matcher, args, frame_num=None):
                 boxes_by_name[box.phrase].append(box)
 
     # Validate boxes
-    if args.use_vqa:
-        try:
-            model, processor = matcher.get_vqa_model()
-            filtered_boxes, scores = matcher.validate_with_vqa(
-                model=model,
-                processor=processor,
-                image=image,
-                target_names=boxes_by_name,
-            )
-        except Exception as e:
-            logger.error(f"VQA validation failed: {e}")
-            return None
+    try:
+        filtered_boxes, scores = matcher.filter_boxes(image, boxes_by_name)
+    except Exception as e:
+        logger.error(f"Validation failed: {e}")
+        return None
+
+    logger.info(f"  Validation: {len(filtered_boxes)} passed, scores={scores}")
+
+    # Build list of all original boxes with kept status
+    all_boxes = []
+    all_names = []
+    kept_indices = set()
+    idx = 0
+
+    for box in boxes:
+        all_boxes.append(box)
+        all_names.append(box.phrase)
+        if box in filtered_boxes:
+            kept_indices.add(idx)
+        idx += 1
+
+    # Draw results
+    result_image = draw_boxes_with_scores(
+        image,
+        all_boxes,
+        all_names,
+        scores,
+        kept_indices=kept_indices if filtered_boxes else None,
+    )
+
+    return {
+        "image": result_image,
+        "boxes": all_boxes,
+        "names": all_names,
+        "scores": scores,
+        "validated": len(filtered_boxes),
+        "total": len(boxes),
+    }
+
+def process_frame_VQA(image, gd_predictor, matcher, args, frame_num=None, model=None, processor=None):
+    """Detect and validate objects in a single frame using VQA."""
+    prompt = " . ".join(args.targets) + " ."
+
+    # Run detection
+    try:
+        boxes = gd_predictor.predict_boxes(
+            image, prompt, box_threshold=0.4, text_threshold=0.4
+        )
+    except Exception as e:
+        logger.error(f"Detection failed: {e}")
+        return None
+
+    if not boxes:
+        logger.warning(
+            f"Frame {frame_num}: No boxes detected"
+            if frame_num
+            else "No boxes detected"
+        )
+        boxes_by_name = {name: [] for name in args.targets}
     else:
-        try:
-            filtered_boxes, scores = matcher.filter_boxes(image, boxes_by_name)
-        except Exception as e:
-            logger.error(f"Validation failed: {e}")
-            return None
+        if frame_num:
+            logger.info(f"Frame {frame_num}: Detected {len(boxes)} boxes")
+        else:
+            logger.info(f"Detected {len(boxes)} boxes")
+        for box in boxes:
+            logger.info(f"  - {box.phrase}: confidence={box.logits:.3f}")
+
+        # Group boxes by name
+        boxes_by_name = {name: [] for name in args.targets}
+        for box in boxes:
+            if box.phrase in boxes_by_name:
+                boxes_by_name[box.phrase].append(box)
+
+    # Validate boxes using VQA
+    try:
+        filtered_boxes, scores = matcher.validate_with_vqa(
+            model=model,
+            processor=processor,
+            image=image,
+            target_names=boxes_by_name,
+        )
+    except Exception as e:
+        logger.error(f"VQA validation failed: {e}")
+        return None
 
     logger.info(f"  Validation: {len(filtered_boxes)} passed, scores={scores}")
 
@@ -318,7 +384,11 @@ def run_static_mode(gd_predictor, matcher, args):
     logger.info(f"Image shape: {image.shape}")
     logger.info(f"Targets: {args.targets}")
 
-    result = process_frame(image, gd_predictor, matcher, args)
+    if args.use_vqa:
+        model, processor = matcher.get_vqa_model()
+        result = process_frame_VQA(image, gd_predictor, matcher, args, model=model, processor=processor)
+    else:
+        result = process_frame(image, gd_predictor, matcher, args)
     if result is None:
         return 1
 
@@ -397,7 +467,11 @@ def run_camera_mode(gd_predictor, matcher, args):
             # Process frame (at desired FPS)
             if frame_count % frame_interval == 0 or paused:
                 logger.info(f"Processing frame {frame_count}...")
-                result = process_frame(image, gd_predictor, matcher, args, frame_count)
+                if args.use_vqa:
+                    model, processor = matcher.get_vqa_model()
+                    result = process_frame_VQA(image, gd_predictor, matcher, args, frame_count, model=model, processor=processor)
+                else:
+                    result = process_frame(image, gd_predictor, matcher, args, frame_count)
                 if result is None:
                     continue
                 result_image = result["image"]
