@@ -25,8 +25,6 @@ a = torch.zeros(4, device="cuda:0")
 
 # Standard Library
 import argparse
-import os
-import json
 import time
 import queue
 from threading import Lock
@@ -38,11 +36,11 @@ from isaacsim_utils.socket_communication import (
 from isaacsim_utils import port_config
 
 
-
 ############################################################
 
 # Third Party
 from omni.isaac.kit import SimulationApp  # noqa: E402
+
 
 def get_headless_mode():
     peek_parser = argparse.ArgumentParser(add_help=False)
@@ -54,6 +52,8 @@ def get_headless_mode():
     )
     peek_args, _ = peek_parser.parse_known_args()
     return peek_args.headless_mode
+
+
 simulation_app = SimulationApp(  # noqa: E402
     {
         "headless": get_headless_mode() is not None,
@@ -120,7 +120,7 @@ class Move:
         self.cmd_plan = cmd_plan
 
 
-def get_cuboid_list(move:dict, obstacles:dict)->list:
+def get_cuboid_list(move: dict, obstacles: dict) -> list:
     cuboids = []
     cuboids.append(
         Cuboid(
@@ -131,8 +131,7 @@ def get_cuboid_list(move:dict, obstacles:dict)->list:
     )
     for i, obstacle_name in enumerate(obstacles):
         if not (
-            "ignore_obstacles" in move
-            and obstacle_name in move["ignore_obstacles"]
+            "ignore_obstacles" in move and obstacle_name in move["ignore_obstacles"]
         ):
             middle_point = np.mean(
                 [
@@ -141,9 +140,7 @@ def get_cuboid_list(move:dict, obstacles:dict)->list:
                 ],
                 axis=0,
             )
-            scale = np.array(
-                obstacles[obstacle_name]["max"]
-            ) - np.array(
+            scale = np.array(obstacles[obstacle_name]["max"]) - np.array(
                 obstacles[obstacle_name]["min"]
             )
             cuboids.append(
@@ -230,7 +227,7 @@ def basic_world_config():
     return WorldConfig(cuboid=world_cfg_table.cuboid, mesh=world_cfg1.mesh)
 
 
-def basic_motion_gen(reactive:bool, tensor_args, robot_cfg, world_cfg):
+def basic_motion_gen(reactive: bool, tensor_args, robot_cfg, world_cfg):
     trajopt_tsteps = 32
     trajopt_dt = None
     optimize_dt = True
@@ -262,7 +259,7 @@ def basic_motion_gen(reactive:bool, tensor_args, robot_cfg, world_cfg):
     return MotionGen(motion_gen_config)
 
 
-def basic_plan_config(reactive:bool):
+def basic_plan_config(reactive: bool):
     max_attempts = 4
     enable_finetune_trajopt = True
     if reactive:
@@ -290,8 +287,8 @@ def zero_obstacle_world_config(usd_help, robot_prim_path):
         ],
     ).get_collision_check_world()
 
-def main():
 
+def main():
     ###### Basic setup ######
     args = parse_args()
     setup_curobo_logger("warn")
@@ -328,7 +325,7 @@ def main():
     tensor_args = TensorDeviceType()
     motion_gen = basic_motion_gen(args.reactive, tensor_args, robot_cfg, world_cfg)
     plan_config = basic_plan_config(args.reactive)
-    
+
     motion_gen_lock = Lock()
     if not args.reactive:
         print("warming up...")
