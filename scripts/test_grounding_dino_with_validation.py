@@ -247,7 +247,12 @@ def process_frame(image, gd_predictor, matcher, args, frame_num=None):
     if args.use_vqa:
         try:
             model, processor = matcher.get_vqa_model()
-            filtered_boxes, scores = matcher.validate_with_vqa(model=model, processor=processor, image=image, target_names=boxes_by_name)
+            filtered_boxes, scores = matcher.validate_with_vqa(
+                model=model,
+                processor=processor,
+                image=image,
+                target_names=boxes_by_name,
+            )
         except Exception as e:
             logger.error(f"VQA validation failed: {e}")
             return None

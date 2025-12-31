@@ -53,7 +53,9 @@ class SampleMatcher:
 
         logger.info(f"Loaded {len(self.samples)} sample references")
 
-    def _compute_hsv_histogram(self, img: np.ndarray, use_hs_only: bool = True) -> np.ndarray:
+    def _compute_hsv_histogram(
+        self, img: np.ndarray, use_hs_only: bool = True
+    ) -> np.ndarray:
         """
         Compute normalized HSV or HS histogram for color comparison.
         HS-only (no V) is much more lighting-robust while still distinguishing colors.
@@ -76,9 +78,7 @@ class SampleMatcher:
 
         if use_hs_only:
             # HS histogram only (drop Value channel for lighting invariance)
-            hist = cv2.calcHist(
-                [hsv], [0, 1], mask, [90, 128], [0, 180, 0, 256]
-            )
+            hist = cv2.calcHist([hsv], [0, 1], mask, [90, 128], [0, 180, 0, 256])
         else:
             # Full HSV histogram
             hist = cv2.calcHist(
@@ -314,7 +314,12 @@ class SampleMatcher:
         ).to(device)
 
         with torch.no_grad():
-            out = model.generate(**inputs, max_new_tokens=max_new_tokens, output_scores=True, return_dict_in_generate=True)
+            out = model.generate(
+                **inputs,
+                max_new_tokens=max_new_tokens,
+                output_scores=True,
+                return_dict_in_generate=True,
+            )
 
         answer = processor.decode(out.sequences[0], skip_special_tokens=True)
 
@@ -364,8 +369,12 @@ class SampleMatcher:
                     scores[target_name] = 0.0
                     continue
 
-                answer, confidence = self.vqa_answer(model, processor, cropped, question)
-                logger.info(f"VQA answer for '{target_name}': '{answer}' (confidence: {confidence:.3f})")
+                answer, confidence = self.vqa_answer(
+                    model, processor, cropped, question
+                )
+                logger.info(
+                    f"VQA answer for '{target_name}': '{answer}' (confidence: {confidence:.3f})"
+                )
 
                 if "yes" in answer.lower() and confidence >= self.threshold:
                     kept_boxes.append(box)
@@ -377,6 +386,7 @@ class SampleMatcher:
                     scores[target_name] = confidence
 
         return kept_boxes, scores
+
 
 if __name__ == "__main__":
     matcher = SampleMatcher()
@@ -395,7 +405,15 @@ if __name__ == "__main__":
 
     vqa_model, vqa_processor = matcher.get_vqa_model()
     question = "Is this a green cup?"
-    base_answer, base_confidence = matcher.vqa_answer(vqa_model, vqa_processor, base_img, question)
-    test_answer, test_confidence = matcher.vqa_answer(vqa_model, vqa_processor, test_img, question)
-    print(f"VQA answer for base image: {base_answer} (confidence: {base_confidence:.3f})")
-    print(f"VQA answer for test image: {test_answer} (confidence: {test_confidence:.3f})")
+    base_answer, base_confidence = matcher.vqa_answer(
+        vqa_model, vqa_processor, base_img, question
+    )
+    test_answer, test_confidence = matcher.vqa_answer(
+        vqa_model, vqa_processor, test_img, question
+    )
+    print(
+        f"VQA answer for base image: {base_answer} (confidence: {base_confidence:.3f})"
+    )
+    print(
+        f"VQA answer for test image: {test_answer} (confidence: {test_confidence:.3f})"
+    )
