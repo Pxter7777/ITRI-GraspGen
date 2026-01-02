@@ -426,19 +426,6 @@ def main():
                     if move["type"] == "gripper":
                         curobo_planned_action_moves.append(Move(move, None))
                         continue
-                    ## start serious curobo motion planning
-                    # if "constraint" in move:
-                    #     pose_metric = PoseCostMetric(
-                    #         hold_partial_pose=True,
-                    #         hold_vec_weight=motion_gen.tensor_args.to_device(
-                    #             move["constraint"]
-                    #         ),
-                    #     )
-                    #     print(
-                    #         "CONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINT"
-                    #     )
-                    # else:
-                    #     pose_metric = None
                     print("curoboing")
                     if "goal" in move:
                         ik_goal = Pose(
@@ -490,25 +477,14 @@ def main():
 
                     succ = result.success.item()  # ik_result.success.item()
                     if succ:
-                        print("successful")
-                    else:
-                        print("not successful")
-                    if succ:
                         print("YES YES YES?")
                         new_cmd_plan = result.get_interpolated_plan()
                         new_cmd_plan = motion_gen.get_full_js(new_cmd_plan)
-                        # get only joint names that are in both:
-                        # idx_list = []
-                        # common_js_names = []
-                        # for x in sim_js_names:
-                        #     if x in new_cmd_plan.joint_names:
-                        #         idx_list.append(robot.get_dof_index(x))
-                        #         common_js_names.append(x)
-
                         new_cmd_plan = new_cmd_plan.get_ordered_joint_state(
                             common_js_names
                         )
                         # The following code block shows how to prune the plan to keep only the first and last waypoints
+                        # Emulates IK method's behavior.
                         if "no_curobo" in move:
                             new_cmd_plan = JointState(
                                 position=new_cmd_plan.position[[0, -1]],
@@ -516,9 +492,6 @@ def main():
                                 acceleration=new_cmd_plan.acceleration[[0, -1]],
                                 jerk=new_cmd_plan.jerk[[0, -1]],
                                 joint_names=new_cmd_plan.joint_names,
-                            )
-                            print(
-                                "---------------------------------------------------------only keep first and last"
                             )
                         positions = cmd_to_move(new_cmd_plan)
                         ROS2_move = {
@@ -547,9 +520,6 @@ def main():
             else:  # all graspgen_datas failed
                 graspgen_sender.send_data({"message": "Fail"})
         # end of handle section
-        # make sure the thread has catched and handled the issue
-        # if not ROS2_fail_queue.empty():
-        # continue
 
         if wait_ros2:
             ros2_response = ros2_receiver.capture_data()
@@ -597,25 +567,6 @@ def main():
             )
         if step_index < 20:
             continue
-        """ skil the check because it prints too many needless logs
-        if step_index == 50 or step_index % 1000 == 0.0:
-            print("Updating world, reading w.r.t.", robot_prim_path)
-            obstacles = usd_help.get_obstacles_from_stage(
-                only_paths=["/World"],
-                reference_prim_path=robot_prim_path,
-                ignore_substring=[
-                    robot_prim_path,
-                    "/World/target",
-                    "/World/defaultGroundPlane",
-                    "/curobo",
-                ],
-            ).get_collision_check_world()
-            print(len(obstacles.objects))
-
-            motion_gen.update_world(obstacles)
-            print("Updated World")
-            carb.log_info("Synced CuRobo world from stage.")
-        """
 
         sim_js = robot.get_joints_state()
         if sim_js is None:
@@ -663,9 +614,6 @@ def main():
                         spheres[si].set_world_pose(position=np.ravel(s.position))
                         spheres[si].set_radius(float(s.radius))
         ###### update past_pose
-        # past_pose = cube_position
-        # past_orientation = cube_orientation
-
         if cmd_plan is not None:
             cmd_state = cmd_plan[cmd_idx]
             past_cmd = cmd_state.clone()
@@ -675,7 +623,6 @@ def main():
                 cmd_state.velocity.cpu().numpy(),
                 joint_indices=idx_list,
             )
-            # print("======art_action: ", art_action.joint_positions)
             # set desired joint angles obtained from IK:
             articulation_controller.apply_action(art_action)
             cmd_idx += 1
@@ -706,7 +653,6 @@ def main():
                 temp_cuboid_paths = []
             cube: Cuboid
             for i, cube in enumerate(planned_action["obstacles"]):
-                # race condition???
                 prim_path = f"/World/temp_obstacle_{i}"
                 cuboid.VisualCuboid(
                     prim_path=prim_path,
