@@ -326,7 +326,6 @@ def main():
     motion_gen = basic_motion_gen(args.reactive, tensor_args, robot_cfg, world_cfg)
     plan_config = basic_plan_config(args.reactive)
 
-    motion_gen_lock = Lock()
     if not args.reactive:
         print("warming up...")
         motion_gen.warmup(enable_graph=True, warmup_js_trajopt=False)
@@ -420,11 +419,9 @@ def main():
                     cuboids = get_cuboid_list(move, graspgen_data["obstacles"])
                     obstacles = WorldConfig(cuboid=cuboids)
                     if "no_obstacles" in move:
-                        with motion_gen_lock:
-                            motion_gen.update_world(zero_obstacles)
+                        motion_gen.update_world(zero_obstacles)
                     else:
-                        with motion_gen_lock:
-                            motion_gen.update_world(obstacles)
+                        motion_gen.update_world(obstacles)
                     # start handle move
                     if move["type"] == "gripper":
                         curobo_planned_action_moves.append(Move(move, None))
@@ -459,10 +456,9 @@ def main():
                             joint_names=sim_js_names,
                         )
 
-                        with motion_gen_lock:
-                            result = motion_gen.plan_single(
-                                curobo_cu_js.unsqueeze(0), ik_goal, plan_config
-                            )
+                        result = motion_gen.plan_single(
+                            curobo_cu_js.unsqueeze(0), ik_goal, plan_config
+                        )
                     elif "joints_goal" in move:
                         print("ALRIGHT?0")
                         joints_goal = JointState(
@@ -485,12 +481,11 @@ def main():
                             joint_names=sim_js_names,
                         )
                         print("ALRIGHT?2")
-                        with motion_gen_lock:
-                            result = motion_gen.plan_single_js(
-                                curobo_cu_js.unsqueeze(0),
-                                joints_goal.unsqueeze(0),
-                                plan_config,
-                            )
+                        result = motion_gen.plan_single_js(
+                            curobo_cu_js.unsqueeze(0),
+                            joints_goal.unsqueeze(0),
+                            plan_config,
+                        )
                         print("ALRIGHT?3")
 
                     succ = result.success.item()  # ik_result.success.item()
@@ -500,9 +495,8 @@ def main():
                         print("not successful")
                     if succ:
                         print("YES YES YES?")
-                        with motion_gen_lock:
-                            new_cmd_plan = result.get_interpolated_plan()
-                            new_cmd_plan = motion_gen.get_full_js(new_cmd_plan)
+                        new_cmd_plan = result.get_interpolated_plan()
+                        new_cmd_plan = motion_gen.get_full_js(new_cmd_plan)
                         # get only joint names that are in both:
                         # idx_list = []
                         # common_js_names = []
@@ -646,12 +640,10 @@ def main():
             cu_js.position[:] = past_cmd.position
             cu_js.velocity[:] = past_cmd.velocity
             cu_js.acceleration[:] = past_cmd.acceleration
-        with motion_gen_lock:
-            cu_js = cu_js.get_ordered_joint_state(motion_gen.kinematics.joint_names)
+        cu_js = cu_js.get_ordered_joint_state(motion_gen.kinematics.joint_names)
 
         if args.visualize_spheres and step_index % 2 == 0:
-            with motion_gen_lock:
-                sph_list = motion_gen.kinematics.get_robot_as_spheres(cu_js.position)
+            sph_list = motion_gen.kinematics.get_robot_as_spheres(cu_js.position)
 
             if spheres is None:
                 spheres = []
