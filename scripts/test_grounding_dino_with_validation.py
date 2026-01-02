@@ -61,7 +61,7 @@ def draw_boxes_with_scores(image, boxes, target_names, scores, kept_indices=None
         cv2.rectangle(result, (x1, y1), (x2, y2), color, 2)
 
         # Draw label with score (multi-line handling)
-        lines = [f"{name}", f"conf={box.logits:.2f}", f"val={score:.3f}"]
+        lines = [f"{name}", f"DINO_conf={box.logits:.2f}", f"VQA_conf ={score:.2f}"]
         font = cv2.FONT_HERSHEY_SIMPLEX
         font_scale = 0.5
         thickness = 1
