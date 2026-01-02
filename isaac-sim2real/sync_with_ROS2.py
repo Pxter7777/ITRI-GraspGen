@@ -183,12 +183,6 @@ def parse_args():
         help="Path to external robot config when loading an external robot",
     )
     parser.add_argument(
-        "--reactive",
-        action="store_true",
-        help="When True, runs in reactive mode",
-        default=False,
-    )
-    parser.add_argument(
         "--constrain_grasp_approach",
         action="store_true",
         help="When True, approaches grasp with fixed orientation and motion only along z axis.",
@@ -227,7 +221,7 @@ def basic_world_config():
     return WorldConfig(cuboid=world_cfg_table.cuboid, mesh=world_cfg1.mesh)
 
 
-def basic_motion_gen(reactive: bool, tensor_args, robot_cfg, world_cfg):
+def basic_motion_gen(tensor_args, robot_cfg, world_cfg):
     trajopt_tsteps = 32
     trajopt_dt = None
     optimize_dt = True
@@ -235,12 +229,6 @@ def basic_motion_gen(reactive: bool, tensor_args, robot_cfg, world_cfg):
     interpolation_dt = 0.05
     n_obstacle_cuboids = 30
     n_obstacle_mesh = 100
-    if reactive:
-        trajopt_tsteps = 40
-        trajopt_dt = 0.04
-        optimize_dt = False
-        trim_steps = [1, None]
-        interpolation_dt = trajopt_dt
 
     motion_gen_config = MotionGenConfig.load_from_robot_config(
         robot_cfg,
@@ -259,19 +247,16 @@ def basic_motion_gen(reactive: bool, tensor_args, robot_cfg, world_cfg):
     return MotionGen(motion_gen_config)
 
 
-def basic_plan_config(reactive: bool):
+def basic_plan_config():
     max_attempts = 4
     enable_finetune_trajopt = True
-    if reactive:
-        max_attempts = 1
-        enable_finetune_trajopt = False
 
     return MotionGenPlanConfig(
         enable_graph=False,
         enable_graph_attempt=2,
         max_attempts=max_attempts,
         enable_finetune_trajopt=enable_finetune_trajopt,
-        time_dilation_factor=0.5 if not reactive else 1.0,
+        time_dilation_factor=0.5,
     )
 
 
@@ -331,12 +316,11 @@ def main():
 
     world_cfg = basic_world_config()
     tensor_args = TensorDeviceType()
-    motion_gen = basic_motion_gen(args.reactive, tensor_args, robot_cfg, world_cfg)
-    plan_config = basic_plan_config(args.reactive)
+    motion_gen = basic_motion_gen(tensor_args, robot_cfg, world_cfg)
+    plan_config = basic_plan_config()
 
-    if not args.reactive:
-        print("warming up...")
-        motion_gen.warmup(enable_graph=True, warmup_js_trajopt=False)
+    print("warming up...")
+    motion_gen.warmup(enable_graph=True, warmup_js_trajopt=False)
 
     print("Curobo is Ready")
 
@@ -567,14 +551,9 @@ def main():
             log_error("isaac sim has returned NAN joint position values.")
         cu_js = still_joint_states(sim_js.positions, tensor_args, sim_js_names)
 
-        # Handle reactive mode
-        if not args.reactive:
-            cu_js.velocity *= 0.0
-            cu_js.acceleration *= 0.0
-        if args.reactive and past_cmd is not None:
-            cu_js.position[:] = past_cmd.position
-            cu_js.velocity[:] = past_cmd.velocity
-            cu_js.acceleration[:] = past_cmd.acceleration
+        cu_js.velocity *= 0.0
+        cu_js.acceleration *= 0.0
+
         cu_js = cu_js.get_ordered_joint_state(motion_gen.kinematics.joint_names)
 
         if args.visualize_spheres and step_index % 2 == 0:
