@@ -340,7 +340,6 @@ def main():
     articulation_controller = robot.get_articulation_controller()
     tick = 0
     spheres = None
-    past_cmd = None
     wait_ros2 = False
     graspgen_receiver = NonBlockingJSONReceiver(port=port_config.GRASPGEN_TO_ISAACSIM)
     graspgen_sender = NonBlockingJSONSender(port=port_config.ISAACSIM_TO_GRASPGEN)
@@ -579,7 +578,6 @@ def main():
         ###### update past_pose
         if cmd_plan is not None:
             cmd_state = cmd_plan[cmd_idx]
-            past_cmd = cmd_state.clone()
             # get full dof state
             art_action = ArticulationAction(
                 cmd_state.position.cpu().numpy(),
@@ -594,7 +592,6 @@ def main():
             if cmd_idx >= len(cmd_plan.position):
                 cmd_idx = 0
                 cmd_plan = None
-                past_cmd = None
         if not wait_ros2 and len(planned_action_moves) > 0:
             # planned action
             wait_ros2 = True
