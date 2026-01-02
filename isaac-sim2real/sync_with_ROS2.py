@@ -287,6 +287,14 @@ def zero_obstacle_world_config(usd_help, robot_prim_path):
         ],
     ).get_collision_check_world()
 
+def still_joint_states(joint_states: list, tensor_args: TensorDeviceType, sim_js_names):
+    return JointState(
+        position=tensor_args.to_device(joint_states),
+        velocity=tensor_args.to_device([0.0]*len(joint_states)),
+        acceleration=tensor_args.to_device([0.0]*len(joint_states)),
+        jerk=tensor_args.to_device([0.0]*len(joint_states)),
+        joint_names=sim_js_names,
+    )
 
 def main():
     ###### Basic setup ######
@@ -427,6 +435,7 @@ def main():
                         curobo_planned_action_moves.append(Move(move, None))
                         continue
                     print("curoboing")
+                    curobo_cu_js = still_joint_states(last_joint_states, tensor_args, sim_js_names)
                     if "goal" in move:
                         ik_goal = Pose(
                             position=tensor_args.to_device(move["goal"][:3]),
@@ -434,15 +443,6 @@ def main():
                         )
 
                         plan_config.pose_cost_metric = pose_metric
-                        curobo_cu_js = JointState(
-                            position=tensor_args.to_device(last_joint_states),
-                            velocity=tensor_args.to_device(sim_js.velocities)
-                            * 0.0,  # * 0.0,
-                            acceleration=tensor_args.to_device(sim_js.velocities) * 0.0,
-                            jerk=tensor_args.to_device(sim_js.velocities) * 0.0,
-                            joint_names=sim_js_names,
-                        )
-
                         result = motion_gen.plan_single(
                             curobo_cu_js.unsqueeze(0), ik_goal, plan_config
                         )
@@ -456,18 +456,8 @@ def main():
                             jerk=tensor_args.to_device(sim_js.velocities) * 0.0,
                             joint_names=sim_js_names,
                         )
-                        print("ALRIGHT?1")
 
                         plan_config.pose_cost_metric = pose_metric
-                        curobo_cu_js = JointState(
-                            position=tensor_args.to_device(last_joint_states),
-                            velocity=tensor_args.to_device(sim_js.velocities)
-                            * 0.0,  # * 0.0,
-                            acceleration=tensor_args.to_device(sim_js.velocities) * 0.0,
-                            jerk=tensor_args.to_device(sim_js.velocities) * 0.0,
-                            joint_names=sim_js_names,
-                        )
-                        print("ALRIGHT?2")
                         result = motion_gen.plan_single_js(
                             curobo_cu_js.unsqueeze(0),
                             joints_goal.unsqueeze(0),
@@ -575,13 +565,7 @@ def main():
         sim_js_names = robot.dof_names
         if np.any(np.isnan(sim_js.positions)):
             log_error("isaac sim has returned NAN joint position values.")
-        cu_js = JointState(
-            position=tensor_args.to_device(sim_js.positions),
-            velocity=tensor_args.to_device(sim_js.velocities),  # * 0.0,
-            acceleration=tensor_args.to_device(sim_js.velocities) * 0.0,
-            jerk=tensor_args.to_device(sim_js.velocities) * 0.0,
-            joint_names=sim_js_names,
-        )
+        cu_js = still_joint_states(sim_js.positions, tensor_args, sim_js_names)
 
         # Handle reactive mode
         if not args.reactive:
