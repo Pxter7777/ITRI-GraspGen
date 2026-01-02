@@ -93,10 +93,8 @@ from curobo.wrap.reacher.motion_gen import (  # noqa: E402
     PoseCostMetric,
 )
 
-
 def cmd_to_move(cmd_plan):
     return cmd_plan.position.cpu().numpy().tolist()
-
 
 def init_pose_matric(args, motion_gen):
     pose_metric = None
@@ -112,13 +110,11 @@ def init_pose_matric(args, motion_gen):
         pose_metric = PoseCostMetric(hold_partial_pose=True, hold_vec_weight=hold_vec)
     return pose_metric
 
-
 # dataclass
 class Move:
     def __init__(self, ROS2_move: dict, cmd_plan: list):
         self.ROS2_move = ROS2_move
         self.cmd_plan = cmd_plan
-
 
 def get_cuboid_list(move: dict, obstacles: dict) -> list:
     cuboids = []
@@ -152,6 +148,77 @@ def get_cuboid_list(move: dict, obstacles: dict) -> list:
             )
     return cuboids
 
+def basic_world_config():
+    # just a big table.
+    world_cfg_table = WorldConfig.from_dict(
+        load_yaml(join_path(get_world_configs_path(), "collision_table.yml"))
+    )
+    world_cfg_table.cuboid[0].pose[2] -= 0.02
+    world_cfg1 = WorldConfig.from_dict(
+        load_yaml(join_path(get_world_configs_path(), "collision_table.yml"))
+    ).get_mesh_world()
+    world_cfg1.mesh[0].name += "_mesh"
+    world_cfg1.mesh[0].pose[2] = -10.5
+    return WorldConfig(cuboid=world_cfg_table.cuboid, mesh=world_cfg1.mesh)
+
+def basic_motion_gen(tensor_args, robot_cfg, world_cfg):
+    trajopt_tsteps = 32
+    trajopt_dt = None
+    optimize_dt = True
+    trim_steps = None
+    interpolation_dt = 0.05
+    n_obstacle_cuboids = 30
+    n_obstacle_mesh = 100
+
+    motion_gen_config = MotionGenConfig.load_from_robot_config(
+        robot_cfg,
+        world_cfg,
+        tensor_args,
+        collision_checker_type=CollisionCheckerType.MESH,
+        num_trajopt_seeds=12,
+        num_graph_seeds=12,
+        interpolation_dt=interpolation_dt,
+        collision_cache={"obb": n_obstacle_cuboids, "mesh": n_obstacle_mesh},
+        optimize_dt=optimize_dt,
+        trajopt_dt=trajopt_dt,
+        trajopt_tsteps=trajopt_tsteps,
+        trim_steps=trim_steps,
+    )
+    return MotionGen(motion_gen_config)
+
+
+def basic_plan_config():
+    max_attempts = 4
+    enable_finetune_trajopt = True
+
+    return MotionGenPlanConfig(
+        enable_graph=False,
+        enable_graph_attempt=2,
+        max_attempts=max_attempts,
+        enable_finetune_trajopt=enable_finetune_trajopt,
+        time_dilation_factor=0.5,
+    )
+
+def zero_obstacle_world_config(usd_help, robot_prim_path):
+    return usd_help.get_obstacles_from_stage(
+        only_paths=["/World"],
+        reference_prim_path=robot_prim_path,
+        ignore_substring=[
+            robot_prim_path,
+            "/World/defaultGroundPlane",
+            "/curobo",
+            "/World/table",
+        ],
+    ).get_collision_check_world()
+
+def still_joint_states(joint_states: list, tensor_args: TensorDeviceType, sim_js_names):
+    return JointState(
+        position=tensor_args.to_device(joint_states),
+        velocity=tensor_args.to_device([0.0]*len(joint_states)),
+        acceleration=tensor_args.to_device([0.0]*len(joint_states)),
+        jerk=tensor_args.to_device([0.0]*len(joint_states)),
+        joint_names=sim_js_names,
+    )
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -205,81 +272,6 @@ def parse_args():
         default=None,
     )
     return parser.parse_args()
-
-
-def basic_world_config():
-    # just a big table.
-    world_cfg_table = WorldConfig.from_dict(
-        load_yaml(join_path(get_world_configs_path(), "collision_table.yml"))
-    )
-    world_cfg_table.cuboid[0].pose[2] -= 0.02
-    world_cfg1 = WorldConfig.from_dict(
-        load_yaml(join_path(get_world_configs_path(), "collision_table.yml"))
-    ).get_mesh_world()
-    world_cfg1.mesh[0].name += "_mesh"
-    world_cfg1.mesh[0].pose[2] = -10.5
-    return WorldConfig(cuboid=world_cfg_table.cuboid, mesh=world_cfg1.mesh)
-
-
-def basic_motion_gen(tensor_args, robot_cfg, world_cfg):
-    trajopt_tsteps = 32
-    trajopt_dt = None
-    optimize_dt = True
-    trim_steps = None
-    interpolation_dt = 0.05
-    n_obstacle_cuboids = 30
-    n_obstacle_mesh = 100
-
-    motion_gen_config = MotionGenConfig.load_from_robot_config(
-        robot_cfg,
-        world_cfg,
-        tensor_args,
-        collision_checker_type=CollisionCheckerType.MESH,
-        num_trajopt_seeds=12,
-        num_graph_seeds=12,
-        interpolation_dt=interpolation_dt,
-        collision_cache={"obb": n_obstacle_cuboids, "mesh": n_obstacle_mesh},
-        optimize_dt=optimize_dt,
-        trajopt_dt=trajopt_dt,
-        trajopt_tsteps=trajopt_tsteps,
-        trim_steps=trim_steps,
-    )
-    return MotionGen(motion_gen_config)
-
-
-def basic_plan_config():
-    max_attempts = 4
-    enable_finetune_trajopt = True
-
-    return MotionGenPlanConfig(
-        enable_graph=False,
-        enable_graph_attempt=2,
-        max_attempts=max_attempts,
-        enable_finetune_trajopt=enable_finetune_trajopt,
-        time_dilation_factor=0.5,
-    )
-
-
-def zero_obstacle_world_config(usd_help, robot_prim_path):
-    return usd_help.get_obstacles_from_stage(
-        only_paths=["/World"],
-        reference_prim_path=robot_prim_path,
-        ignore_substring=[
-            robot_prim_path,
-            "/World/defaultGroundPlane",
-            "/curobo",
-            "/World/table",
-        ],
-    ).get_collision_check_world()
-
-def still_joint_states(joint_states: list, tensor_args: TensorDeviceType, sim_js_names):
-    return JointState(
-        position=tensor_args.to_device(joint_states),
-        velocity=tensor_args.to_device([0.0]*len(joint_states)),
-        acceleration=tensor_args.to_device([0.0]*len(joint_states)),
-        jerk=tensor_args.to_device([0.0]*len(joint_states)),
-        joint_names=sim_js_names,
-    )
 
 def main():
     ###### Basic setup ######
