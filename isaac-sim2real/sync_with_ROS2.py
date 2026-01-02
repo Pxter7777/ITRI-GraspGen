@@ -27,7 +27,6 @@ a = torch.zeros(4, device="cuda:0")
 import argparse
 import time
 import queue
-from threading import Lock
 import numpy as np
 from isaacsim_utils.socket_communication import (
     NonBlockingJSONSender,
@@ -93,8 +92,10 @@ from curobo.wrap.reacher.motion_gen import (  # noqa: E402
     PoseCostMetric,
 )
 
+
 def cmd_to_move(cmd_plan):
     return cmd_plan.position.cpu().numpy().tolist()
+
 
 def init_pose_matric(args, motion_gen):
     pose_metric = None
@@ -110,11 +111,13 @@ def init_pose_matric(args, motion_gen):
         pose_metric = PoseCostMetric(hold_partial_pose=True, hold_vec_weight=hold_vec)
     return pose_metric
 
+
 # dataclass
 class Move:
     def __init__(self, ROS2_move: dict, cmd_plan: list):
         self.ROS2_move = ROS2_move
         self.cmd_plan = cmd_plan
+
 
 def get_cuboid_list(move: dict, obstacles: dict) -> list:
     cuboids = []
@@ -148,6 +151,7 @@ def get_cuboid_list(move: dict, obstacles: dict) -> list:
             )
     return cuboids
 
+
 def basic_world_config():
     # just a big table.
     world_cfg_table = WorldConfig.from_dict(
@@ -160,6 +164,7 @@ def basic_world_config():
     world_cfg1.mesh[0].name += "_mesh"
     world_cfg1.mesh[0].pose[2] = -10.5
     return WorldConfig(cuboid=world_cfg_table.cuboid, mesh=world_cfg1.mesh)
+
 
 def basic_motion_gen(tensor_args, robot_cfg, world_cfg):
     trajopt_tsteps = 32
@@ -199,6 +204,7 @@ def basic_plan_config():
         time_dilation_factor=0.5,
     )
 
+
 def zero_obstacle_world_config(usd_help, robot_prim_path):
     return usd_help.get_obstacles_from_stage(
         only_paths=["/World"],
@@ -211,14 +217,16 @@ def zero_obstacle_world_config(usd_help, robot_prim_path):
         ],
     ).get_collision_check_world()
 
+
 def still_joint_states(joint_states: list, tensor_args: TensorDeviceType, sim_js_names):
     return JointState(
         position=tensor_args.to_device(joint_states),
-        velocity=tensor_args.to_device([0.0]*len(joint_states)),
-        acceleration=tensor_args.to_device([0.0]*len(joint_states)),
-        jerk=tensor_args.to_device([0.0]*len(joint_states)),
+        velocity=tensor_args.to_device([0.0] * len(joint_states)),
+        acceleration=tensor_args.to_device([0.0] * len(joint_states)),
+        jerk=tensor_args.to_device([0.0] * len(joint_states)),
         joint_names=sim_js_names,
     )
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -272,6 +280,7 @@ def parse_args():
         default=None,
     )
     return parser.parse_args()
+
 
 def main():
     ###### Basic setup ######
@@ -410,7 +419,9 @@ def main():
                         curobo_planned_action_moves.append(Move(move, None))
                         continue
                     print("curoboing")
-                    curobo_cu_js = still_joint_states(last_joint_states, tensor_args, sim_js_names)
+                    curobo_cu_js = still_joint_states(
+                        last_joint_states, tensor_args, sim_js_names
+                    )
                     if "goal" in move:
                         ik_goal = Pose(
                             position=tensor_args.to_device(move["goal"][:3]),
