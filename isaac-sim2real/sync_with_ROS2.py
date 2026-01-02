@@ -25,11 +25,8 @@ a = torch.zeros(4, device="cuda:0")
 
 # Standard Library
 import argparse
-import os
-import json
 import time
 import queue
-from threading import Lock
 import numpy as np
 from isaacsim_utils.socket_communication import (
     NonBlockingJSONSender,
@@ -38,128 +35,27 @@ from isaacsim_utils.socket_communication import (
 from isaacsim_utils import port_config
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--visualize_spheres",
-    action="store_true",
-    help="When True, visualizes robot spheres",
-    default=False,
-)
-parser.add_argument(
-    "--headless_mode",
-    type=str,
-    default=None,
-    help="To run headless, use one of [native, websocket], webrtc might not work.",
-)
-parser.add_argument(
-    "--robot", type=str, default="tm5s.yml", help="robot configuration to load"
-)
-parser.add_argument(
-    "--external_asset_path",
-    type=str,
-    default=None,
-    help="Path to external assets when loading an externally located robot",
-)
-parser.add_argument(
-    "--external_robot_configs_path",
-    type=str,
-    default=None,
-    help="Path to external robot config when loading an external robot",
-)
-
-parser.add_argument(
-    "--reactive",
-    action="store_true",
-    help="When True, runs in reactive mode",
-    default=False,
-)
-
-parser.add_argument(
-    "--constrain_grasp_approach",
-    action="store_true",
-    help="When True, approaches grasp with fixed orientation and motion only along z axis.",
-    default=False,
-)
-
-parser.add_argument(
-    "--reach_partial_pose",
-    nargs=6,
-    metavar=("qx", "qy", "qz", "x", "y", "z"),
-    help="Reach partial pose",
-    type=float,
-    default=None,
-)
-parser.add_argument(
-    "--hold_partial_pose",
-    nargs=6,
-    metavar=("qx", "qy", "qz", "x", "y", "z"),
-    help="Hold partial pose while moving to goal",
-    type=float,
-    default=None,
-)
-
-parser.add_argument(
-    "--graspfile",
-    type=str,
-    default="./grasps/isaac_grasp_scene_20251009_172355_transformed.yaml",
-    help="grasp file to load",
-)
-
-parser.add_argument(
-    "--pot",
-    type=str,
-    default="./scene/1027_pot.usdz",
-    help="object file to load",
-)
-
-parser.add_argument(
-    "--table",
-    type=str,
-    default="./scene/1029_table.usdz",
-    help="object file to load",
-)
-
-parser.add_argument(
-    "--bluecup",
-    type=str,
-    default="./scene/1027_Blue_thermos_cup.usdz",
-    help="object file to load",
-)
-
-parser.add_argument(
-    "--greencup",
-    type=str,
-    default="./scene/1029_Green_thermos_cup.usdz",
-    help="object file to load",
-)
-"""
-parser.add_argument(
-    "--object",
-    type=str,
-    default="./grasps/object_20250926_162723.usd",
-    help="object file to load",
-)
-parser.add_argument(
-    "--scene",
-    type=str,
-    default="./scene/1027_usdz.usdz",
-    help="scene file to load",
-)
-
-parser.add_argument("--graspfile", type=str, default="/home/j300/GenPointCloud/output/isaac_grasp_scene_20251007_104221.yaml", help="grasp file to load")
-parser.add_argument("--object", type=str, default="/home/j300/GenPointCloud/output/object_20251007_104221.usd", help="object file to load")
-parser.add_argument("--scene", type=str, default="/home/j300/GenPointCloud/output/scene_20251007_104221.usd", help="scene file to load")
-"""
-args = parser.parse_args()
-
 ############################################################
 
 # Third Party
 from omni.isaac.kit import SimulationApp  # noqa: E402
 
+
+def get_headless_mode():
+    peek_parser = argparse.ArgumentParser(add_help=False)
+    peek_parser.add_argument(
+        "--headless_mode",
+        type=str,
+        default=None,
+        help="To run headless, use one of [native, websocket], webrtc might not work.",
+    )
+    peek_args, _ = peek_parser.parse_known_args()
+    return peek_args.headless_mode
+
+
 simulation_app = SimulationApp(  # noqa: E402
     {
-        "headless": args.headless_mode is not None,
+        "headless": get_headless_mode() is not None,
         "width": "1920",
         "height": "1080",
     }
@@ -197,73 +93,11 @@ from curobo.wrap.reacher.motion_gen import (  # noqa: E402
 )
 
 
-############################################################
-MANUAL_MOVE = np.array([0.1, 0.0, 0.3])
-MANUAL_MOVE = np.array([0.0, 0.0, 0.0])
-MANUAL_MOVE_BLUECUP = np.array(
-    [0.026065930647736046, 1.636318075221711, 0.012234069244568768]
-)
-MANUAL_MOVE_GREENCUP = np.array([0.03982783504705867, 1.778285295774281, 0.0])
-MANUAL_MOVE_TABLE = np.array([-1.2361903358728599, 0.0, -0.7671155871219498])
-MANUAL_MOVE_POT = np.array(
-    [-0.8507747729708208, 0.3795653053965786, 0.006251720482707973]
-)
-
-
 def cmd_to_move(cmd_plan):
     return cmd_plan.position.cpu().numpy().tolist()
 
 
-def save_plan(moves):
-    # Create a timestamp for the unique filename
-    timestamp = time.strftime("%Y%m%d_%H%M%S")
-    output_dir = "output"
-    os.makedirs(output_dir, exist_ok=True)
-    plan_filename = os.path.join(output_dir, f"motion_{timestamp}.json")
-    points = []
-    for move in moves:
-        point = {"positions": move.positions, "command": move.command, "duration": 2.0}
-        points.append(point)
-    """
-    # Find indices of finger joints
-    finger_joint_indices = [
-        i
-        for i, name in enumerate(cmd_plan.joint_names)
-        if "finger" in name
-    ]
-
-    # Get the number of joints to keep
-    num_joints = len(cmd_plan.joint_names) - len(finger_joint_indices)
-
-    # Prepare the data for saving in the new format
-    points = []
-    time_from_start = 2.0
-
-    positions_np = cmd_plan.position.cpu().numpy()
-
-    for i in range(len(positions_np)):
-        # Filter out finger joints from positions
-        positions = [
-            float(pos)
-            for j, pos in enumerate(positions_np[i])
-            if j not in finger_joint_indices
-        ]
-
-        point = {
-            "positions": positions,
-            "velocities": [0.005] * num_joints,
-            "time_from_start_sec": round(time_from_start, 2),
-        }
-        points.append(point)
-        time_from_start += 0.1
-    """
-    # Save the data to a JSON file
-    with open(plan_filename, "w") as f:
-        json.dump(points, f, indent=4)
-    print(f"Successfully saved first motion plan to {plan_filename}")
-
-
-def init_pose_matric(motion_gen):
+def init_pose_matric(args, motion_gen):
     pose_metric = None
     if args.constrain_grasp_approach:
         pose_metric = PoseCostMetric.create_grasp_approach_metric()
@@ -285,327 +119,41 @@ class Move:
         self.cmd_plan = cmd_plan
 
 
-def action_handler(
-    stage,
-    usd_help,
-    robot_prim_path,
-    motion_gen,
-    tensor_args,
-    plan_config,
-    pose_metric,
-    sim_js,
-    sim_js_names,
-    planned_action_queue: queue.Queue,
-    motion_gen_lock: Lock,
-    ROS2_fail_queue: queue.Queue,
-):
-    graspgen_receiver = NonBlockingJSONReceiver(port=port_config.GRASPGEN_TO_ISAACSIM)
-    graspgen_sender = NonBlockingJSONSender(port=port_config.ISAACSIM_TO_GRASPGEN)
-    zero_obstacles = usd_help.get_obstacles_from_stage(
-        only_paths=["/World"],
-        reference_prim_path=robot_prim_path,
-        ignore_substring=[
-            robot_prim_path,
-            "/World/defaultGroundPlane",
-            "/curobo",
-            "/World/table",
-        ],
-    ).get_collision_check_world()
-    default_config = [
-        1.37296326,
-        0.08553859,
-        1.05554023,
-        2.76803983,
-        -1.48792809,
-        3.09947786,
-    ]
-    last_joint_states = default_config
-    temp_cuboid_paths = []
-    # idx_list = [0,1,2,3,4,5]
-    common_js_names = ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"]
-    graspgen_eof = False
-    while True:
-        time.sleep(0.1)
-        # handle abort
-        # set robot state back to default
-        if not ROS2_fail_queue.empty():
-            # clear plan
-            while not planned_action_queue.empty():
-                planned_action_queue.get()
-            notice = (
-                ROS2_fail_queue.get()
-            )  # catch the fail, let isaacsim continue to move
-            if notice["message"] == "Abort":
-                graspgen_sender.send_data({"message": "Abort"})
-                # eat datas
-                for _ in range(5):
-                    time.sleep(0.1)
-                    graspgen_receiver.capture_data()
-            elif notice["message"] == "ROS2 Complete":
-                if graspgen_eof:
-                    graspgen_sender.send_data({"message": "EOF and ROS2 Complete"})
-                else:
-                    print("ROS2 complete but not EOF yet.")
-            else:
-                raise ValueError("Unknown message")
-
-            last_joint_states = default_config
-
-            continue
-
-        graspgen_datas = graspgen_receiver.capture_data()
-        if graspgen_datas is None:
-            continue
-        if graspgen_datas[0] == "EOF":
-            graspgen_eof = True
-            continue
-        print("-------------Received new action--------------")
-        graspgen_eof = False
-        for graspgen_data in graspgen_datas:
-            before_move_joints = last_joint_states
-            planned_action_moves: list[Move] = []
-            for move in graspgen_data["moves"]:
-                # handle temp obstacles
-                if temp_cuboid_paths:
-                    for path in temp_cuboid_paths:
-                        stage.RemovePrim(path)  # this may race condition
-                    temp_cuboid_paths = []
-                # Table # race condition, I guess? Yes this shit will race condition
-                # prim_path = "/World/temp_obstacle_table"
-                # cuboid.FixedCuboid(
-                #     prim_path=prim_path,
-                #     position=np.array([0, 0, -1.97]),
-                #     scale=np.array([4, 4, 4]),
-                #     color=np.array([0.0, 0.0, 1.0]),  # Blue
-                #     # physics=True,
-                # )
-                # temp_cuboid_paths.append(prim_path)
-                cuboids = []
-                cuboids.append(
-                    Cuboid(
-                        name="table",
-                        pose=[0, 0, -1.97] + [1, 0, 0, 0],
-                        dims=[4, 4, 4],
-                    )
-                )
-                for i, obstacle_name in enumerate(graspgen_data["obstacles"]):
-                    if not (
-                        "ignore_obstacles" in move
-                        and obstacle_name in move["ignore_obstacles"]
-                    ):
-                        middle_point = np.mean(
-                            [
-                                graspgen_data["obstacles"][obstacle_name]["max"],
-                                graspgen_data["obstacles"][obstacle_name]["min"],
-                            ],
-                            axis=0,
-                        )
-                        scale = np.array(
-                            graspgen_data["obstacles"][obstacle_name]["max"]
-                        ) - np.array(graspgen_data["obstacles"][obstacle_name]["min"])
-                        cuboids.append(
-                            Cuboid(
-                                name=f"obs_{i}",
-                                pose=middle_point.tolist() + [1, 0, 0, 0],
-                                dims=scale.tolist(),
-                            )
-                        )
-
-                        # Race condition
-                        # prim_path = f"/World/temp_obstacle_{i}"
-                        # cuboid.FixedCuboid(
-                        #     prim_path=prim_path,
-                        #     position=np.array(middle_point),
-                        #     scale=[scale[0], scale[1], scale[2] * 1.1],
-                        #     color=np.array([0.0, 0.0, 1.0]),  # Blue
-                        #     # physics=True,
-                        # )
-                        # temp_cuboid_paths.append(prim_path)
-                # Get all obstacles from the stage, including the new temporary ones
-                # obstacles = usd_help.get_obstacles_from_stage(
-                #     only_paths=["/World"],
-                #     reference_prim_path=robot_prim_path,
-                #     ignore_substring=[
-                #         robot_prim_path,
-                #         "/World/defaultGroundPlane",
-                #         "/curobo",
-                #         "/World/table",
-                #     ],
-                # ).get_collision_check_world()
-                obstacles = WorldConfig(cuboid=cuboids)
-
-                # motion_gen.update_world(world)
-                if "no_obstacles" in move:
-                    with motion_gen_lock:
-                        motion_gen.update_world(zero_obstacles)
-                else:
-                    with motion_gen_lock:
-                        motion_gen.update_world(obstacles)
-                # start handle move
-                if move["type"] == "gripper":
-                    planned_action_moves.append(Move(move, None))
-                    continue
-                ## start serious curobo motion planning
-                # if "constraint" in move:
-                #     pose_metric = PoseCostMetric(
-                #         hold_partial_pose=True,
-                #         hold_vec_weight=motion_gen.tensor_args.to_device(
-                #             move["constraint"]
-                #         ),
-                #     )
-                #     print(
-                #         "CONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINT"
-                #     )
-                # else:
-                #     pose_metric = None
-                print("curoboing")
-                if "goal" in move:
-                    ik_goal = Pose(
-                        position=tensor_args.to_device(move["goal"][:3]),
-                        quaternion=tensor_args.to_device(move["goal"][3:]),
-                    )
-
-                    plan_config.pose_cost_metric = pose_metric
-                    cu_js = JointState(
-                        position=tensor_args.to_device(last_joint_states),
-                        velocity=tensor_args.to_device(sim_js.velocities)
-                        * 0.0,  # * 0.0,
-                        acceleration=tensor_args.to_device(sim_js.velocities) * 0.0,
-                        jerk=tensor_args.to_device(sim_js.velocities) * 0.0,
-                        joint_names=sim_js_names,
-                    )
-
-                    with motion_gen_lock:
-                        result = motion_gen.plan_single(
-                            cu_js.unsqueeze(0), ik_goal, plan_config
-                        )
-                elif "joints_goal" in move:
-                    print("ALRIGHT?0")
-                    joints_goal = JointState(
-                        position=tensor_args.to_device(move["joints_goal"]),
-                        velocity=tensor_args.to_device(sim_js.velocities)
-                        * 0.0,  # * 0.0,
-                        acceleration=tensor_args.to_device(sim_js.velocities) * 0.0,
-                        jerk=tensor_args.to_device(sim_js.velocities) * 0.0,
-                        joint_names=sim_js_names,
-                    )
-                    print("ALRIGHT?1")
-
-                    plan_config.pose_cost_metric = pose_metric
-                    cu_js = JointState(
-                        position=tensor_args.to_device(last_joint_states),
-                        velocity=tensor_args.to_device(sim_js.velocities)
-                        * 0.0,  # * 0.0,
-                        acceleration=tensor_args.to_device(sim_js.velocities) * 0.0,
-                        jerk=tensor_args.to_device(sim_js.velocities) * 0.0,
-                        joint_names=sim_js_names,
-                    )
-                    print("ALRIGHT?2")
-                    with motion_gen_lock:
-                        result = motion_gen.plan_single_js(
-                            cu_js.unsqueeze(0),
-                            joints_goal.unsqueeze(0),
-                            plan_config,
-                        )
-                    print("ALRIGHT?3")
-
-                succ = result.success.item()  # ik_result.success.item()
-                if succ:
-                    print("successful")
-                else:
-                    print("not successful")
-                if succ:
-                    print("YES YES YES?")
-                    with motion_gen_lock:
-                        new_cmd_plan = result.get_interpolated_plan()
-                        new_cmd_plan = motion_gen.get_full_js(new_cmd_plan)
-                    # get only joint names that are in both:
-                    # idx_list = []
-                    # common_js_names = []
-                    # for x in sim_js_names:
-                    #     if x in new_cmd_plan.joint_names:
-                    #         idx_list.append(robot.get_dof_index(x))
-                    #         common_js_names.append(x)
-
-                    new_cmd_plan = new_cmd_plan.get_ordered_joint_state(common_js_names)
-                    # The following code block shows how to prune the plan to keep only the first and last waypoints
-                    if "no_curobo" in move:
-                        new_cmd_plan = JointState(
-                            position=new_cmd_plan.position[[0, -1]],
-                            velocity=new_cmd_plan.velocity[[0, -1]],
-                            acceleration=new_cmd_plan.acceleration[[0, -1]],
-                            jerk=new_cmd_plan.jerk[[0, -1]],
-                            joint_names=new_cmd_plan.joint_names,
-                        )
-                        print(
-                            "---------------------------------------------------------only keep first and last"
-                        )
-                    positions = cmd_to_move(new_cmd_plan)
-                    ROS2_move = {
-                        "type": move["type"],
-                        "wait_time": move["wait_time"],
-                        # "cmd_plan": cmd_plan, # only for later reuse by isaacsim, not for ROS2
-                        "joints_values": positions,
-                    }
-
-                    planned_action_moves.append(Move(ROS2_move, new_cmd_plan))
-                    last_joint_states = positions[-1]
-                else:
-                    print("This plan failed.")
-                    last_joint_states = before_move_joints
-                    break
-
-            else:  # success!
-                print("-------------Successfully handled new action--------------")
-                graspgen_sender.send_data({"message": "Success"})
-                planned_action_queue.put(
-                    {"moves": planned_action_moves, "obstacles": cuboids}
-                )
-                break  # stop trying other acts
-        else:  # all graspgen_datas failed
-            graspgen_sender.send_data({"message": "Fail"})
-
-
-def main():
-    setup_curobo_logger("warn")
-    # create a curobo motion gen instance:
-    # num_targets = 0
-    # assuming obstacles are in objects_path:
-    my_world = World(stage_units_in_meters=1.0)
-    stage = my_world.stage
-
-    xform = stage.DefinePrim("/World", "Xform")
-    stage.SetDefaultPrim(xform)
-    stage.DefinePrim("/curobo", "Xform")
-    stage = my_world.stage
-
-    ###### Setup Robot ######
-    robot_cfg_path = get_robot_configs_path()
-    if args.external_robot_configs_path is not None:
-        robot_cfg_path = args.external_robot_configs_path
-    robot_cfg = load_yaml(join_path(robot_cfg_path, args.robot))["robot_cfg"]
-
-    if args.external_asset_path is not None:
-        robot_cfg["kinematics"]["external_asset_path"] = args.external_asset_path
-    if args.external_robot_configs_path is not None:
-        robot_cfg["kinematics"]["external_robot_configs_path"] = (
-            args.external_robot_configs_path
+def get_cuboid_list(move: dict, obstacles: dict) -> list:
+    cuboids = []
+    cuboids.append(
+        Cuboid(
+            name="table",
+            pose=[0, 0, -1.97] + [1, 0, 0, 0],
+            dims=[4, 4, 4],
         )
-    j_names = robot_cfg["kinematics"]["cspace"]["joint_names"]
-    # default_config = robot_cfg["kinematics"]["cspace"]["retract_config"]
-    # default_config = [-0.0031330717463317853, -0.782597719463971, 0.0013149953555822147, -2.3538521161513803, 0.006049369975929311, 1.5787788643767775, 0.7724911821319892, 1.0, 1.0]
-    default_config = [
-        1.37296326,
-        0.08553859,
-        1.05554023,
-        2.76803983,
-        -1.48792809,
-        3.09947786,
-    ]
-    robot, robot_prim_path = add_robot_to_scene(robot_cfg, my_world)
+    )
+    for i, obstacle_name in enumerate(obstacles):
+        if not (
+            "ignore_obstacles" in move and obstacle_name in move["ignore_obstacles"]
+        ):
+            middle_point = np.mean(
+                [
+                    obstacles[obstacle_name]["max"],
+                    obstacles[obstacle_name]["min"],
+                ],
+                axis=0,
+            )
+            scale = np.array(obstacles[obstacle_name]["max"]) - np.array(
+                obstacles[obstacle_name]["min"]
+            )
+            cuboids.append(
+                Cuboid(
+                    name=f"obs_{i}",
+                    pose=middle_point.tolist() + [1, 0, 0, 0],
+                    dims=scale.tolist(),
+                )
+            )
+    return cuboids
 
-    ###### Setup Collision table ######
-    # don't really understand, just keep it for now
+
+def basic_world_config():
+    # just a big table.
     world_cfg_table = WorldConfig.from_dict(
         load_yaml(join_path(get_world_configs_path(), "collision_table.yml"))
     )
@@ -615,85 +163,17 @@ def main():
     ).get_mesh_world()
     world_cfg1.mesh[0].name += "_mesh"
     world_cfg1.mesh[0].pose[2] = -10.5
-    world_cfg = WorldConfig(cuboid=world_cfg_table.cuboid, mesh=world_cfg1.mesh)
+    return WorldConfig(cuboid=world_cfg_table.cuboid, mesh=world_cfg1.mesh)
 
-    ###### add our object and scene into the world ######
-    # only visual though
-    """
-    if args.table is not None:
-        table_path = os.path.abspath(args.table)
-        add_reference_to_stage(table_path, "/World/table")
-        table_prim = XFormPrim("/World/table")
-        current_pos_table, current_rot_table = table_prim.get_world_pose()
-        table_prim.set_world_pose(
-            position=current_pos_table + MANUAL_MOVE_TABLE,
-            orientation=current_rot_table,
-        )
-    if args.object is not None:
-        asset_path = os.path.abspath(args.object)
-        add_reference_to_stage(asset_path, "/World/object")
-        obj_prim = XFormPrim("/World/object")
-        current_pos, current_rot = obj_prim.get_world_pose()
-        obj_prim.set_world_pose(
-            position=current_pos + MANUAL_MOVE, orientation=current_rot
-        )
-    if args.scene is not None:
-        scene_path = os.path.abspath(args.scene)
-        add_reference_to_stage(scene_path, "/World/scene")
-        scene_prim = XFormPrim("/World/scene")
-        current_pos_scene, current_rot_scene = scene_prim.get_world_pose()
-        scene_prim.set_world_pose(
-            position=current_pos_scene + MANUAL_MOVE,
-            orientation=current_rot_scene,
-        )
-    if args.pot is not None:
-        pot_path = os.path.abspath(args.pot)
-        add_reference_to_stage(pot_path, "/World/pot")
-        pot_prim = XFormPrim("/World/pot")
-        current_pos_pot, current_rot_pot = pot_prim.get_world_pose()
-        pot_prim.set_world_pose(
-            position=current_pos_pot + MANUAL_MOVE_POT,
-            orientation=current_rot_pot,
-        )
-    if args.bluecup is not None:
-        bluecup_path = os.path.abspath(args.bluecup)
-        add_reference_to_stage(bluecup_path, "/World/bluecup")
-        bluecup_prim = XFormPrim("/World/bluecup")
-        current_pos_bluecup, current_rot_bluecup = bluecup_prim.get_world_pose()
-        bluecup_prim.set_world_pose(
-            position=current_pos_bluecup + MANUAL_MOVE_BLUECUP,
-            orientation=current_rot_bluecup,
-        )
-    if args.greencup is not None:
-        greencup_path = os.path.abspath(args.greencup)
-        add_reference_to_stage(greencup_path, "/World/greencup")
-        greencup_prim = XFormPrim("/World/greencup")
-        current_pos_greencup, current_rot_greencup = greencup_prim.get_world_pose()
-        greencup_prim.set_world_pose(
-            position=current_pos_greencup + MANUAL_MOVE_GREENCUP,
-            orientation=current_rot_greencup,
-        )
-    """
-    ###### Motion Generation Config ######
+
+def basic_motion_gen(tensor_args, robot_cfg, world_cfg):
     trajopt_tsteps = 32
     trajopt_dt = None
     optimize_dt = True
-    max_attempts = 4
     trim_steps = None
     interpolation_dt = 0.05
-    enable_finetune_trajopt = True
-    if args.reactive:
-        trajopt_tsteps = 40
-        trajopt_dt = 0.04
-        optimize_dt = False
-        max_attempts = 1
-        trim_steps = [1, None]
-        interpolation_dt = trajopt_dt
-        enable_finetune_trajopt = False
-
     n_obstacle_cuboids = 30
     n_obstacle_mesh = 100
-    tensor_args = TensorDeviceType()
 
     motion_gen_config = MotionGenConfig.load_from_robot_config(
         robot_cfg,
@@ -709,97 +189,24 @@ def main():
         trajopt_tsteps=trajopt_tsteps,
         trim_steps=trim_steps,
     )
+    return MotionGen(motion_gen_config)
 
-    motion_gen = MotionGen(motion_gen_config)
-    motion_gen_lock = Lock()
-    if not args.reactive:
-        print("warming up...")
-        motion_gen.warmup(enable_graph=True, warmup_js_trajopt=False)
 
-    print("Curobo is Ready")
+def basic_plan_config():
+    max_attempts = 4
+    enable_finetune_trajopt = True
 
-    add_extensions(simulation_app, args.headless_mode)
-
-    plan_config = MotionGenPlanConfig(
+    return MotionGenPlanConfig(
         enable_graph=False,
         enable_graph_attempt=2,
         max_attempts=max_attempts,
         enable_finetune_trajopt=enable_finetune_trajopt,
-        time_dilation_factor=0.5 if not args.reactive else 1.0,
+        time_dilation_factor=0.5,
     )
-    usd_help = UsdHelper()
-    usd_help.load_stage(my_world.stage)
-    usd_help.add_world_to_stage(world_cfg, base_frame="/World")
 
-    ### add a no obstacle world
-    # zero_obstacles = usd_help.get_obstacles_from_stage(
-    #     only_paths=["/World"],
-    #     reference_prim_path=robot_prim_path,
-    #     ignore_substring=[
-    #         robot_prim_path,
-    #         "/World/defaultGroundPlane",
-    #         "/curobo",
-    #         "/World/table",
-    #     ],
-    # ).get_collision_check_world()
 
-    ###### Pose matrice initialization
-    pose_metric = init_pose_matric(motion_gen)
-
-    ###### states ######
-
-    # new_id = 0
-    # idle = 0
-
-    planned_action_queue = queue.Queue()
-    ROS2_fail_queue = queue.Queue()  # put message in if ROS2 fail
-    cmd_plan = None
-    cmd_idx = 0
-    # my_world.scene.add_default_ground_plane()
-    articulation_controller = robot.get_articulation_controller()
-    tick = 0
-    spheres = None
-    past_cmd = None
-
-    # pose_metric = None
-    wait_ros2 = False
-    # graspgen_receiver = NonBlockingJSONReceiver(port=port_config.GRASPGEN_TO_ISAACSIM)
-    # graspgen_sender = NonBlockingJSONSender(port=port_config.ISAACSIM_TO_GRASPGEN)
-    ros2_receiver = NonBlockingJSONReceiver(port=port_config.ROS2_TO_ISAACSIM)
-    ros2_sender = NonBlockingJSONSender(port=port_config.ISAACSIM_TO_ROS2)
-    # plans = []
-    # cmd_plans = []
-    # last_joint_states = default_config
-    # successs = 0
-    # temp_cuboid_paths = []
-    sim_js = robot.get_joints_state()
-    sim_js_names = robot.dof_names
-    planned_action_moves: list = []
-    # gui_thread = Thread(
-    #     target=action_handler,
-    #     args=(
-    #         stage,
-    #         usd_help,
-    #         robot_prim_path,
-    #         motion_gen,
-    #         tensor_args,
-    #         plan_config,
-    #         pose_metric,
-    #         sim_js,
-    #         sim_js_names,
-    #         planned_action_queue,
-    #         motion_gen_lock,
-    #         ROS2_fail_queue,
-    #     ),
-    #     daemon=True,
-    # )
-    # gui_thread.start()
-    idx_list = [0, 1, 2, 3, 4, 5]
-    temp_cuboid_paths = []
-
-    graspgen_receiver = NonBlockingJSONReceiver(port=port_config.GRASPGEN_TO_ISAACSIM)
-    graspgen_sender = NonBlockingJSONSender(port=port_config.ISAACSIM_TO_GRASPGEN)
-    zero_obstacles = usd_help.get_obstacles_from_stage(
+def zero_obstacle_world_config(usd_help, robot_prim_path):
+    return usd_help.get_obstacles_from_stage(
         only_paths=["/World"],
         reference_prim_path=robot_prim_path,
         ignore_substring=[
@@ -809,6 +216,141 @@ def main():
             "/World/table",
         ],
     ).get_collision_check_world()
+
+
+def still_joint_states(joint_states: list, tensor_args: TensorDeviceType, sim_js_names):
+    return JointState(
+        position=tensor_args.to_device(joint_states),
+        velocity=tensor_args.to_device([0.0] * len(joint_states)),
+        acceleration=tensor_args.to_device([0.0] * len(joint_states)),
+        jerk=tensor_args.to_device([0.0] * len(joint_states)),
+        joint_names=sim_js_names,
+    )
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--visualize_spheres",
+        action="store_true",
+        help="When True, visualizes robot spheres",
+        default=False,
+    )
+    parser.add_argument(
+        "--headless_mode",
+        type=str,
+        default=None,
+        help="To run headless, use one of [native, websocket], webrtc might not work.",
+    )
+    parser.add_argument(
+        "--robot", type=str, default="tm5s.yml", help="robot configuration to load"
+    )
+    parser.add_argument(
+        "--external_asset_path",
+        type=str,
+        default=None,
+        help="Path to external assets when loading an externally located robot",
+    )
+    parser.add_argument(
+        "--external_robot_configs_path",
+        type=str,
+        default=None,
+        help="Path to external robot config when loading an external robot",
+    )
+    parser.add_argument(
+        "--constrain_grasp_approach",
+        action="store_true",
+        help="When True, approaches grasp with fixed orientation and motion only along z axis.",
+        default=False,
+    )
+    parser.add_argument(
+        "--reach_partial_pose",
+        nargs=6,
+        metavar=("qx", "qy", "qz", "x", "y", "z"),
+        help="Reach partial pose",
+        type=float,
+        default=None,
+    )
+    parser.add_argument(
+        "--hold_partial_pose",
+        nargs=6,
+        metavar=("qx", "qy", "qz", "x", "y", "z"),
+        help="Hold partial pose while moving to goal",
+        type=float,
+        default=None,
+    )
+    return parser.parse_args()
+
+
+def main():
+    ###### Basic setup ######
+    args = parse_args()
+    setup_curobo_logger("warn")
+    my_world = World(stage_units_in_meters=1.0)
+    stage = my_world.stage
+    xform = stage.DefinePrim("/World", "Xform")
+    stage.SetDefaultPrim(xform)
+    stage.DefinePrim("/curobo", "Xform")
+    stage = my_world.stage
+
+    ###### Setup Robot ######
+    robot_cfg_path = get_robot_configs_path()
+    if args.external_robot_configs_path is not None:
+        robot_cfg_path = args.external_robot_configs_path
+    robot_cfg = load_yaml(join_path(robot_cfg_path, args.robot))["robot_cfg"]
+    if args.external_asset_path is not None:
+        robot_cfg["kinematics"]["external_asset_path"] = args.external_asset_path
+    if args.external_robot_configs_path is not None:
+        robot_cfg["kinematics"]["external_robot_configs_path"] = (
+            args.external_robot_configs_path
+        )
+    j_names = robot_cfg["kinematics"]["cspace"]["joint_names"]
+    default_config = [
+        1.37296326,
+        0.08553859,
+        1.05554023,
+        2.76803983,
+        -1.48792809,
+        3.09947786,
+    ]
+    robot, robot_prim_path = add_robot_to_scene(robot_cfg, my_world)
+
+    world_cfg = basic_world_config()
+    tensor_args = TensorDeviceType()
+    motion_gen = basic_motion_gen(tensor_args, robot_cfg, world_cfg)
+    plan_config = basic_plan_config()
+
+    print("warming up...")
+    motion_gen.warmup(enable_graph=True, warmup_js_trajopt=False)
+
+    print("Curobo is Ready")
+
+    add_extensions(simulation_app, get_headless_mode())
+
+    usd_help = UsdHelper()
+    usd_help.load_stage(my_world.stage)
+    usd_help.add_world_to_stage(world_cfg, base_frame="/World")
+    zero_obstacles = zero_obstacle_world_config(usd_help, robot_prim_path)
+    pose_metric = init_pose_matric(args, motion_gen)
+
+    ###### states ######
+    planned_action_queue = queue.Queue()
+    ROS2_fail_queue = queue.Queue()  # put message in if ROS2 fail
+    cmd_plan = None
+    cmd_idx = 0
+    articulation_controller = robot.get_articulation_controller()
+    tick = 0
+    spheres = None
+    wait_ros2 = False
+    graspgen_receiver = NonBlockingJSONReceiver(port=port_config.GRASPGEN_TO_ISAACSIM)
+    graspgen_sender = NonBlockingJSONSender(port=port_config.ISAACSIM_TO_GRASPGEN)
+    ros2_receiver = NonBlockingJSONReceiver(port=port_config.ROS2_TO_ISAACSIM)
+    ros2_sender = NonBlockingJSONSender(port=port_config.ISAACSIM_TO_ROS2)
+    sim_js = robot.get_joints_state()
+    sim_js_names = robot.dof_names
+    planned_action_moves: list = []
+    idx_list = [0, 1, 2, 3, 4, 5]
+    temp_cuboid_paths = []
     default_config = [
         1.37296326,
         0.08553859,
@@ -819,13 +361,13 @@ def main():
     ]
     last_joint_states = default_config
     temp_cuboid_paths = []
-    # idx_list = [0,1,2,3,4,5]
     common_js_names = ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"]
     graspgen_eof = False
 
     while simulation_app.is_running():
         # try handle first
         for _ in range(1):
+            ###### Got message from gripper_server.py ######
             if not ROS2_fail_queue.empty():
                 # clear plan
                 while not planned_action_queue.empty():
@@ -850,7 +392,7 @@ def main():
                     raise ValueError("Unknown message")
 
                 continue
-
+            ###### Got message from graspgen ######
             graspgen_datas = graspgen_receiver.capture_data()
             if graspgen_datas is None:
                 continue
@@ -866,102 +408,20 @@ def main():
                 before_move_joints = last_joint_states
                 curobo_planned_action_moves: list[Move] = []
                 for move in graspgen_data["moves"]:
-                    # handle temp obstacles
-                    # if temp_cuboid_paths:
-                    #     for path in temp_cuboid_paths:
-                    #         stage.RemovePrim(path)  # this may race condition
-                    #     temp_cuboid_paths = []
-                    # Table # race condition, I guess? Yes this shit will race condition
-                    # prim_path = "/World/temp_obstacle_table"
-                    # cuboid.FixedCuboid(
-                    #     prim_path=prim_path,
-                    #     position=np.array([0, 0, -1.97]),
-                    #     scale=np.array([4, 4, 4]),
-                    #     color=np.array([0.0, 0.0, 1.0]),  # Blue
-                    #     # physics=True,
-                    # )
-                    # temp_cuboid_paths.append(prim_path)
-                    cuboids = []
-                    cuboids.append(
-                        Cuboid(
-                            name="table",
-                            pose=[0, 0, -1.97] + [1, 0, 0, 0],
-                            dims=[4, 4, 4],
-                        )
-                    )
-                    for i, obstacle_name in enumerate(graspgen_data["obstacles"]):
-                        if not (
-                            "ignore_obstacles" in move
-                            and obstacle_name in move["ignore_obstacles"]
-                        ):
-                            middle_point = np.mean(
-                                [
-                                    graspgen_data["obstacles"][obstacle_name]["max"],
-                                    graspgen_data["obstacles"][obstacle_name]["min"],
-                                ],
-                                axis=0,
-                            )
-                            scale = np.array(
-                                graspgen_data["obstacles"][obstacle_name]["max"]
-                            ) - np.array(
-                                graspgen_data["obstacles"][obstacle_name]["min"]
-                            )
-                            cuboids.append(
-                                Cuboid(
-                                    name=f"obs_{i}",
-                                    pose=middle_point.tolist() + [1, 0, 0, 0],
-                                    dims=scale.tolist(),
-                                )
-                            )
-
-                            # Race condition
-                            # prim_path = f"/World/temp_obstacle_{i}"
-                            # cuboid.FixedCuboid(
-                            #     prim_path=prim_path,
-                            #     position=np.array(middle_point),
-                            #     scale=[scale[0], scale[1], scale[2] * 1.1],
-                            #     color=np.array([0.0, 0.0, 1.0]),  # Blue
-                            #     # physics=True,
-                            # )
-                            # temp_cuboid_paths.append(prim_path)
-                    # Get all obstacles from the stage, including the new temporary ones
-                    # obstacles = usd_help.get_obstacles_from_stage(
-                    #     only_paths=["/World"],
-                    #     reference_prim_path=robot_prim_path,
-                    #     ignore_substring=[
-                    #         robot_prim_path,
-                    #         "/World/defaultGroundPlane",
-                    #         "/curobo",
-                    #         "/World/table",
-                    #     ],
-                    # ).get_collision_check_world()
+                    cuboids = get_cuboid_list(move, graspgen_data["obstacles"])
                     obstacles = WorldConfig(cuboid=cuboids)
-
-                    # motion_gen.update_world(world)
                     if "no_obstacles" in move:
-                        with motion_gen_lock:
-                            motion_gen.update_world(zero_obstacles)
+                        motion_gen.update_world(zero_obstacles)
                     else:
-                        with motion_gen_lock:
-                            motion_gen.update_world(obstacles)
+                        motion_gen.update_world(obstacles)
                     # start handle move
                     if move["type"] == "gripper":
                         curobo_planned_action_moves.append(Move(move, None))
                         continue
-                    ## start serious curobo motion planning
-                    # if "constraint" in move:
-                    #     pose_metric = PoseCostMetric(
-                    #         hold_partial_pose=True,
-                    #         hold_vec_weight=motion_gen.tensor_args.to_device(
-                    #             move["constraint"]
-                    #         ),
-                    #     )
-                    #     print(
-                    #         "CONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINTCONSTRAINT"
-                    #     )
-                    # else:
-                    #     pose_metric = None
                     print("curoboing")
+                    curobo_cu_js = still_joint_states(
+                        last_joint_states, tensor_args, sim_js_names
+                    )
                     if "goal" in move:
                         ik_goal = Pose(
                             position=tensor_args.to_device(move["goal"][:3]),
@@ -969,19 +429,9 @@ def main():
                         )
 
                         plan_config.pose_cost_metric = pose_metric
-                        curobo_cu_js = JointState(
-                            position=tensor_args.to_device(last_joint_states),
-                            velocity=tensor_args.to_device(sim_js.velocities)
-                            * 0.0,  # * 0.0,
-                            acceleration=tensor_args.to_device(sim_js.velocities) * 0.0,
-                            jerk=tensor_args.to_device(sim_js.velocities) * 0.0,
-                            joint_names=sim_js_names,
+                        result = motion_gen.plan_single(
+                            curobo_cu_js.unsqueeze(0), ik_goal, plan_config
                         )
-
-                        with motion_gen_lock:
-                            result = motion_gen.plan_single(
-                                curobo_cu_js.unsqueeze(0), ik_goal, plan_config
-                            )
                     elif "joints_goal" in move:
                         print("ALRIGHT?0")
                         joints_goal = JointState(
@@ -992,48 +442,25 @@ def main():
                             jerk=tensor_args.to_device(sim_js.velocities) * 0.0,
                             joint_names=sim_js_names,
                         )
-                        print("ALRIGHT?1")
 
                         plan_config.pose_cost_metric = pose_metric
-                        curobo_cu_js = JointState(
-                            position=tensor_args.to_device(last_joint_states),
-                            velocity=tensor_args.to_device(sim_js.velocities)
-                            * 0.0,  # * 0.0,
-                            acceleration=tensor_args.to_device(sim_js.velocities) * 0.0,
-                            jerk=tensor_args.to_device(sim_js.velocities) * 0.0,
-                            joint_names=sim_js_names,
+                        result = motion_gen.plan_single_js(
+                            curobo_cu_js.unsqueeze(0),
+                            joints_goal.unsqueeze(0),
+                            plan_config,
                         )
-                        print("ALRIGHT?2")
-                        with motion_gen_lock:
-                            result = motion_gen.plan_single_js(
-                                curobo_cu_js.unsqueeze(0),
-                                joints_goal.unsqueeze(0),
-                                plan_config,
-                            )
                         print("ALRIGHT?3")
 
                     succ = result.success.item()  # ik_result.success.item()
                     if succ:
-                        print("successful")
-                    else:
-                        print("not successful")
-                    if succ:
                         print("YES YES YES?")
-                        with motion_gen_lock:
-                            new_cmd_plan = result.get_interpolated_plan()
-                            new_cmd_plan = motion_gen.get_full_js(new_cmd_plan)
-                        # get only joint names that are in both:
-                        # idx_list = []
-                        # common_js_names = []
-                        # for x in sim_js_names:
-                        #     if x in new_cmd_plan.joint_names:
-                        #         idx_list.append(robot.get_dof_index(x))
-                        #         common_js_names.append(x)
-
+                        new_cmd_plan = result.get_interpolated_plan()
+                        new_cmd_plan = motion_gen.get_full_js(new_cmd_plan)
                         new_cmd_plan = new_cmd_plan.get_ordered_joint_state(
                             common_js_names
                         )
                         # The following code block shows how to prune the plan to keep only the first and last waypoints
+                        # Emulates IK method's behavior.
                         if "no_curobo" in move:
                             new_cmd_plan = JointState(
                                 position=new_cmd_plan.position[[0, -1]],
@@ -1041,9 +468,6 @@ def main():
                                 acceleration=new_cmd_plan.acceleration[[0, -1]],
                                 jerk=new_cmd_plan.jerk[[0, -1]],
                                 joint_names=new_cmd_plan.joint_names,
-                            )
-                            print(
-                                "---------------------------------------------------------only keep first and last"
                             )
                         positions = cmd_to_move(new_cmd_plan)
                         ROS2_move = {
@@ -1072,9 +496,6 @@ def main():
             else:  # all graspgen_datas failed
                 graspgen_sender.send_data({"message": "Fail"})
         # end of handle section
-        # make sure the thread has catched and handled the issue
-        # if not ROS2_fail_queue.empty():
-        # continue
 
         if wait_ros2:
             ros2_response = ros2_receiver.capture_data()
@@ -1122,25 +543,6 @@ def main():
             )
         if step_index < 20:
             continue
-        """ skil the check because it prints too many needless logs
-        if step_index == 50 or step_index % 1000 == 0.0:
-            print("Updating world, reading w.r.t.", robot_prim_path)
-            obstacles = usd_help.get_obstacles_from_stage(
-                only_paths=["/World"],
-                reference_prim_path=robot_prim_path,
-                ignore_substring=[
-                    robot_prim_path,
-                    "/World/target",
-                    "/World/defaultGroundPlane",
-                    "/curobo",
-                ],
-            ).get_collision_check_world()
-            print(len(obstacles.objects))
-
-            motion_gen.update_world(obstacles)
-            print("Updated World")
-            carb.log_info("Synced CuRobo world from stage.")
-        """
 
         sim_js = robot.get_joints_state()
         if sim_js is None:
@@ -1149,28 +551,15 @@ def main():
         sim_js_names = robot.dof_names
         if np.any(np.isnan(sim_js.positions)):
             log_error("isaac sim has returned NAN joint position values.")
-        cu_js = JointState(
-            position=tensor_args.to_device(sim_js.positions),
-            velocity=tensor_args.to_device(sim_js.velocities),  # * 0.0,
-            acceleration=tensor_args.to_device(sim_js.velocities) * 0.0,
-            jerk=tensor_args.to_device(sim_js.velocities) * 0.0,
-            joint_names=sim_js_names,
-        )
+        cu_js = still_joint_states(sim_js.positions, tensor_args, sim_js_names)
 
-        # Handle reactive mode
-        if not args.reactive:
-            cu_js.velocity *= 0.0
-            cu_js.acceleration *= 0.0
-        if args.reactive and past_cmd is not None:
-            cu_js.position[:] = past_cmd.position
-            cu_js.velocity[:] = past_cmd.velocity
-            cu_js.acceleration[:] = past_cmd.acceleration
-        with motion_gen_lock:
-            cu_js = cu_js.get_ordered_joint_state(motion_gen.kinematics.joint_names)
+        cu_js.velocity *= 0.0
+        cu_js.acceleration *= 0.0
+
+        cu_js = cu_js.get_ordered_joint_state(motion_gen.kinematics.joint_names)
 
         if args.visualize_spheres and step_index % 2 == 0:
-            with motion_gen_lock:
-                sph_list = motion_gen.kinematics.get_robot_as_spheres(cu_js.position)
+            sph_list = motion_gen.kinematics.get_robot_as_spheres(cu_js.position)
 
             if spheres is None:
                 spheres = []
@@ -1190,19 +579,14 @@ def main():
                         spheres[si].set_world_pose(position=np.ravel(s.position))
                         spheres[si].set_radius(float(s.radius))
         ###### update past_pose
-        # past_pose = cube_position
-        # past_orientation = cube_orientation
-
         if cmd_plan is not None:
             cmd_state = cmd_plan[cmd_idx]
-            past_cmd = cmd_state.clone()
             # get full dof state
             art_action = ArticulationAction(
                 cmd_state.position.cpu().numpy(),
                 cmd_state.velocity.cpu().numpy(),
                 joint_indices=idx_list,
             )
-            # print("======art_action: ", art_action.joint_positions)
             # set desired joint angles obtained from IK:
             articulation_controller.apply_action(art_action)
             cmd_idx += 1
@@ -1211,7 +595,6 @@ def main():
             if cmd_idx >= len(cmd_plan.position):
                 cmd_idx = 0
                 cmd_plan = None
-                past_cmd = None
         if not wait_ros2 and len(planned_action_moves) > 0:
             # planned action
             wait_ros2 = True
@@ -1233,7 +616,6 @@ def main():
                 temp_cuboid_paths = []
             cube: Cuboid
             for i, cube in enumerate(planned_action["obstacles"]):
-                # race condition???
                 prim_path = f"/World/temp_obstacle_{i}"
                 cuboid.VisualCuboid(
                     prim_path=prim_path,
