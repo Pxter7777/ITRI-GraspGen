@@ -92,7 +92,7 @@ dependencies = [
     "jupyter>=1.0.0",
     "opencv-python>=4.7.0",
     "eva-decord>=0.6.1",
-    # "pyzed @ file:///home/j300/GenPointCloud/pyzed-5.0-cp311-cp311-linux_x86_64.whl", for legal reason, I think I shouldn't add this .whl into my repo
+    "pyzed @ https://download.stereolabs.com/zedsdk/5.0/whl/linux_x86_64/pyzed-5.0-cp311-cp311-linux_x86_64.whl",
     "seaborn",
     "torch_scatter",
     "sam-2",
