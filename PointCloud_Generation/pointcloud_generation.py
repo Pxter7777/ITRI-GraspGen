@@ -631,9 +631,7 @@ class PointCloudGenerator:
                 if zed_status == sl.ERROR_CODE.SUCCESS:
                     # Convert to numpy arrays
                     left_gray = cv2.cvtColor(left_image, cv2.COLOR_BGRA2GRAY)
-                    right_gray = cv2.cvtColor(
-                        right_image, cv2.COLOR_BGRA2GRAY
-                    )
+                    right_gray = cv2.cvtColor(right_image, cv2.COLOR_BGRA2GRAY)
                     color_np = left_image[:, :, :3]  # Drop alpha channel
                     color_np_org = color_np.copy()
 
@@ -732,9 +730,7 @@ class PointCloudGenerator:
                 if zed_status == sl.ERROR_CODE.SUCCESS:
                     # Convert to numpy arrays
                     left_gray = cv2.cvtColor(left_image, cv2.COLOR_BGRA2GRAY)
-                    right_gray = cv2.cvtColor(
-                        right_image, cv2.COLOR_BGRA2GRAY
-                    )
+                    right_gray = cv2.cvtColor(right_image, cv2.COLOR_BGRA2GRAY)
                     color_np = left_image[:, :, :3]  # Drop alpha channel
                     color_np_org = color_np.copy()
 
@@ -836,9 +832,7 @@ class PointCloudGenerator:
                 if zed_status == sl.ERROR_CODE.SUCCESS:
                     # Convert to numpy arrays
                     left_gray = cv2.cvtColor(left_image, cv2.COLOR_BGRA2GRAY)
-                    right_gray = cv2.cvtColor(
-                        right_image, cv2.COLOR_BGRA2GRAY
-                    )
+                    right_gray = cv2.cvtColor(right_image, cv2.COLOR_BGRA2GRAY)
                     color_np = left_image[:, :, :3]  # Drop alpha channel
                     color_np_org = color_np.copy()
 

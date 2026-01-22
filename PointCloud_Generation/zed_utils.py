@@ -3,13 +3,15 @@ import numpy as np
 import os
 import cv2
 import json
-import zmq 
+import zmq
 import logging
 
 logger = logging.getLogger(__name__)
 
 current_file_dir = os.path.dirname(os.path.abspath(__file__))
 project_root_dir = os.path.dirname(current_file_dir)
+
+
 class ZedCamera:
     """A class to interface with a ZED camera."""
 
@@ -33,8 +35,11 @@ class ZedCamera:
             try:
                 self.initialize_zed()
             except RuntimeError:
-                logger.warning("Initializing Zed Camera failed, trying streaming source.")
+                logger.warning(
+                    "Initializing Zed Camera failed, trying streaming source."
+                )
                 self.initialize_zed_using_stream()
+
     def initialize_zed_using_stream(self):
         self.initialize_zed_using_existing_png("demo6")
         ctx = zmq.Context()
@@ -42,7 +47,7 @@ class ZedCamera:
         self.sub.connect("tcp://127.0.0.1:9091")
         # 只訂閱 raw，不吃 jpeg
         self.sub.setsockopt(zmq.SUBSCRIBE, b"zed_raw")
-        self.sub.setsockopt(zmq.RCVTIMEO, 500) # timeout 500ms
+        self.sub.setsockopt(zmq.RCVTIMEO, 500)  # timeout 500ms
         logger.info("[RAW] subscriber started")
         self.from_stream = True
 
@@ -108,22 +113,19 @@ class ZedCamera:
     def capture_images(self) -> tuple[sl.ERROR_CODE, np.ndarray, np.ndarray]:
         if self.from_stream:
             try:
-                (
-                    topic,
-                    ts,
-                    l_shape, l_dtype, l_buf,
-                    r_shape, r_dtype, r_buf
-                ) = self.sub.recv_multipart()
+                (topic, ts, l_shape, l_dtype, l_buf, r_shape, r_dtype, r_buf) = (
+                    self.sub.recv_multipart()
+                )
             except zmq.Again as e:
-                raise ValueError("Failed to capture images from stream. Is try_stream.py running?") from e
-            left_image = np.frombuffer(
-                l_buf,
-                dtype=np.dtype(l_dtype.decode())
-            ).reshape(eval(l_shape.decode()))
+                raise ValueError(
+                    "Failed to capture images from stream. Is try_stream.py running?"
+                ) from e
+            left_image = np.frombuffer(l_buf, dtype=np.dtype(l_dtype.decode())).reshape(
+                eval(l_shape.decode())
+            )
 
             right_image = np.frombuffer(
-                r_buf,
-                dtype=np.dtype(r_dtype.decode())
+                r_buf, dtype=np.dtype(r_dtype.decode())
             ).reshape(eval(r_shape.decode()))
             ts = int(ts.decode())
             return sl.ERROR_CODE.SUCCESS, left_image, right_image
@@ -131,7 +133,11 @@ class ZedCamera:
         if (
             self.png_dir is not None
         ):  # use existing png instead of the actual camera, for test purpose
-            return sl.ERROR_CODE.SUCCESS, self.left_image.get_data(), self.right_image.get_data()
+            return (
+                sl.ERROR_CODE.SUCCESS,
+                self.left_image.get_data(),
+                self.right_image.get_data(),
+            )
 
         """Captures left and right images from the ZED camera."""
         status = self.camera.grab()
