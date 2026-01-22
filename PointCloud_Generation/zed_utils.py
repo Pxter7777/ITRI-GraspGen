@@ -27,25 +27,25 @@ class ZedCamera:
         self.right_image = sl.Mat()
         self.png_dir = None
         self.from_stream = from_stream
+        if self.from_stream:
+            self.initialize_zed_using_stream()
+            return
         if use_png != "":
             self.initialize_zed_using_existing_png(use_png)
-        elif self.from_stream:
+            return
+        ### not from stream nor from png, try to actually use the zed camera
+        try:
+            self.initialize_zed()
+        except RuntimeError:
+            logger.warning("Initializing Zed Camera failed, trying streaming source.")
             self.initialize_zed_using_stream()
-        else:
-            try:
-                self.initialize_zed()
-            except RuntimeError:
-                logger.warning(
-                    "Initializing Zed Camera failed, trying streaming source."
-                )
-                self.initialize_zed_using_stream()
+        return
 
-    def initialize_zed_using_stream(self):
+    def initialize_zed_using_stream(self, port=9091):
         self.initialize_zed_using_existing_png("demo6")
         ctx = zmq.Context()
         self.sub = ctx.socket(zmq.SUB)
-        self.sub.connect("tcp://127.0.0.1:9091")
-        # 只訂閱 raw，不吃 jpeg
+        self.sub.connect(f"tcp://127.0.0.1:{port}")
         self.sub.setsockopt(zmq.SUBSCRIBE, b"zed_raw")
         self.sub.setsockopt(zmq.RCVTIMEO, 500)  # timeout 500ms
         logger.info("[RAW] subscriber started")
