@@ -3,12 +3,17 @@ import numpy as np
 import os
 import cv2
 import json
+import zmq 
+import logging
 
+logger = logging.getLogger(__name__)
 
+current_file_dir = os.path.dirname(os.path.abspath(__file__))
+project_root_dir = os.path.dirname(current_file_dir)
 class ZedCamera:
     """A class to interface with a ZED camera."""
 
-    def __init__(self, use_png="") -> None:
+    def __init__(self, use_png="", from_stream=False) -> None:
         """Initializes the ZedCamera object."""
         self.baseline: float
         self.camera: sl.Camera
@@ -19,11 +24,27 @@ class ZedCamera:
         self.left_image = sl.Mat()
         self.right_image = sl.Mat()
         self.png_dir = None
-        if use_png == "":
-            print("use_png is empty-*+--------------")
-            self.initialize_zed()
-        else:
+        self.from_stream = from_stream
+        if use_png != "":
             self.initialize_zed_using_existing_png(use_png)
+        elif self.from_stream:
+            self.initialize_zed_using_stream()
+        else:
+            try:
+                self.initialize_zed()
+            except RuntimeError:
+                logger.warning("Initializing Zed Camera failed, trying streaming source.")
+                self.initialize_zed_using_stream()
+    def initialize_zed_using_stream(self):
+        self.initialize_zed_using_existing_png("demo6")
+        ctx = zmq.Context()
+        self.sub = ctx.socket(zmq.SUB)
+        self.sub.connect("tcp://127.0.0.1:9091")
+        # 只訂閱 raw，不吃 jpeg
+        self.sub.setsockopt(zmq.SUBSCRIBE, b"zed_raw")
+        self.sub.setsockopt(zmq.RCVTIMEO, 500) # timeout 500ms
+        logger.info("[RAW] subscriber started")
+        self.from_stream = True
 
     def initialize_zed(self) -> None:
         """Initializes the ZED camera and sets camera parameters."""
@@ -64,8 +85,6 @@ class ZedCamera:
         self.ext_ir1_to_color = np.identity(4)
 
     def initialize_zed_using_existing_png(self, use_png) -> None:
-        current_file_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root_dir = os.path.dirname(current_file_dir)
         self.png_dir = os.path.join(
             project_root_dir, "sample_data/zed_images/", use_png
         )
@@ -86,18 +105,40 @@ class ZedCamera:
         self.K_left = np.array(camera_data["K_left"])
         self.baseline = camera_data["baseline"]
 
-    def capture_images(self) -> tuple[sl.ERROR_CODE, sl.Mat, sl.Mat]:
+    def capture_images(self) -> tuple[sl.ERROR_CODE, np.ndarray, np.ndarray]:
+        if self.from_stream:
+            try:
+                (
+                    topic,
+                    ts,
+                    l_shape, l_dtype, l_buf,
+                    r_shape, r_dtype, r_buf
+                ) = self.sub.recv_multipart()
+            except zmq.Again as e:
+                raise ValueError("Failed to capture images from stream. Is try_stream.py running?") from e
+            left_image = np.frombuffer(
+                l_buf,
+                dtype=np.dtype(l_dtype.decode())
+            ).reshape(eval(l_shape.decode()))
+
+            right_image = np.frombuffer(
+                r_buf,
+                dtype=np.dtype(r_dtype.decode())
+            ).reshape(eval(r_shape.decode()))
+            ts = int(ts.decode())
+            return sl.ERROR_CODE.SUCCESS, left_image, right_image
+
         if (
             self.png_dir is not None
         ):  # use existing png instead of the actual camera, for test purpose
-            return sl.ERROR_CODE.SUCCESS, self.left_image, self.right_image
+            return sl.ERROR_CODE.SUCCESS, self.left_image.get_data(), self.right_image.get_data()
 
         """Captures left and right images from the ZED camera."""
         status = self.camera.grab()
         if status == sl.ERROR_CODE.SUCCESS:
             self.camera.retrieve_image(self.left_image, sl.VIEW.LEFT)
             self.camera.retrieve_image(self.right_image, sl.VIEW.RIGHT)
-        return status, self.left_image, self.right_image
+        return status, self.left_image.get_data(), self.right_image.get_data()
 
     def close(self) -> None:
         """Closes the ZED camera."""
