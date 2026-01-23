@@ -45,7 +45,6 @@ class ZedCamera:
         self.initialize_zed_using_existing_png("demo6")
         ctx = zmq.Context()
         self.sub = ctx.socket(zmq.SUB)
-        self.sub.connect(f"tcp://127.0.0.1:{port}")
         self.sub.setsockopt(zmq.SUBSCRIBE, b"zed_raw")
         self.sub.setsockopt(zmq.RCVTIMEO, 500)  # timeout 500ms
         logger.info("[RAW] subscriber started")
@@ -110,34 +109,48 @@ class ZedCamera:
         self.K_left = np.array(camera_data["K_left"])
         self.baseline = camera_data["baseline"]
 
+    def capture_images_from_stream(
+        self, port=9091
+    ) -> tuple[sl.ERROR_CODE, np.ndarray, np.ndarray]:
+        """
+        To capture image from stream, here we immediately connect, try to grab info, and disconnect.
+        If it keeps the socket connect, but not actually grabbing info, the info will pile up and eventually cause out of memory.
+        """
+        try:
+            self.sub.connect(f"tcp://127.0.0.1:{port}")
+            (topic, ts, l_shape, l_dtype, l_buf, r_shape, r_dtype, r_buf) = (
+                self.sub.recv_multipart()
+            )
+        except zmq.Again as e:
+            raise ValueError(
+                "Failed to capture images from stream. Is try_stream.py running?"
+            ) from e
+        left_image = np.frombuffer(l_buf, dtype=np.dtype(l_dtype.decode())).reshape(
+            eval(l_shape.decode())
+        )
+        right_image = np.frombuffer(r_buf, dtype=np.dtype(r_dtype.decode())).reshape(
+            eval(r_shape.decode())
+        )
+        ts = int(ts.decode())
+        self.sub.disconnect(f"tcp://127.0.0.1:{port}")
+        return (sl.ERROR_CODE.SUCCESS, left_image, right_image)
+
+    def capture_images_from_exsisting_png(
+        self,
+    ) -> tuple[sl.ERROR_CODE, np.ndarray, np.ndarray]:
+        return (
+            sl.ERROR_CODE.SUCCESS,
+            self.left_image.get_data(),
+            self.right_image.get_data(),
+        )
+
     def capture_images(self) -> tuple[sl.ERROR_CODE, np.ndarray, np.ndarray]:
         if self.from_stream:
-            try:
-                (topic, ts, l_shape, l_dtype, l_buf, r_shape, r_dtype, r_buf) = (
-                    self.sub.recv_multipart()
-                )
-            except zmq.Again as e:
-                raise ValueError(
-                    "Failed to capture images from stream. Is try_stream.py running?"
-                ) from e
-            left_image = np.frombuffer(l_buf, dtype=np.dtype(l_dtype.decode())).reshape(
-                eval(l_shape.decode())
-            )
-
-            right_image = np.frombuffer(
-                r_buf, dtype=np.dtype(r_dtype.decode())
-            ).reshape(eval(r_shape.decode()))
-            ts = int(ts.decode())
-            return sl.ERROR_CODE.SUCCESS, left_image, right_image
-
+            return self.capture_images_from_stream()
         if (
             self.png_dir is not None
         ):  # use existing png instead of the actual camera, for test purpose
-            return (
-                sl.ERROR_CODE.SUCCESS,
-                self.left_image.get_data(),
-                self.right_image.get_data(),
-            )
+            return self.capture_images_from_exsisting_png()
 
         """Captures left and right images from the ZED camera."""
         status = self.camera.grab()
