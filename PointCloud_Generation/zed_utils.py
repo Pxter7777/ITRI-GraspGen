@@ -7,9 +7,9 @@ import zmq
 import logging
 
 try:
-    from common_utils import port_config
+    from common_utils import network_config
 
-    STREAM_TO_ZED_PORT = port_config.STREAM_TO_ZED_PORT
+    STREAM_TO_ZED_PORT = network_config.STREAM_TO_ZED_PORT
 except ModuleNotFoundError:
     STREAM_TO_ZED_PORT = 9091
 logger = logging.getLogger(__name__)
