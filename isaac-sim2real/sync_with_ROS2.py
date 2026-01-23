@@ -342,10 +342,10 @@ def main():
     tick = 0
     spheres = None
     wait_ros2 = False
-    graspgen_receiver = NonBlockingJSONReceiver(port=port_config.GRASPGEN_TO_ISAACSIM)
-    graspgen_sender = NonBlockingJSONSender(port=port_config.ISAACSIM_TO_GRASPGEN)
-    ros2_receiver = NonBlockingJSONReceiver(port=port_config.ROS2_TO_ISAACSIM)
-    ros2_sender = NonBlockingJSONSender(port=port_config.ISAACSIM_TO_ROS2)
+    graspgen_receiver = NonBlockingJSONReceiver(port=port_config.GRASPGEN_TO_ISAACSIM_PORT)
+    graspgen_sender = NonBlockingJSONSender(port=port_config.ISAACSIM_TO_GRASPGEN_PORT)
+    ros2_receiver = NonBlockingJSONReceiver(port=port_config.ROS2_TO_ISAACSIM_PORT)
+    ros2_sender = NonBlockingJSONSender(port=port_config.ISAACSIM_TO_ROS2_PORT)
     sim_js = robot.get_joints_state()
     sim_js_names = robot.dof_names
     planned_action_moves: list = []

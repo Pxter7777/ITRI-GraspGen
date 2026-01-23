@@ -26,9 +26,9 @@ logging.basicConfig(
     format="[%(asctime)s][%(name)s][%(levelname)s] %(message)s",
     force=True,
 )
-sender = NonBlockingJSONSender(port=port_config.ROS2_TO_ISAACSIM)
+sender = NonBlockingJSONSender(port=port_config.ROS2_TO_ISAACSIM_PORT)
 # if it says [socket_communication][ERROR] Connection failed. Is the bridge.py script running on localhost:9877? when started, it's normal and can be ignored.
-receiver = NonBlockingJSONReceiver(port=port_config.ISAACSIM_TO_ROS2)
+receiver = NonBlockingJSONReceiver(port=port_config.ISAACSIM_TO_ROS2_PORT)
 i = 0
 while True:
     time.sleep(0.1)

@@ -129,8 +129,8 @@ def main():
     current_file_dir = os.path.dirname(os.path.abspath(__file__))
     project_root_dir = os.path.dirname(current_file_dir)
     try:
-        sender = NonBlockingJSONSender(port=port_config.GRASPGEN_TO_ISAACSIM)
-        receiver = NonBlockingJSONReceiver(port=port_config.ISAACSIM_TO_GRASPGEN)
+        sender = NonBlockingJSONSender(port=port_config.GRASPGEN_TO_ISAACSIM_PORT)
+        receiver = NonBlockingJSONReceiver(port=port_config.ISAACSIM_TO_GRASPGEN_PORT)
         pc_generator = PointCloudGenerator(args)
         grasp_generator = GraspGeneratorUI(
             args.gripper_config,
