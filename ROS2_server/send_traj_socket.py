@@ -2,9 +2,17 @@ import socket
 import json
 import keyboard
 import time
+import os
+import sys
 
-HOST = "192.168.1.33"  # 改成顯示電腦的 IP，例如 "192.168.1.123"
-PORT = 50008
+current_file_dir = os.path.dirname(os.path.abspath(__file__))
+project_root_dir = os.path.dirname(current_file_dir)
+if project_root_dir not in sys.path:
+    sys.path.insert(0, project_root_dir)
+from common_utils import network_config  # noqa: E402
+
+HOST = network_config.REAL2SIM_IP  # 改成顯示電腦的 IP，例如 "192.168.1.123"
+PORT = network_config.REAL2SIM_PORT
 
 # Example
 TEST_ROWS = [
