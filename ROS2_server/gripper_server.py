@@ -84,12 +84,16 @@ successs = 0
 class TMRobotController(Node):
     def __init__(self, real2sim: bool):
         super().__init__("tm_robot_controller")
-        self.csv_receiver = NonBlockingJSONReceiver(port=network_config.MIA_TO_ROS2_PORT)
+        self.csv_receiver = NonBlockingJSONReceiver(
+            port=network_config.MIA_TO_ROS2_PORT
+        )
         self.csv_sender = NonBlockingJSONSender(port=network_config.ROS2_TO_MIA_PORT)
         self.isaacsim_receiver = NonBlockingJSONReceiver(
             port=network_config.ISAACSIM_TO_ROS2_PORT
         )
-        self.isaacsim_sender = NonBlockingJSONSender(port=network_config.ROS2_TO_ISAACSIM_PORT)
+        self.isaacsim_sender = NonBlockingJSONSender(
+            port=network_config.ROS2_TO_ISAACSIM_PORT
+        )
         self.data_source = ""
         self.script_cli = None
         self.io_cli = None
