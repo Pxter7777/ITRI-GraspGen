@@ -41,13 +41,8 @@ class ZedCamera:
             self.initialize_zed_using_stream()
         return
 
-    def initialize_zed_using_stream(self, port=9091):
+    def initialize_zed_using_stream(self):
         self.initialize_zed_using_existing_png("demo6")
-        ctx = zmq.Context()
-        self.sub = ctx.socket(zmq.SUB)
-        self.sub.setsockopt(zmq.SUBSCRIBE, b"zed_raw")
-        self.sub.setsockopt(zmq.RCVTIMEO, 500)  # timeout 500ms
-        logger.info("[RAW] subscriber started")
         self.from_stream = True
 
     def initialize_zed(self) -> None:
@@ -113,9 +108,14 @@ class ZedCamera:
         self, port=9091
     ) -> tuple[sl.ERROR_CODE, np.ndarray, np.ndarray]:
         """
-        To capture image from stream, here we immediately connect, try to grab info, and disconnect.
+        To capture image from stream, here we immediately connect, try to grab info, and disconnect + close the socket completely.
         If it keeps the socket connect, but not actually grabbing info, the info will pile up and eventually cause out of memory.
         """
+        ctx = zmq.Context()
+        self.sub = ctx.socket(zmq.SUB)
+        self.sub.setsockopt(zmq.SUBSCRIBE, b"zed_raw")
+        self.sub.setsockopt(zmq.LINGER, 0)  # <--- CRITICAL: Don't wait to close
+        self.sub.setsockopt(zmq.RCVTIMEO, 500)  # timeout 500ms
         try:
             self.sub.connect(f"tcp://127.0.0.1:{port}")
             (topic, ts, l_shape, l_dtype, l_buf, r_shape, r_dtype, r_buf) = (
@@ -125,6 +125,7 @@ class ZedCamera:
             raise ValueError(
                 "Failed to capture images from stream. Is try_stream.py running?"
             ) from e
+        # Grab images from stream successful
         left_image = np.frombuffer(l_buf, dtype=np.dtype(l_dtype.decode())).reshape(
             eval(l_shape.decode())
         )
@@ -133,6 +134,7 @@ class ZedCamera:
         )
         ts = int(ts.decode())
         self.sub.disconnect(f"tcp://127.0.0.1:{port}")
+        self.sub.close()
         return (sl.ERROR_CODE.SUCCESS, left_image, right_image)
 
     def capture_images_from_exsisting_png(
