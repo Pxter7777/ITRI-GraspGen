@@ -520,7 +520,7 @@ class PointCloudGenerator:
             logger.exception(f"error{e}")
             return RuntimeError
 
-        color_np = left_image.get_data()[:, :, :3]  # Drop alpha channel
+        color_np = left_image[:, :, :3]  # Drop alpha channel
         color_np_org = color_np.copy()
         color_np_for_GroundingDINO = color_np.copy()
         # replace the blockage region with black
@@ -574,8 +574,8 @@ class PointCloudGenerator:
             named_masks.append(NamedMask(name=box.phrase, mask=mask))
 
         # stereo inference
-        left_gray = cv2.cvtColor(left_image.get_data(), cv2.COLOR_BGRA2GRAY)
-        right_gray = cv2.cvtColor(right_image.get_data(), cv2.COLOR_BGRA2GRAY)
+        left_gray = cv2.cvtColor(left_image, cv2.COLOR_BGRA2GRAY)
+        right_gray = cv2.cvtColor(right_image, cv2.COLOR_BGRA2GRAY)
         depth, (H_scaled, W_scaled) = self.stereo_model.run_inference(
             left_gray, right_gray, self.zed.K_left, self.zed.baseline
         )
@@ -630,11 +630,9 @@ class PointCloudGenerator:
                 zed_status, left_image, right_image = self.zed.capture_images()
                 if zed_status == sl.ERROR_CODE.SUCCESS:
                     # Convert to numpy arrays
-                    left_gray = cv2.cvtColor(left_image.get_data(), cv2.COLOR_BGRA2GRAY)
-                    right_gray = cv2.cvtColor(
-                        right_image.get_data(), cv2.COLOR_BGRA2GRAY
-                    )
-                    color_np = left_image.get_data()[:, :, :3]  # Drop alpha channel
+                    left_gray = cv2.cvtColor(left_image, cv2.COLOR_BGRA2GRAY)
+                    right_gray = cv2.cvtColor(right_image, cv2.COLOR_BGRA2GRAY)
+                    color_np = left_image[:, :, :3]  # Drop alpha channel
                     color_np_org = color_np.copy()
 
                     display_frame = color_np.copy()
@@ -731,11 +729,9 @@ class PointCloudGenerator:
                 zed_status, left_image, right_image = self.zed.capture_images()
                 if zed_status == sl.ERROR_CODE.SUCCESS:
                     # Convert to numpy arrays
-                    left_gray = cv2.cvtColor(left_image.get_data(), cv2.COLOR_BGRA2GRAY)
-                    right_gray = cv2.cvtColor(
-                        right_image.get_data(), cv2.COLOR_BGRA2GRAY
-                    )
-                    color_np = left_image.get_data()[:, :, :3]  # Drop alpha channel
+                    left_gray = cv2.cvtColor(left_image, cv2.COLOR_BGRA2GRAY)
+                    right_gray = cv2.cvtColor(right_image, cv2.COLOR_BGRA2GRAY)
+                    color_np = left_image[:, :, :3]  # Drop alpha channel
                     color_np_org = color_np.copy()
 
                     display_frame = color_np.copy()
@@ -835,11 +831,9 @@ class PointCloudGenerator:
                 zed_status, left_image, right_image = self.zed.capture_images()
                 if zed_status == sl.ERROR_CODE.SUCCESS:
                     # Convert to numpy arrays
-                    left_gray = cv2.cvtColor(left_image.get_data(), cv2.COLOR_BGRA2GRAY)
-                    right_gray = cv2.cvtColor(
-                        right_image.get_data(), cv2.COLOR_BGRA2GRAY
-                    )
-                    color_np = left_image.get_data()[:, :, :3]  # Drop alpha channel
+                    left_gray = cv2.cvtColor(left_image, cv2.COLOR_BGRA2GRAY)
+                    right_gray = cv2.cvtColor(right_image, cv2.COLOR_BGRA2GRAY)
+                    color_np = left_image[:, :, :3]  # Drop alpha channel
                     color_np_org = color_np.copy()
 
                     display_frame = color_np.copy()
@@ -961,11 +955,11 @@ class PointCloudGenerator:
             # image captured
 
             # Convert to numpy arrays
-            # left_gray = cv2.cvtColor(left_image.get_data(), cv2.COLOR_BGRA2GRAY)
+            # left_gray = cv2.cvtColor(left_image, cv2.COLOR_BGRA2GRAY)
             # right_gray = cv2.cvtColor(
-            #    right_image.get_data(), cv2.COLOR_BGRA2GRAY
+            #    right_image, cv2.COLOR_BGRA2GRAY
             # )
-            color_np = left_image.get_data()[:, :, :3]  # Drop alpha channel
+            color_np = left_image[:, :, :3]  # Drop alpha channel
             color_np_org = color_np.copy()
 
             display_frame = color_np.copy()
@@ -1047,12 +1041,12 @@ class PointCloudGenerator:
             logger.exception(f"error{e}")
             return RuntimeError
 
-        color_np = left_image.get_data()[:, :, :3]  # Drop alpha channel
+        color_np = left_image[:, :, :3]  # Drop alpha channel
         color_np_org = color_np.copy()
 
         # stereo inference
-        left_gray = cv2.cvtColor(left_image.get_data(), cv2.COLOR_BGRA2GRAY)
-        right_gray = cv2.cvtColor(right_image.get_data(), cv2.COLOR_BGRA2GRAY)
+        left_gray = cv2.cvtColor(left_image, cv2.COLOR_BGRA2GRAY)
+        right_gray = cv2.cvtColor(right_image, cv2.COLOR_BGRA2GRAY)
         depth, (H_scaled, W_scaled) = self.stereo_model.run_inference(
             left_gray, right_gray, self.zed.K_left, self.zed.baseline
         )
@@ -1120,12 +1114,12 @@ class PointCloudGenerator:
             logger.exception(f"error{e}")
             return RuntimeError
 
-        color_np = left_image.get_data()[:, :, :3]  # Drop alpha channel
+        color_np = left_image[:, :, :3]  # Drop alpha channel
         color_np_org = color_np.copy()
 
         # stereo inference
-        left_gray = cv2.cvtColor(left_image.get_data(), cv2.COLOR_BGRA2GRAY)
-        right_gray = cv2.cvtColor(right_image.get_data(), cv2.COLOR_BGRA2GRAY)
+        left_gray = cv2.cvtColor(left_image, cv2.COLOR_BGRA2GRAY)
+        right_gray = cv2.cvtColor(right_image, cv2.COLOR_BGRA2GRAY)
         depth, (H_scaled, W_scaled) = self.stereo_model.run_inference(
             left_gray, right_gray, self.zed.K_left, self.zed.baseline
         )
@@ -1182,7 +1176,7 @@ class PointCloudGenerator:
         try:
             # Capture image
             zed_status, left_image, right_image = self.zed.capture_images()
-            color_np = left_image.get_data()[:, :, :3]  # Drop alpha channel
+            color_np = left_image[:, :, :3]  # Drop alpha channel
             color_np_org = color_np.copy()
 
             # Yolo detection
@@ -1218,8 +1212,8 @@ class PointCloudGenerator:
             )
 
             # zed inference
-            left_gray = cv2.cvtColor(left_image.get_data(), cv2.COLOR_BGRA2GRAY)
-            right_gray = cv2.cvtColor(right_image.get_data(), cv2.COLOR_BGRA2GRAY)
+            left_gray = cv2.cvtColor(left_image, cv2.COLOR_BGRA2GRAY)
+            right_gray = cv2.cvtColor(right_image, cv2.COLOR_BGRA2GRAY)
             depth, (H_scaled, W_scaled) = self.stereo_model.run_inference(
                 left_gray, right_gray, self.zed.K_left, self.zed.baseline
             )

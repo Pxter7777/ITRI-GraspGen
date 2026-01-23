@@ -21,13 +21,16 @@ from src import (
 )
 from common_utils import config
 from PointCloud_Generation import sam_utils
-from src.zed_utils import ZedCamera
+from PointCloud_Generation.zed_utils import ZedCamera
 
 
-def set_logging_format():
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-    )
+from common_utils.custom_logger import CustomFormatter
+
+# root logger setup
+handler = logging.StreamHandler()
+handler.setFormatter(CustomFormatter())
+logging.basicConfig(level=logging.INFO, handlers=[handler], force=True)
+logger = logging.getLogger(__name__)
 
 
 def set_seed(seed):
@@ -392,8 +395,6 @@ def parse_args():
 
 def main():
     args = parse_args()
-
-    set_logging_format()
     set_seed(0)
     torch.autograd.set_grad_enabled(False)
     os.makedirs(args.out_dir, exist_ok=True)
@@ -420,9 +421,9 @@ def main():
             zed_status, left_image, right_image = zed.capture_images()
             if zed_status == sl.ERROR_CODE.SUCCESS:
                 # Convert to numpy arrays
-                left_gray = cv2.cvtColor(left_image.get_data(), cv2.COLOR_BGRA2GRAY)
-                right_gray = cv2.cvtColor(right_image.get_data(), cv2.COLOR_BGRA2GRAY)
-                color_np = left_image.get_data()[:, :, :3]  # Drop alpha channel
+                left_gray = cv2.cvtColor(left_image, cv2.COLOR_BGRA2GRAY)
+                right_gray = cv2.cvtColor(right_image, cv2.COLOR_BGRA2GRAY)
+                color_np = left_image[:, :, :3]  # Drop alpha channel
                 color_np_org = color_np.copy()
 
                 display_frame = color_np.copy()

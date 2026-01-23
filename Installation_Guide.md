@@ -74,14 +74,10 @@ Install samples (recommended) [Y/n] ? y
 Installation path: /usr/local/zed/samples/
 
 
-Do you want to install the Python API (recommended) [Y/n] ? y
-Please specify your python executable: <absolute_path_to_this_repo>/.venv/bin/python
+Do you want to install the Python API (recommended) [Y/n] ? n
 ```
 - Notice:
-    - `ERROR: pip's dependency ...` this can be ignored
-    - `To install it later or on a different environment run : 
- python -m pip install --ignore-installed /tmp/<dir_name>/pyzed-5.0-cp311-cp311-linux_x86_64.whl`, go copy the **.whl** file into **./Third_Party**, explain [below](#Reinstall-pyzed-for-your-venv-later)
-
+    - It's already handled via the url in pyproject.toml, no need to reinstall.
 ```
 continue...
 
@@ -89,14 +85,6 @@ Do you want to download and optimize the NEURAL Depth models now? These will be 
 
 Do you want to run the ZED Diagnostic to download all AI models [Y/n] ? n
 ```
-#### Reinstall pyzed for your venv later
-- pyzed can somehow be removed by uv
-    - for example, run `uv sync` would delete pyzed because this package isn't managed by uv, and there's no other simple method to prevent this yet. Similar issue see [here](https://github.com/astral-sh/uv/issues/12481))
-- If that's the case, run this to reinstall it back.
-    ```bash
-    uv pip install ./Third_Party/pyzed-5.0-cp311-cp311-linux_x86_64.whl
-    ```
-
 
 ## Download Models
 ```bash
