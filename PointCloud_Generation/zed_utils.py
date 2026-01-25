@@ -7,11 +7,11 @@ import zmq
 import logging
 
 try:
-    from common_utils import port_config
+    from common_utils import network_config
 
-    STREAM_TO_ZED = port_config.STREAM_TO_ZED
+    STREAM_TO_ZED_PORT = network_config.STREAM_TO_ZED_PORT
 except ModuleNotFoundError:
-    STREAM_TO_ZED = 9091
+    STREAM_TO_ZED_PORT = 9091
 logger = logging.getLogger(__name__)
 
 current_file_dir = os.path.dirname(os.path.abspath(__file__))
@@ -111,7 +111,7 @@ class ZedCamera:
         self.baseline = camera_data["baseline"]
 
     def capture_images_from_stream(
-        self, port=STREAM_TO_ZED
+        self, port=STREAM_TO_ZED_PORT
     ) -> tuple[sl.ERROR_CODE, np.ndarray, np.ndarray]:
         """
         To capture image from stream, here we immediately connect, try to grab info, and disconnect + close the socket completely.

@@ -2,13 +2,13 @@ from common_utils.socket_communication import (
     NonBlockingJSONSender,
     # BlockingJSONReceiver,
 )
-from common_utils import port_config
+from common_utils import network_config
 import time
 
 
 def scenario2():
-    sender = NonBlockingJSONSender(port=port_config.GRASPGEN_TO_ISAACSIM)
-    # receiever = BlockingJSONReceiver(port=port_config.ISAACSIM_TO_GRASPGEN)
+    sender = NonBlockingJSONSender(port=network_config.GRASPGEN_TO_ISAACSIM_PORT)
+    # receiever = BlockingJSONReceiver(port=network_config.ISAACSIM_TO_GRASPGEN_PORT)
     joints_goal1 = [
         1.37296326,
         0.38553859,
@@ -42,8 +42,8 @@ def scenario2():
 
 
 def scenario1():
-    sender = NonBlockingJSONSender(port=port_config.GRASPGEN_TO_ISAACSIM)
-    # receiever = BlockingJSONReceiver(port=port_config.ISAACSIM_TO_GRASPGEN)
+    sender = NonBlockingJSONSender(port=network_config.GRASPGEN_TO_ISAACSIM_PORT)
+    # receiever = BlockingJSONReceiver(port=network_config.ISAACSIM_TO_GRASPGEN_PORT)
     joints_goal1 = [
         1.37296326,
         0.38553859,
