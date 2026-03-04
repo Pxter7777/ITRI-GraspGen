@@ -28,6 +28,7 @@ import argparse
 import time
 import queue
 import numpy as np
+import torch
 from isaacsim_utils.socket_communication import (
     NonBlockingJSONSender,
     NonBlockingJSONReceiver,
@@ -124,7 +125,7 @@ def get_cuboid_list(move: dict, obstacles: dict) -> list:
     cuboids.append(
         Cuboid(
             name="table",
-            pose=[0, 0, -1.97] + [1, 0, 0, 0],
+            pose=[0, 0, -3.97] + [1, 0, 0, 0],
             dims=[4, 4, 4],
         )
     )
@@ -400,6 +401,7 @@ def main():
             graspgen_datas = graspgen_receiver.capture_data()
             if graspgen_datas is None:
                 continue
+            print(f"DEBUG - Isaac 實際收到的資料: {graspgen_datas}")
             if graspgen_datas[0] == "EOF":
                 graspgen_eof = True
                 continue
@@ -409,9 +411,39 @@ def main():
             print("-------------Received new action--------------")
             graspgen_eof = False
             for graspgen_data in graspgen_datas:
-                before_move_joints = last_joint_states
+                # before_move_joints = last_joint_states
                 curobo_planned_action_moves: list[Move] = []
-                for move in graspgen_data["moves"]:
+                pending_plans = []
+                def flush_pending_arm_moves():
+                    if not pending_plans:
+                        return
+                    combined_pos = torch.cat(
+                        [pending_plans[0].position] + [p.position[1:] for p in pending_plans[1:]], 
+                        dim=0
+                    )
+                    combined_vel = torch.cat(
+                        [pending_plans[0].velocity] + [p.velocity[1:] for p in pending_plans[1:]], 
+                        dim=0
+                    )
+                    big_cmd_plan = JointState(
+                        position=combined_pos,
+                        velocity=combined_vel,
+                        acceleration=torch.zeros_like(combined_pos),
+                        jerk=torch.zeros_like(combined_pos),
+                        joint_names=common_js_names, 
+                    )
+                    combined_positions = cmd_to_move(big_cmd_plan)
+                    
+                    big_ros2_move = {
+                        "type": "arm",
+                        "wait_time": 0.0,
+                        "joints_values": combined_positions,
+                    }
+                    
+                    curobo_planned_action_moves.append(Move(big_ros2_move, big_cmd_plan))
+                    pending_plans.clear()
+                for i, move in enumerate(graspgen_data["moves"]):
+                    current_step_start_joints = last_joint_states
                     cuboids = get_cuboid_list(move, graspgen_data["obstacles"])
                     obstacles = WorldConfig(cuboid=cuboids)
                     if "no_obstacles" in move:
@@ -420,6 +452,7 @@ def main():
                         motion_gen.update_world(obstacles)
                     # start handle move
                     if move["type"] == "gripper":
+                        flush_pending_arm_moves()
                         curobo_planned_action_moves.append(Move(move, None))
                         continue
                     print("curoboing")
@@ -437,6 +470,32 @@ def main():
                             curobo_cu_js.unsqueeze(0), ik_goal, plan_config
                         )
                     elif "joints_goal" in move:
+                        # ======= NO-CUROBO BYPASS: 直接組 cmd_plan 給 Isaac Sim 播放 =======
+                        if "no_curobo" in move and move["no_curobo"]:
+                            cur = np.array(last_joint_states, dtype=np.float32)
+                            goal = np.array(move["joints_goal"], dtype=np.float32)
+
+                            pos_np = np.stack([cur, goal], axis=0)
+                            zeros_np = np.zeros_like(pos_np, dtype=np.float32)
+
+                            new_cmd_plan = JointState(
+                                position=tensor_args.to_device(pos_np),
+                                velocity=tensor_args.to_device(zeros_np),
+                                acceleration=tensor_args.to_device(zeros_np),
+                                jerk=tensor_args.to_device(zeros_np),
+                                joint_names=common_js_names, 
+                            )
+
+                            positions = cmd_to_move(new_cmd_plan)  
+                            ROS2_move = {
+                                "type": move["type"],
+                                "wait_time": move.get("wait_time", 0.0),
+                                "joints_values": positions,
+                            }
+
+                            curobo_planned_action_moves.append(Move(ROS2_move, new_cmd_plan))
+                            last_joint_states = positions[-1]
+                            continue 
                         print("ALRIGHT?0")
                         joints_goal = JointState(
                             position=tensor_args.to_device(move["joints_goal"]),
@@ -463,6 +522,14 @@ def main():
                         new_cmd_plan = new_cmd_plan.get_ordered_joint_state(
                             common_js_names
                         )
+                        pending_plans.append(new_cmd_plan)
+                        # --- 新增：列印路徑點的程式碼 ---
+                        path_points = new_cmd_plan.position.cpu().numpy()
+                        print(f">>> CuRobo 規劃成功，生成點數：{len(path_points)}")
+                        for i, pt in enumerate(path_points):
+                            deg_pt = [round(float(np.rad2deg(j)), 2) for j in pt]
+                            print(f"  [點 {i:2d}]: {deg_pt}")
+                        # ------------------------------
                         # The following code block shows how to prune the plan to keep only the first and last waypoints
                         # Emulates IK method's behavior.
                         if "no_curobo" in move:
@@ -481,16 +548,18 @@ def main():
                             "joints_values": positions,
                         }
 
-                        curobo_planned_action_moves.append(
-                            Move(ROS2_move, new_cmd_plan)
-                        )
+                        # curobo_planned_action_moves.append(
+                        #     Move(ROS2_move, new_cmd_plan)
+                        # )
                         last_joint_states = positions[-1]
                     else:
                         print("This plan failed.")
-                        last_joint_states = before_move_joints
-                        break
-
-                else:  # success!
+                        print(f"!!! [規劃失敗] 發生在第 {i} 個點位 (Index: {i})")
+                        last_joint_states = current_step_start_joints
+                        print(last_joint_states)
+                        continue
+                flush_pending_arm_moves()              
+                if curobo_planned_action_moves:  # success!
                     print("-------------Successfully handled new action--------------")
                     graspgen_sender.send_data({"message": "Success"})
                     planned_action_queue.put(

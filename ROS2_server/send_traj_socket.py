@@ -43,8 +43,8 @@ def send_traj(rows):
     start = time.time()
     with socket.create_connection((HOST, PORT), timeout=3) as s:
         s.sendall(msg.encode("utf-8"))
-        resp = s.recv(1024).decode("utf-8", errors="ignore")
-        print("Server:", resp.strip())
+        # resp = s.recv(1024).decode("utf-8", errors="ignore")
+        # print("Server:", resp.strip())
     end = time.time()
     print(f"Time taken: {end - start:.3f} seconds")
 

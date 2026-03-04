@@ -17,6 +17,8 @@ from common_utils.socket_communication import (
 )
 from common_utils.custom_logger import CustomFormatter
 from common_utils.common_utils import save_json, create_obstacle_info
+import math
+from trajectory_parser import *
 
 # root logger setup
 handler = logging.StreamHandler()
@@ -147,14 +149,71 @@ def main():
         )
         while True:
             task_signal = main_receiver.capture_data()
-            if task_signal is None or task_signal.get("actions") != "Grasp_and_Dump":
+            if task_signal is None :
+                continue
+            action_task_name = task_signal.get("actions")
+            if action_task_name == "Grasp_and_Dump":
+                actions_filepath = os.path.join(
+                project_root_dir, "actions", "Grasp_and_Dump" + ".json"
+            )
+            elif action_task_name and action_task_name.endswith(".csv"):
+                csv_filepath = os.path.join(project_root_dir, "actions", action_task_name)
+                if not os.path.exists(csv_filepath):
+                    logger.error(f"找不到 CSV 檔案: {csv_filepath}")
+                    continue
+                
+                try:
+                    movements = load_trajectory_from_csv(csv_filepath)
+
+                    all_moves = []
+                    for move in movements:
+                        if move.mode == Mode.MOVE:
+                            rad_joints = [math.radians(j) for j in move.joint_value]
+                            all_moves.append({
+                                "type": "arm",
+                                "joints_goal": rad_joints, 
+                                "wait_time": 0.0,
+                            })
+                        elif move.mode in [Mode.OPEN, Mode.CLOSE, Mode.HALF_OPEN, Mode.CLOSE_TIGHT]:
+                            all_moves.append({
+                                "type": "gripper",
+                                "grip_type": "open" if move.mode == Mode.OPEN else "close", 
+                                "wait_time": 1.0
+                            })
+                    obstacles = {
+                        "funnel": {
+                            "max": [0.9534448779882478, 0.5067593718845549, 0.2276409522244929],
+                            "min": [0.8184926451424287, 0.39387648388621266, 0.03063070631200454],
+                        },
+                    }
+
+                    full_task = [{
+                        "moves": all_moves,
+                        "obstacles": obstacles
+                    }]
+                    
+                    if all_moves:
+                        sender.send_data(full_task)
+                        logger.info(f"已發送 CSV 軌跡（共 {len(all_moves)} 個動作）")
+                        
+                        sender.send_data(["EOF"])
+                        while True:
+                            response = receiver.capture_data()
+                            if response is None: continue
+                            msg = response.get("message")
+                            if msg == "EOF and ROS2 Complete":
+                                logger.warning("CSV 執行完畢")
+                                main_sender.send_data({"message": "Success"})
+                                break
+                            elif msg in ["Abort", "Fail"]:
+                                break
+                                
+                except Exception as e:
+                    logger.error(f"處理失敗: {e}")
                 continue
             # eat abort if there is any
             for _ in range(5):
                 receiver.capture_data()
-            actions_filepath = os.path.join(
-                project_root_dir, "actions", "Grasp_and_Dump" + ".json"
-            )
 
             actions = None
             try:
