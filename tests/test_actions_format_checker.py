@@ -1,10 +1,8 @@
 import json
-import logging
 import pytest
 
 from pydantic import ValidationError
 from common_utils.actions_format_checker import TaskConfig
-
 
 
 STANDARD_VALID_JSON = """
@@ -60,10 +58,13 @@ STANDARD_VALID_JSON = """
     ]
 }
 """
+
+
 def test_standard_valid():
     data_dict = json.loads(STANDARD_VALID_JSON)
     config = TaskConfig(**data_dict)
     assert config
+
 
 MINIMAL_VALID_JSON = """
 {
@@ -76,6 +77,8 @@ MINIMAL_VALID_JSON = """
     ]
 }
 """
+
+
 def test_minimal_valid():
     data_dict = json.loads(MINIMAL_VALID_JSON)
     config = TaskConfig(**data_dict)
@@ -94,13 +97,13 @@ INVALID_TARGET_JSON = """
     ]
 }
 """
+
+
 def test_target_not_in_track():
     data_dict = json.loads(INVALID_TARGET_JSON)
-    with pytest.raises(ValidationError, match=r"'glass cup' is not in 'track'") as excinfo:
-        config = TaskConfig(**data_dict)
+    with pytest.raises(ValidationError, match=r"'glass cup' is not in 'track'"):
+        _ = TaskConfig(**data_dict)
 
-
-# def test_unexpected_keys()
 
 def main():
     test_standard_valid()
