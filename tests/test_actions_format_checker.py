@@ -91,8 +91,7 @@ INVALID_TARGET_JSON = """
     "moves": [
         {
             "target_name": "glass cup",
-            "move_type": "open_grip",
-            "unknown_key": "ASD"
+            "move_type": "open_grip"
         }
     ]
 }
@@ -105,10 +104,83 @@ def test_target_not_in_track():
         _ = TaskConfig(**data_dict)
 
 
+UNEXPECTED_KEYS_IN_MOVE_JSON = """
+{
+    "track": ["green cup"],
+    "moves": [
+        {
+            "target_name": "green cup",
+            "move_type": "open_grip",
+            "BABA_IS_YOU": "BLABLABLA"
+        }
+    ]
+}
+"""
+
+
+def test_unexpected_keys_in_move():
+    data_dict = json.loads(UNEXPECTED_KEYS_IN_MOVE_JSON)
+    with pytest.raises(
+        ValidationError, match=r"BABA_IS_YOU\s+Extra inputs are not permitted"
+    ):  # \s stands for any amount of whitespace or newline
+        _ = TaskConfig(**data_dict)
+
+
+UNEXPECTED_KEYS_IN_TASK_JSON = """
+{
+    "track": ["green cup"],
+    "moves": [
+        {
+            "target_name": "green cup",
+            "move_type": "open_grip"
+        }
+    ],
+    "SHORYUKEN": "BLABLABLA"
+}
+"""
+
+
+def test_unexpected_keys_in_task():
+    data_dict = json.loads(UNEXPECTED_KEYS_IN_TASK_JSON)
+    with pytest.raises(
+        ValidationError, match=r"SHORYUKEN\s+Extra inputs are not permitted"
+    ):
+        _ = TaskConfig(**data_dict)
+
+
+BAD_BLOCKAGE_ELEMENT_NUM_JSON = """
+{
+    "blockages": [
+        [915, 242, 1279, 719, 15],
+        [413, 205, 500, 300]
+    ],
+    "track": ["green cup"],
+    "moves": [
+        {
+            "target_name": "green cup",
+            "move_type": "open_grip"
+        }
+    ]
+}
+"""
+
+
+def test_bad_blockage_element_num():
+    data_dict = json.loads(BAD_BLOCKAGE_ELEMENT_NUM_JSON)
+    with pytest.raises(
+        ValidationError,
+        match=r"List should have at most 4 items after validation, not 5",
+    ):
+        _ = TaskConfig(**data_dict)
+
+
 def main():
     test_standard_valid()
     test_minimal_valid()
     test_target_not_in_track()
+    test_unexpected_keys_in_move()
+    test_unexpected_keys_in_task()
+    test_bad_blockage_element_num()
 
 
 if __name__ == "__main__":

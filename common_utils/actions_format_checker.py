@@ -1,6 +1,6 @@
 import logging
-from typing import List, Dict, Optional, Any
-from pydantic import BaseModel, Field, model_validator
+from typing import List, Dict, Optional, Any, Annotated
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ class ObstacleBound(BaseModel):
 class MoveItem(BaseModel):
     """Define Move class format"""
 
-    # model_config = ConfigDict(extra="allow") # Allow unexpected keys, but this doesn't actually have any effect for now, we accept unexpected keys anyway.
+    model_config = ConfigDict(extra="forbid")  # Forbid unexpected keys.
 
     # Must
     move_type: str
@@ -27,20 +27,25 @@ class MoveItem(BaseModel):
     args: Optional[List[Any]] = None
 
 
+FourIntList = Annotated[List[int], Field(min_length=4, max_length=4)]
+
+
 class TaskConfig(BaseModel):
     """Define the whole JSON task file structure"""
+
+    model_config = ConfigDict(extra="forbid")  # Forbid unexpected keys.
 
     # Must
     moves: List[MoveItem]
 
     # Optional
-    blockages: Optional[List[List[int]]] = None
+    blockages: Optional[List[FourIntList]] = None
     track: Optional[List[str]] = None
     extra_obstacles: Optional[Dict[str, ObstacleBound]] = None
 
     @model_validator(
         mode="after"
-    )  # mode='after' means we validate this after all basic type validations.
+    )  # mode="after" means we validate this after all basic type validations.
     def check_target_in_track(self):
         for move in self.moves:
             if move.target_name is not None and move.target_name not in self.track:
