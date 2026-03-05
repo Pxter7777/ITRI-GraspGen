@@ -107,6 +107,17 @@ dependencies = [
     "pytest-mock",
     "pyside6>=6.10.1",
     "pyserial>=3.5",
+    "spconv-cu121>=2.3.8",
+]
+
+[tool.uv]
+override-dependencies = [
+    "torch==2.5.1",
+    "torchvision==0.20.1",
+    "torchaudio==2.5.1",
+    "numpy>=2.3.4",
+    "pickle5; python_version < '3.8'", # Do not install pickle 5 unless python version < 3.8, which isn't actually possible.
+    "spconv-cu120; python_version < '3.8'", # Use spconv-cu121 instead
 ]
 
 [tool.uv.sources]
@@ -137,37 +148,7 @@ flash-attn = ["torch==2.5.1"]
 groundingdino = ["torch==2.5.1"]
 pointnet2_ops = ["torch==2.5.1"]
 torch-scatter = ["torch==2.5.1"]
-
-[[tool.uv.dependency-metadata]]
-name = "grasp-gen"
-version = "1.0.0"
-requires-dist = [
-    # "pickle5", ignore it for now.
-    "h5py",
-    "hydra-core",
-    "matplotlib",
-    "meshcat",
-    # "numpy==1.26.4", too low, used ours
-    "webdataset",
-    "scikit-learn",
-    "scipy",
-    "tensorboard",
-    "trimesh==4.5.3",
-    "transformers",
-	"pyrender",
-    "tensordict",
-    "diffusers==0.11.1",
-    "timm==1.0.15",
-    "huggingface-hub==0.25.2",
-    "PyOpenGL==3.1.0",
-    "addict",
-    "spconv-cu121", #cu120 gives unecessasary warnings
-    "yapf==0.40.1",
-    "tensorboardx",
-    "sharedarray",
-    "torch-geometric",
-    "yourdfpy==0.0.56"
-]
+torch-cluster = ["torch==2.5.1"]
 
 [project.optional-dependencies]
 localextras = ["pyzed"] # this doesn't work at all.
