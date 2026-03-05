@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Any, Annotated
+from typing import Any, Annotated
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 logger = logging.getLogger(__name__)

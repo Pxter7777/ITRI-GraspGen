@@ -549,7 +549,5 @@ class GraspGeneratorUI:
 
     def _visualize_target(self):
         obj_pc = self.scene_data["object_infos"][self.move.target_name]["points"]
-        obj_pc_color = self.scene_data["object_infos"][self.move.target_name][
-            "colors"
-        ]
+        obj_pc_color = self.scene_data["object_infos"][self.move.target_name]["colors"]
         visualize_pointcloud(self.vis, "pc_obj", obj_pc, obj_pc_color, size=0.005)
