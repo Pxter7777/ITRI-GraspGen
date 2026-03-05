@@ -4,7 +4,7 @@
         [915, 242, 1279, 719],
         [413, 205, 500, 300]
     ],
-
+    "valid_region": [0,0,1279,719],
     "track": ["green cup", "blue cup"],
     "extra_obstacles": {
         "pot": {
@@ -57,12 +57,12 @@
         }
 
     },
-    "actions":
+    "moves":
     [
         {
             "target_name": "glass cup",
             "qualifier": "cup_qualifier",
-            "action": "open_grip",
+            "move_type": "open_grip",
             "args": [
                 [ 1.37296326,  0.08553859,  1.05554023,  2.76803983, -1.48792809, 3.09947786]
             ]
@@ -70,7 +70,7 @@
         {
             "target_name": "green cup",
             "qualifier": "cup_qualifier",
-            "action": "grab_and_pour_and_place_back_curobo",
+            "move_type": "grab_and_pour_and_place_back_curobo",
             "args": [
                 [-0.07139691,  0.99580627,  0.15614688]
             ]
@@ -78,7 +78,7 @@
         {
             "target_name": "blue cup",
             "qualifier": "cup_qualifier",
-            "action": "grab_and_pour_and_place_back_curobo",
+            "move_type": "grab_and_pour_and_place_back_curobo",
             "args": [
                 [-0.07139691,  0.99580627,  0.15614688]
             ]
@@ -86,7 +86,7 @@
         {
             "target_name": "glass cup",
             "qualifier": "cup_qualifier",
-            "action": "joints_rad_move_to_curobo",
+            "move_type": "joints_rad_move_to_curobo",
             "args": [
                 [ 1.37296326,  0.08553859,  1.05554023,  2.76803983, -1.48792809, 3.09947786]
             ]

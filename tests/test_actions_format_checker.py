@@ -11,6 +11,7 @@ STANDARD_VALID_JSON = """
         [915, 242, 1279, 719],
         [413, 205, 500, 300]
     ],
+    "valid_region": [0,0,1279,719],
     "track": ["green cup", "blue cup", "glass cup"],
     "extra_obstacles": {
         "pot": {

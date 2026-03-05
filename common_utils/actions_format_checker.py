@@ -42,6 +42,7 @@ class TaskConfig(BaseModel):
     blockages: Optional[List[FourIntList]] = None
     track: Optional[List[str]] = None
     extra_obstacles: Optional[Dict[str, ObstacleBound]] = None
+    valid_region: Optional[FourIntList] = None
 
     @model_validator(
         mode="after"
