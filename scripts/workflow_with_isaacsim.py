@@ -9,7 +9,7 @@ from PointCloud_Generation.PC_transform import (
 )
 from common_utils import config, network_config
 from common_utils.graspgen_utils import GraspGeneratorUI
-from common_utils.actions_format_checker import is_actions_format_valid_v1028
+from common_utils.actions_format_checker import TaskConfig
 from common_utils.movesets import act_with_name
 from common_utils.socket_communication import (
     NonBlockingJSONSender,
@@ -152,32 +152,28 @@ def main():
 
             actions_filepath = os.path.join(project_root_dir, "actions", text + ".json")
 
-            actions = None
+            task = None
             try:
                 with open(actions_filepath, "rb") as f:
-                    actions = json.load(f)
-                if not is_actions_format_valid_v1028(actions):
-                    logger.error("bad actions file format")
-                    continue
+                    task_json = json.load(f)
+                    task = TaskConfig(**task_json)
             except Exception as e:
                 logger.exception(e)
                 logger.error("failed reading file, try again.")
                 continue
             # start to generate pointcloud
             scene_data = None
-            track_names = list(actions["track"])
+            track_names = list(task.track)
             # try five times
             detection_success = False
             while True:
                 for _ in range(20):
                     try:
-                        blockages = actions.get("blockages")
-                        valid_region = actions.get("valid_region")
                         scene_data = pc_generator.generate_pointcloud(
                             track_names,
                             need_confirm=not args.no_confirm,
-                            blockages=blockages,
-                            valid_region=valid_region,
+                            blockages=task.blockages,
+                            valid_region=task.valid_region,
                         )
                         detection_success = True
                         break  # Success
@@ -198,22 +194,22 @@ def main():
             scene_data = silent_transform_multiple_obj_with_name_dict(
                 scene_data, args.transform_config
             )
-            scene_data = create_obstacle_info(scene_data, actions["extra_obstacles"])
+            scene_data = create_obstacle_info(scene_data, task.extra_obstacles)
             # GraspGen
             try:
-                for action in actions["actions"]:
+                for move in task.moves:
                     # Don't need GraspGen
-                    if action["action"] in [
+                    if move.move_type in [
                         "move_to_curobo",
                         "joints_rad_move_to_curobo",
                         "open_grip",
                     ]:
                         while True:
                             full_acts = act_with_name(
-                                action["action"],
+                                move.move_type,
                                 None,
                                 [None],
-                                action["args"],
+                                move.args,
                                 scene_data,
                             )
                             if args.save_fullact:
@@ -239,12 +235,12 @@ def main():
                                 )
                     else:  # Need GraspGen
                         while True:
-                            grasps = grasp_generator.generate_grasp(scene_data, action)
+                            grasps = grasp_generator.generate_grasp(scene_data, move)
                             full_acts = act_with_name(
-                                action["action"],
-                                action["target_name"],
+                                move.move_type,
+                                move.target_name,
                                 grasps,
-                                action["args"],
+                                move.args,
                                 scene_data,
                             )
                             if args.save_fullact:
@@ -283,10 +279,10 @@ def main():
                 logger.info("Manual stopping current action.")
                 sender.send_data(["Reset_to_default"])
             except InterruptedError as e:
-                name = action["target_name"]
+                name = move.target_name
                 logger.exception(f"Action for {name} interrupted, stopping. {e}")
             except Exception as e:
-                name = action["target_name"]
+                name = move.target_name
                 logger.exception(
                     f"Unknown Error while generating grasp for {name}, stopping. {e}"
                 )

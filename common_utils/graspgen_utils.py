@@ -19,7 +19,7 @@ from grasp_gen.utils.meshcat_utils import (
     visualize_pointcloud,
 )
 from grasp_gen.utils.point_cloud_utils import filter_colliding_grasps
-
+from common_utils.actions_format_checker import MoveItem
 
 logger = logging.getLogger(__name__)
 
@@ -373,9 +373,9 @@ class GraspGeneratorUI:
             self.vis = create_visualizer()
 
     def _generate_grasps(self) -> tuple[np.array, np.array]:
-        obj_name = self.action["target_name"]
+        obj_name = self.move.target_name
         obj_pc = self.scene_data["object_infos"][obj_name]["points"]
-        qualifier_name = self.action["qualifier"]
+        qualifier_name = self.move.qualifier
         # mass_center = np.mean(obj_pc, axis=0)
         # std = np.std(obj_pc, axis=0)
         grasps, grasp_conf = GraspGenSampler.run_inference(
@@ -409,7 +409,7 @@ class GraspGeneratorUI:
         )
         xyz_scene = np.array(self.scene_data["scene_info"][full_pc_key])[0]
         for obj_name in self.scene_data["object_infos"]:
-            if obj_name != self.action["target_name"]:
+            if obj_name != self.move.target_name:
                 logger.debug(f"Scene points before: {xyz_scene.shape[0]}")
                 xyz_scene = np.vstack(
                     (xyz_scene, self.scene_data["object_infos"][obj_name]["points"])
@@ -463,14 +463,14 @@ class GraspGeneratorUI:
                 qualified_grasps = sorted(qualified_grasps, key=angle_offset_rad)
                 return qualified_grasps
 
-    def generate_grasp(self, scene_data: dict, action: dict) -> list[np.ndarray]:
+    def generate_grasp(self, scene_data: dict, move: MoveItem) -> list[np.ndarray]:
         """
         Returns:
             grasps: A list of shape(4, 4) np array. only single one elements if returned from self._generate_grasp_with_GUI(), while multiple elements if returned by self._generate_grasp_silent()
         """
-        # reload scene_data and action
+        # reload scene_data and move
         self.scene_data = scene_data
-        self.action = action
+        self.move = move
 
         if self.need_GUI:
             # create control panel and use GUI mode
@@ -516,7 +516,6 @@ class GraspGeneratorUI:
             self.vis,
             grasp_queue,
             grasps_to_handle_queue,
-            # self.action["qualifier"],
             self.gripper_name,
         )
         panel.run()
@@ -549,8 +548,8 @@ class GraspGeneratorUI:
         )
 
     def _visualize_target(self):
-        obj_pc = self.scene_data["object_infos"][self.action["target_name"]]["points"]
-        obj_pc_color = self.scene_data["object_infos"][self.action["target_name"]][
+        obj_pc = self.scene_data["object_infos"][self.move.target_name]["points"]
+        obj_pc_color = self.scene_data["object_infos"][self.move.target_name][
             "colors"
         ]
         visualize_pointcloud(self.vis, "pc_obj", obj_pc, obj_pc_color, size=0.005)
