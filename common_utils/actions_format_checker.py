@@ -1,5 +1,5 @@
 import logging
-from typing import List, Dict, Optional, Any, Annotated
+from typing import Optional, Any, Annotated
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 logger = logging.getLogger(__name__)
@@ -9,8 +9,8 @@ class ObstacleBound(BaseModel):
     """Define Obstacle class"""
 
     # max and min must be a list of float with exact 3 elements (X, Y, Z)
-    max: List[float] = Field(..., min_length=3, max_length=3)
-    min: List[float] = Field(..., min_length=3, max_length=3)
+    max: list[float] = Field(..., min_length=3, max_length=3)
+    min: list[float] = Field(..., min_length=3, max_length=3)
 
 
 class MoveItem(BaseModel):
@@ -22,12 +22,12 @@ class MoveItem(BaseModel):
     move_type: str
 
     # Optional
-    target_name: Optional[str] = None
-    qualifier: Optional[str] = None
-    args: Optional[List[Any]] = None
+    target_name: str | None = None
+    qualifier: str | None = None
+    args: list[Any] | None = None
 
 
-FourIntList = Annotated[List[int], Field(min_length=4, max_length=4)]
+FourIntList = Annotated[list[int], Field(min_length=4, max_length=4)]
 
 
 class TaskConfig(BaseModel):
@@ -36,13 +36,13 @@ class TaskConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")  # Forbid unexpected keys.
 
     # Must
-    moves: List[MoveItem]
+    moves: list[MoveItem]
 
     # Optional
-    blockages: Optional[List[FourIntList]] = None
-    track: Optional[List[str]] = None
-    extra_obstacles: Optional[Dict[str, ObstacleBound]] = None
-    valid_region: Optional[FourIntList] = None
+    blockages: list[FourIntList] | None = None
+    track: list[str] | None = None
+    extra_obstacles: dict[str, ObstacleBound] | None = None
+    valid_region: FourIntList | None = None
 
     @model_validator(
         mode="after"
