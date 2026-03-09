@@ -1,77 +1,73 @@
 # ITRI-GraspGen
 [Installation Guide](./Installation_Guide.md)
 
+## Abstract
+This project aims to deploy and optimize the process of open-loop grasping
 
+Open-loop means the whole process will divide down into parts, for example:
+- 2D images to 3D pointcloud
+- Grasp Estimating (Generate a grasp pose)
+- Motion Planning (Find a way to approach a pose or joint state, by moving the joints)
 
-- 請無視下方
----
+## Execution Steps
+Since each part needs different python environments(GraspGen, IsaacSim, ROS2), currently they are started as separated process, and communicate using my custom module common_utils/socket_communication.py
 
-# SAM2+FoundationStereo
-- TBD
-- GenPointCloud
-```bash
-python main.py --erosion_iterations 10
+0. Run tm_driver
+    ```bash
+    ros2 run tm_driver tm_driver robot_ip:=192.168.1.10
+    ```
+    - Only run this if we're running on actual robot arm.
+1. Run ROS_server
+    - If we're running on actual robot arm.
+        ```bash
+        cd ~/ITRI-GraspGen/ROS2_server && \
+        /usr/bin/python3 gripper_server.py
+        ```
+    - If not, run this dummy server instead:
+        ```bash
+        cd ~/ITRI-GraspGen/ROS2_server && \
+        uv run dummy_gripper_server.py
+        ```
+2. Run Isaac Sim + cuRobo
+    ```bash
+    cd ~/ITRI-GraspGen/isaac-sim2real && \
+    omni_python sync_with_ROS2.py
+    ```
+3. Run GraspGen script
+    - If camera attached.
+        ```bash
+        cd ~/ITRI-GraspGen && \
+        uv run scripts/workflow_with_isaacsim.py  --no-confirm
+        ```
+    - If not, use the images we captured.
+        ```bash
+        cd ~/ITRI-GraspGen && \
+        uv run scripts/workflow_with_isaacsim.py  --no-confirm --use-png demo6
+        ```
+
+## General Development Reminder
+- Do not push anything onto main branch. main branch only allows GitHub pull requests' merge and squash commit.
+- Run these before pushing, make sure ruff doesn't complain.
 ```
-- GraspGen
-```bash
-python ./GraspGen_demo_scene_pc.py --return_topk --topk_num_grasps 10 --filename scene_20251014_115650_transformed.json
+uv run ruff check --fix
+uv run ruff format
 ```
+- Make good use of logger.
+    - For top level scripts, use this to get prefered color and format
+        ```python
+        from common_utils.custom_logger import CustomFormatter
+        # root logger setup
+        handler = logging.StreamHandler()
+        handler.setFormatter(CustomFormatter())
+        logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
+        ```
 
-```bash
-python ./scripts/demo_object_mesh.py  --mesh_file /home/j300/GenPointCloud/output/segmented_object_20251003_140757.obj --mesh_scale 1.0 --gripper_config ../GraspGenModels/checkpoints/graspgen_franka_panda.yml 
-```
+## Reminder for AI Agents
+- IMPORTANT! Do not run any .py scripts. For now, each script is heavy and messy, I prefer to test things and terminate those process by myself.
+- Do not run git add, commit, checkout, reset, etc.... Version control should be manually handled by human users.
+- Third_party/ contains submodules from other repo. Do not try to modify them.
+- This project currently is messy and contains many needless scripts, I know, but don't try to reconstruct, just try to focus on the urgent tasks for now.
 
-### Proper directory setup
-- Home/<username>
-    - ITRI-GraspGen(main repo and source code)
-    - models
-        - FoundationStereoModels
-        - GraspGenModels
-        - SAM2Models
-    - Third_Party
-        - FoundationStereo
-        - GraspGen
-        - sam2
-
-- Idea for dockerization:
-    - use bindmount for ITRI-GraspGen(source code) and models
-    - bake Third_Party into the image
-
-- quick main_zed
-```bash
-python main_zed.py --exit-after-save --output-tag "hey"
-```
-
-- quick transform
-```bash
-python manual_PC_transform.py --quick --filename scene_BABA.json --transform-config right.json
-```
-
-- quick GraspGen --filename
-```bash
-python ./GraspGen_demo_scene_pc.py --return_topk --topk_num_grasps 10 --filename scene_change_transformed.json
-```
-
-- slow GraspGen
-```bash
-python ./GraspGen_demo_scene_pc.py --return_topk --topk_num_grasps 10
-```
-
-#### Reminder to run tm
-- launch this to connect to tm robotiq, before actually run any tm control code.
-```bash
-ros2 run tm_driver tm_driver robot_ip:=192.168.1.10
-```
-
-#### pointcloud_generation.py
-- Give it two mode, gui or text mode
-
-#### GroundingDINO test
-- Based on the test, using box to cover the metal table can have better result.
-- And about all in one or on by one, all in one is actually better.
-
-## Known Issues:
-- Manual_Transform_PC will fail if meshcat-server ports get messy.
 
 ## Credits
 Full license details for these dependencies are available in the `NOTICE.md` file.
