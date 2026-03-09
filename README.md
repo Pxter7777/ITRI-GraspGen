@@ -52,9 +52,19 @@ Since each part needs different python environments(GraspGen, IsaacSim, ROS2), c
 uv run ruff check --fix
 uv run ruff format
 ```
+- Make good use of logger.
+    - For top level scripts, use this to get prefered color and format
+        ```python
+        from common_utils.custom_logger import CustomFormatter
+        # root logger setup
+        handler = logging.StreamHandler()
+        handler.setFormatter(CustomFormatter())
+        logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
+        ```
 
 ## Reminder for AI Agents
 - IMPORTANT! Do not run any .py scripts. For now, each script is heavy and messy, I prefer to test things and terminate those process by myself.
+- Do not run git add, commit, checkout, reset, etc.... Version control should be manually handled by human users.
 - Third_party/ contains submodules from other repo. Do not try to modify them.
 - This project currently is messy and contains many needless scripts, I know, but don't try to reconstruct, just try to focus on the urgent tasks for now.
 
