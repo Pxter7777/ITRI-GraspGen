@@ -4,6 +4,9 @@ import logging
 import os
 import numpy as np
 
+from common_utils.actions_format_checker import ObstacleBound
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -19,11 +22,21 @@ def save_json(dir: str, prefix: str, data) -> True:  # save json data for test
         json.dump(data, f, indent=4)
 
 
-def create_obstacle_info(scene_data: dict, extra_obstacles: dict = None) -> dict:
+def create_obstacle_info(
+    scene_data: dict, extra_obstacles: dict[str, ObstacleBound] = None
+) -> dict:
+    # Copy from .json
     if extra_obstacles is None:
         extra_obstacles = {}
     new_scene_data = scene_data  # it's lazy that this isn't full copy, but I think it's fine to keep it this way for now.
-    new_scene_data["obstacles"] = extra_obstacles
+    new_scene_data["obstacles"] = dict()
+    for extra_obstacle_name in extra_obstacles:
+        obstacle = extra_obstacles[extra_obstacle_name]
+        new_scene_data["obstacles"][extra_obstacle_name] = {
+            "max": obstacle.max,
+            "min": obstacle.min,
+        }
+    # Dynamically generated obstacles
     for object_name in new_scene_data["object_infos"]:
         obj_pc = new_scene_data["object_infos"][object_name]["points"]
         pc_max, pc_min = (
