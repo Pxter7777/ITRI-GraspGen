@@ -2,8 +2,8 @@ import argparse
 import time
 import numpy as np
 
-from common_utils import network_config
-from common_utils.socket_communication import (
+from isaacsim_utils import network_config
+from isaacsim_utils.socket_communication import (
     NonBlockingJSONSender,
     NonBlockingJSONReceiver,
 )
