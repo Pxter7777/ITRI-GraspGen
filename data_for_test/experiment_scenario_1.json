@@ -1,0 +1,62 @@
+{
+    "target": {
+        "name": "target_cup",
+        "mesh_path": "/home/j300/FetchBench-CORL2024-uv/assets/benchmark_objects/Cup/106f8b5d2f2c777535c291801eaf5463/mesh.obj",
+        "pose": [
+            0.5,
+            0.0,
+            0.0
+        ],
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "obstacles": {
+        "obs_bowl": {
+            "mesh_path": "/home/j300/FetchBench-CORL2024-uv/assets/benchmark_objects/Bowl/960c5c5bff2d3a4bbced73c51e99f8b2/mesh.obj",
+            "pose": [
+                0.8,
+                0.2,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "obs_bottle": {
+            "mesh_path": "/home/j300/FetchBench-CORL2024-uv/assets/benchmark_objects/Bottle/5e896bc124bc0af9fd590443d27a974e/mesh.obj",
+            "pose": [
+                -1.1,
+                0.1,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        }
+    },
+    "robot": {
+        "config_path": "/home/j300/curobo/src/curobo/content/configs/robot/tm5s.yml",
+        "meshes": [
+            {
+                "mesh_path": "/home/j300/curobo/src/curobo/content/assets/robot/tm_description/meshes/tm5s/visual/tm5s_base.obj",
+                "pose": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        ]
+    }
+}

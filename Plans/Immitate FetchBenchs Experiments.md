@@ -14,10 +14,14 @@ Create and save 2 fixed scenario, each contains:
 - TM5S Robot arm (can ignore the gripper for now)
 - 3 Objects, 1 as target, 2 as obstacles.
 
+Do not preprocess and save the pointcloud, Scene .json should only save things as:
+- pose, scale, assets mesh file absolute location.
+- as for TM5S, info sits at /home/j300/curobo/src/curobo/content/configs/robot/tm5s.yml
+
 ### Scripts
 We will need two scripts.
 1. GraspGen Part, It would be similar to what scripts/workflow_with_isaacsim.py does, it will:
-    - Load a scene
+    - Load a scene, and preprocess the meshes into pointcloud
     - Generate 200 grasps for target
     - Filter grasps by collision detection module from original graspgen repo.
     - Send 2 things to second part:
@@ -44,22 +48,22 @@ We will need two scripts.
 We will bypass GroundingDINO/SAM2 entirely and directly load FetchBench object meshes.
 *   **Target Object:** `FetchBench-CORL2024-uv/assets/benchmark_objects/Cup/[UUID]/mesh.obj`
 *   **Obstacles:** Pick two other objects (e.g., a Box and a Bowl from FetchBench).
-*   **Transformation:** Apply fixed 3D translations to place the Target at a reachable coordinate (e.g., `x=0.5, y=0.0, z=0.0`) and the obstacles nearby (`y=0.2` and `y=-0.2`).
-*   **Direct Point Cloud Generation:** Use `trimesh.sample.sample_surface(mesh, 2048)` to sample the target's point cloud. 
-*   **Obstacle Bounding Boxes:** Extract the `.bounds` of the obstacle meshes to generate the `max` and `min` coordinate dictionaries required by `isaacsim_utils`.
+*   **Scene JSON Format:** The `.json` will be strictly lightweight, only containing `mesh_path`, `pose`, and `scale`. Point clouds will NOT be saved here.
 
 ### 2. GraspGen Evaluator Script (`scripts/experiment_graspgen.py`)
 This script replaces `workflow_with_isaacsim.py` and removes all UI (`ControlPanel` / `Meshcat`).
+*   **Preprocess meshes:** Dynamically load the meshes defined in the JSON via `trimesh`, apply their `pose` and `scale`. Use `trimesh.sample.sample_surface` to extract the point clouds. Calculate obstacle `bounds` here.
 *   **Generate:** Pass the sampled target point cloud into `GraspGenSampler.run_inference()` to generate 200 grasps.
 *   **Collision Filter:** Sample points from the obstacles to act as the "scene" and run `filter_colliding_grasps(scene_pc, grasps)` to cull visually impossible grasps.
 *   **Sorting:** 
     *   *List A (Discriminator):* Retain GraspGen's default order.
     *   *List B (Heuristic):* Filter by `cup_qualifier`, then sort by `angle_offset_rad` (aligning the gripper approach vector with the object's center).
-*   **Socket Comm:** Send the `scene_data` and *both* lists of grasps to Isaac Sim via a newly assigned socket port.
+*   **Socket Comm:** Send the `scene_data` (including the calculated obstacle bounds) and *both* lists of grasps to Isaac Sim via a newly assigned socket port.
 
-### 3. Isaac Sim Motion Planner (`scripts/experiment_isaacsim.py`)
-A stripped-down, purely headless version of `sync_with_ROS2.py`.
-*   **Load Env:** Initializes `SimulationApp(headless=True)`. Loads the `TM5S` arm, the table, and the two obstacle cuboids.
+### 3. Isaac Sim Motion Planner (`isaac-sim2real/experiment_isaacsim.py`)
+A stripped-down, purely headless version of `sync_with_ROS2.py` located correctly in the `isaac-sim2real` directory.
+*   **Load Env:** Initializes `SimulationApp(headless=True)`. Loads the `TM5S` arm and the table.
+*   **Obstacles:** Dynamically spawns `Cuboids` matching the `bounds` received via socket from GraspGen.
 *   **Evaluate:** Loops through the grasps. For each grasp, it uses `cuRobo` to evaluate:
     1. Default State ➡️ Pre-grasp
     2. Pre-grasp ➡️ Grasp

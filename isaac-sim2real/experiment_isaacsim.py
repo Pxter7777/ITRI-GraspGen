@@ -1,14 +1,20 @@
 import argparse
 import time
 import numpy as np
+import sys
+import os
 
-from isaacsim_utils import network_config
-from isaacsim_utils.socket_communication import (
+# Add the project root to sys.path so we can import common_utils
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from common_utils import network_config
+from common_utils.socket_communication import (
     NonBlockingJSONSender,
     NonBlockingJSONReceiver,
 )
 
 from omni.isaac.kit import SimulationApp
+
 simulation_app = SimulationApp({"headless": True, "width": "1920", "height": "1080"})
 
 from isaacsim_utils.helper import add_extensions, add_robot_to_scene
@@ -20,8 +26,18 @@ from curobo.types.math import Pose
 from curobo.types.robot import JointState
 from curobo.util.logger import setup_curobo_logger
 from curobo.util.usd_helper import UsdHelper
-from curobo.util_file import get_robot_configs_path, get_world_configs_path, join_path, load_yaml
-from curobo.wrap.reacher.motion_gen import MotionGen, MotionGenConfig, MotionGenPlanConfig
+from curobo.util_file import (
+    get_robot_configs_path,
+    get_world_configs_path,
+    join_path,
+    load_yaml,
+)
+from curobo.wrap.reacher.motion_gen import (
+    MotionGen,
+    MotionGenConfig,
+    MotionGenPlanConfig,
+)
+
 
 def get_cuboid_list(obstacles: dict) -> list:
     cuboids = []
@@ -32,7 +48,9 @@ def get_cuboid_list(obstacles: dict) -> list:
             dims=[4, 4, 4],
         )
     )
-    for i, (_obs_name, bounds) in enumerate(obstacles.items()):
+    for i, (obs_name, bounds) in enumerate(obstacles.items()):
+        if obs_name.startswith("robot_mesh"):
+            continue
         middle_point = np.mean([bounds["max"], bounds["min"]], axis=0)
         scale = np.array(bounds["max"]) - np.array(bounds["min"])
         cuboids.append(
@@ -44,12 +62,14 @@ def get_cuboid_list(obstacles: dict) -> list:
         )
     return cuboids
 
+
 def basic_world_config():
     world_cfg_table = WorldConfig.from_dict(
         load_yaml(join_path(get_world_configs_path(), "collision_table.yml"))
     )
     world_cfg_table.cuboid[0].pose[2] -= 0.02
     return WorldConfig(cuboid=world_cfg_table.cuboid)
+
 
 def basic_motion_gen(tensor_args, robot_cfg, world_cfg):
     motion_gen_config = MotionGenConfig.load_from_robot_config(
@@ -65,6 +85,7 @@ def basic_motion_gen(tensor_args, robot_cfg, world_cfg):
     )
     return MotionGen(motion_gen_config)
 
+
 def basic_plan_config():
     return MotionGenPlanConfig(
         enable_graph=False,
@@ -73,6 +94,7 @@ def basic_plan_config():
         enable_finetune_trajopt=True,
         time_dilation_factor=0.5,
     )
+
 
 def still_joint_states(joint_states: list, tensor_args: TensorDeviceType, sim_js_names):
     return JointState(
@@ -83,10 +105,14 @@ def still_joint_states(joint_states: list, tensor_args: TensorDeviceType, sim_js
         joint_names=sim_js_names,
     )
 
+
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--robot", type=str, default="tm5s.yml", help="robot configuration to load")
+    parser.add_argument(
+        "--robot", type=str, default="tm5s.yml", help="robot configuration to load"
+    )
     return parser.parse_args()
+
 
 def main():
     args = parse_args()
@@ -112,13 +138,29 @@ def main():
     zero_obstacles = usd_help.get_obstacles_from_stage(
         only_paths=["/World"],
         reference_prim_path=robot_prim_path,
-        ignore_substring=[robot_prim_path, "/World/defaultGroundPlane", "/curobo", "/World/table"],
+        ignore_substring=[
+            robot_prim_path,
+            "/World/defaultGroundPlane",
+            "/curobo",
+            "/World/table",
+        ],
     ).get_collision_check_world()
 
-    default_config = [1.37296326, 0.08553859, 1.05554023, 2.76803983, -1.48792809, 3.09947786]
+    default_config = [
+        1.37296326,
+        0.08553859,
+        1.05554023,
+        2.76803983,
+        -1.48792809,
+        3.09947786,
+    ]
 
-    sender = NonBlockingJSONSender(port=network_config.EXPERIMENT_ISAACSIM_TO_GRASPGEN_PORT)
-    receiver = NonBlockingJSONReceiver(port=network_config.EXPERIMENT_GRASPGEN_TO_ISAACSIM_PORT)
+    sender = NonBlockingJSONSender(
+        port=network_config.EXPERIMENT_ISAACSIM_TO_GRASPGEN_PORT
+    )
+    receiver = NonBlockingJSONReceiver(
+        port=network_config.EXPERIMENT_GRASPGEN_TO_ISAACSIM_PORT
+    )
 
     sim_js_names = robot.dof_names
 
@@ -152,9 +194,11 @@ def main():
         success_found = False
 
         for grasp_idx, act in enumerate(acts):
-            print(f"  Attempting Grasp {grasp_idx+1}/{len(acts)}")
+            print(f"  Attempting Grasp {grasp_idx + 1}/{len(acts)}")
             last_joint_states = default_config
             moves = act["moves"]
+
+            # Use the dynamically sent obstacle bounds to build Cuboids
             cuboids = get_cuboid_list(act["obstacles"])
             obstacles = WorldConfig(cuboid=cuboids)
 
@@ -164,28 +208,38 @@ def main():
                 if move["type"] == "gripper":
                     continue
 
-                if "no_obstacles" in move:
+                if "no_obstacles" in move or (
+                    "ignore_obstacles" in move
+                    and act.get("target_name") in move["ignore_obstacles"]
+                ):
+                    # For the pour motions we ignore target
                     motion_gen.update_world(zero_obstacles)
                 else:
                     motion_gen.update_world(obstacles)
 
-                curobo_cu_js = still_joint_states(last_joint_states, tensor_args, sim_js_names)
+                curobo_cu_js = still_joint_states(
+                    last_joint_states, tensor_args, sim_js_names
+                )
 
                 if "goal" in move:
                     ik_goal = Pose(
                         position=tensor_args.to_device(move["goal"][:3]),
                         quaternion=tensor_args.to_device(move["goal"][3:]),
                     )
-                    result = motion_gen.plan_single(curobo_cu_js.unsqueeze(0), ik_goal, plan_config)
+                    result = motion_gen.plan_single(
+                        curobo_cu_js.unsqueeze(0), ik_goal, plan_config
+                    )
                 elif "joints_goal" in move:
                     joints_goal = JointState(
                         position=tensor_args.to_device(move["joints_goal"]),
-                        velocity=tensor_args.to_device([0.0]*len(sim_js_names)),
-                        acceleration=tensor_args.to_device([0.0]*len(sim_js_names)),
-                        jerk=tensor_args.to_device([0.0]*len(sim_js_names)),
+                        velocity=tensor_args.to_device([0.0] * len(sim_js_names)),
+                        acceleration=tensor_args.to_device([0.0] * len(sim_js_names)),
+                        jerk=tensor_args.to_device([0.0] * len(sim_js_names)),
                         joint_names=sim_js_names,
                     )
-                    result = motion_gen.plan_single_js(curobo_cu_js.unsqueeze(0), joints_goal.unsqueeze(0), plan_config)
+                    result = motion_gen.plan_single_js(
+                        curobo_cu_js.unsqueeze(0), joints_goal.unsqueeze(0), plan_config
+                    )
 
                 if result.success.item():
                     new_cmd_plan = result.get_interpolated_plan()
@@ -194,23 +248,32 @@ def main():
                     last_joint_states = positions[-1]
                 else:
                     grasp_plannable = False
-                    break # Stop evaluating this grasp's move sequence
+                    break  # Stop evaluating this grasp's move sequence
 
             if grasp_plannable:
                 success_found = True
                 end_time = time.time()
                 time_taken = end_time - start_time
-                print(f"✅ Success found at grasp {grasp_idx+1}! Time taken: {time_taken:.2f}s")
-                sender.send_data({"order": order_name, "success": True, "time_taken": time_taken})
+                print(
+                    f"✅ Success found at grasp {grasp_idx + 1}! Time taken: {time_taken:.2f}s"
+                )
+                sender.send_data(
+                    {"order": order_name, "success": True, "time_taken": time_taken}
+                )
                 break
 
         if not success_found:
             end_time = time.time()
             time_taken = end_time - start_time
-            print(f"❌ No plannable grasp found in Order {order_name}. Time taken: {time_taken:.2f}s")
-            sender.send_data({"order": order_name, "success": False, "time_taken": time_taken})
+            print(
+                f"❌ No plannable grasp found in Order {order_name}. Time taken: {time_taken:.2f}s"
+            )
+            sender.send_data(
+                {"order": order_name, "success": False, "time_taken": time_taken}
+            )
 
     simulation_app.close()
+
 
 if __name__ == "__main__":
     main()
