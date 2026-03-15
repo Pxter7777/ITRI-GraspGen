@@ -2,10 +2,33 @@ import trimesh
 import logging
 import numpy as np
 from common_utils.qualification import get_left_up_and_front
+from dataclasses import dataclass, asdict, field
 
 HOME_SIGNAL = [326.8, -140.2, 212.6, 90.0, 0, 90.0]
 
 logger = logging.getLogger(__name__)
+
+@dataclass
+class SingleMove:
+    type: str # "gripper", "sequence_joint_rad", "single_pose_meter_quaternion", "single_pose_joint_rad"
+    """
+    There are four types
+    "gripper": modify gripper state, it won't move the arm.
+    "sequence_joint_rad": move the arm given a list of jointstates rad.
+    "single_pose_meter_quaternion": move the arm given a single gripper pose(or called end effector/EE), with meter and quaternion.
+    "single_pose_joint_rad": move the arm given a single jointstate rad.
+    """
+    grip_type: str | None = None # "open", "close", only useful when type is "gripper".
+    wait_time: float = 0.0
+    # vel, acc, blend will only have effect under "sequence_joint_rad"
+    vel: int = 40
+    acc: int = 20
+    blend: int = 100
+    no_curobo: bool = False
+    ignore_obstacle: list[str] | None = None
+    sequence_joint_rad_goals: list[list[float]] | None = None
+    single_pose_meter_quaternion_goal: list[float] | None = None
+    single_pose_joint_rad_goal: list[float] | None = None
 
 
 def pick_and_pour_and_put_back(grasp: np.array) -> list[dict]:
@@ -211,7 +234,7 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
     target_name: str, grasp: np.array, args: list, scene_data: dict
 ) -> dict:
     obstacles = scene_data["obstacles"]
-    moves = []
+    moves:list[SingleMove] = []
     # fetch basic infos
     position = grasp[:3, 3].tolist()
     logger.debug(position)
@@ -305,94 +328,42 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
     after_release_position = before_grasp_position
     # moves.append({"type": "move_arm", "goal": HOME_SIGNAL,"wait_time": 0.0})
     moves.append(
-        {
-            "type": "arm",
-            "goal": before_grasp_position + quaternion_orientation,
-            "wait_time": 0.0,
-        }
+        SingleMove(type="single_pose_meter_quaternion", single_pose_meter_quaternion_goal=before_grasp_position + quaternion_orientation)   
     )
     moves.append(
-        {
-            "type": "arm",
-            "goal": grasp_position + quaternion_orientation,
-            "wait_time": 0.0,
-            "no_obstacles": "yesyesyes",
-            "no_curobo": True,
-            "ignore_obstacles": [target_name],
-        }
+        # {
+        #     "type": "arm",
+        #     "goal": grasp_position + quaternion_orientation,
+        #     "wait_time": 0.0,
+        #     "no_obstacles": "yesyesyes",
+        #     "no_curobo": True,
+        #     "ignore_obstacles": [target_name],
+        # }
+        SingleMove(type="single_pose_meter_quaternion", single_pose_meter_quaternion_goal=grasp_position + quaternion_orientation, no_curobo=True)
     )
-    moves.append({"type": "gripper", "grip_type": "close", "wait_time": 1.0})
-    # moves.append(
-    #     {
-    #         "type": "arm",
-    #         "goal": after_grasp_position + quaternion_orientation,
-    #         "wait_time": 0.0,
-    #     }
-    # )
+    moves.append(SingleMove(type="gripper", grip_type="close", wait_time=1.0))
     moves.append(
-        {
-            "type": "arm",
-            "goal": ready_pour_pose,
-            "wait_time": 0.0,
-            "ignore_obstacles": [target_name],
-        }
-    )
-    # moves.append(
-    #     {"type": "arm", "goal": pour_pose1, "no_curobo": True, "wait_time": 0.0}
-    # )
-    # moves.append(
-    #     {"type": "arm", "goal": pour_pose2, "no_curobo": True, "wait_time": 0.0}
-    # )
-    moves.append(
-        {"type": "arm", "goal": pour_pose3, "no_curobo": True, "wait_time": 1.0}
-    )
-    # moves.append(
-    #     {"type": "arm", "goal": pour_pose2, "no_curobo": True, "wait_time": 0.0}
-    # )
-    # moves.append(
-    #     {"type": "arm", "goal": pour_pose1, "no_curobo": True, "wait_time": 0.0}
-    # )
-    moves.append(
-        {"type": "arm", "goal": ready_pour_pose, "no_curobo": True, "wait_time": 0.0}
-    )
-    # moves.append(
-    #     {
-    #         "type": "arm",
-    #         "goal": after_grasp_position + quaternion_orientation,
-    #         "wait_time": 0.0,
-    #     }
-    # )
-    moves.append(
-        {
-            "type": "arm",
-            "goal": release_position + quaternion_orientation,
-            "wait_time": 0.0,
-            "ignore_obstacles": [target_name],
-        }
-    )
-    moves.append({"type": "gripper", "grip_type": "open", "wait_time": 1.0})
-    moves.append(
-        {
-            "type": "arm",
-            "goal": after_release_position + quaternion_orientation,
-            "wait_time": 0.0,
-            "no_obstacles": "yesyesyes",
-            "ignore_obstacles": [target_name],
-            "no_curobo": True,
-        }
-    )
-    moves.append(
-        {
-            "type": "arm",
-            "goal": after_release_position[:2]
-            + [after_release_position[2] + 0.1]
-            + quaternion_orientation,
-            "wait_time": 0.0,
-            "no_obstacles": "yesyesyes",
-        }
+        SingleMove(type="single_pose_meter_quaternion", single_pose_meter_quaternion_goal=ready_pour_pose, ignore_obstacle=[target_name])
     )
 
-    full_act = {"moves": moves, "obstacles": obstacles}
+    moves.append(
+        SingleMove(type="single_pose_meter_quaternion", single_pose_meter_quaternion_goal=pour_pose3, no_curobo=True, wait_time=1.0)
+    )
+    moves.append(
+        SingleMove(type="single_pose_meter_quaternion", single_pose_meter_quaternion_goal=ready_pour_pose, no_curobo=True)
+    )
+    moves.append(
+        SingleMove(type="single_pose_meter_quaternion", single_pose_meter_quaternion_goal=release_position + quaternion_orientation, ignore_obstacle=[target_name])
+    )
+    moves.append(SingleMove(type="gripper", grip_type="open", wait_time=1.0))
+    moves.append(
+        SingleMove(type="single_pose_meter_quaternion", single_pose_meter_quaternion_goal=after_release_position + quaternion_orientation, no_curobo=True)
+    )
+    moves.append(
+        SingleMove(type="single_pose_meter_quaternion", single_pose_meter_quaternion_goal=after_release_position[:2] + [after_release_position[2]+ 0.1]+ quaternion_orientation, no_curobo=True)
+    )
+
+    full_act = {"moves": [asdict(move) for move in moves], "obstacles": obstacles}
     return full_act
 
 
@@ -476,9 +447,9 @@ def joints_rad_move_to_curobo(
 ) -> list[dict]:
     joints_goal = args[0]
     obstacles = scene_data["obstacles"]
-    moves = []
-    moves.append({"type": "arm", "joints_goal": joints_goal, "wait_time": 0.0})
-    full_act = {"moves": moves, "obstacles": obstacles}
+    moves:list[SingleMove] = []
+    moves.append(SingleMove(type="single_pose_joint_rad", single_pose_joint_rad_goal=joints_goal))
+    full_act = {"moves": [asdict(move) for move in moves], "obstacles": obstacles}
     return full_act
 
 
@@ -487,8 +458,8 @@ def open_grip(
 ) -> list[dict]:
     obstacles = []
     moves = []
-    moves.append({"type": "gripper", "grip_type": "open", "wait_time": 1.0})
-    full_act = {"moves": moves, "obstacles": obstacles}
+    moves.append(SingleMove(type="gripper", grip_type="open", wait_time=1.0))
+    full_act = {"moves": [asdict(move) for move in moves], "obstacles": obstacles}
     return full_act
 
 
