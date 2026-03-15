@@ -38,12 +38,15 @@ from dataclasses import asdict
 # Import through realpath
 import os
 import sys
-current_file_dir = os.path.dirname(os.path.realpath(__file__)) # use realpath instead of abspath so we can debug under isaac-sim-4.5.0 folder
+
+current_file_dir = os.path.dirname(
+    os.path.realpath(__file__)
+)  # use realpath instead of abspath so we can debug under isaac-sim-4.5.0 folder
 project_root_dir = os.path.dirname(current_file_dir)
 if project_root_dir not in sys.path:
     sys.path.insert(0, project_root_dir)
 
-from common_utils.movesets import SingleRobotMove # noqa: E402
+from common_utils.movesets import SingleRobotMove  # noqa: E402
 
 
 ############################################################
@@ -121,8 +124,6 @@ def init_pose_matric(args, motion_gen):
         hold_vec = motion_gen.tensor_args.to_device(args.hold_partial_pose)
         pose_metric = PoseCostMetric(hold_partial_pose=True, hold_vec_weight=hold_vec)
     return pose_metric
-
-
 
 
 def get_cuboid_list(move: SingleRobotMove, obstacles: dict) -> list:
@@ -420,8 +421,10 @@ def main():
                 for move_dict in graspgen_data["moves"]:
                     graspgen_move = SingleRobotMove(**move_dict)
                     cuboids = get_cuboid_list(graspgen_move, graspgen_data["obstacles"])
-                    if graspgen_move.type == "gripper" or \
-                        graspgen_move.type == "sequence_joint_rad":
+                    if (
+                        graspgen_move.type == "gripper"
+                        or graspgen_move.type == "sequence_joint_rad"
+                    ):
                         processed_moves.append(graspgen_move)
                         continue
                     ### else, for "single_pose_meter_quaternion" and "single_pose_joint_rad", they need cuRobo
@@ -438,8 +441,12 @@ def main():
                     )
                     if graspgen_move.type == "single_pose_meter_quaternion":
                         ik_goal = Pose(
-                            position=tensor_args.to_device(graspgen_move.single_pose_meter_quaternion_goal[:3]),
-                            quaternion=tensor_args.to_device(graspgen_move.single_pose_meter_quaternion_goal[3:]),
+                            position=tensor_args.to_device(
+                                graspgen_move.single_pose_meter_quaternion_goal[:3]
+                            ),
+                            quaternion=tensor_args.to_device(
+                                graspgen_move.single_pose_meter_quaternion_goal[3:]
+                            ),
                         )
                         plan_config.pose_cost_metric = pose_metric
                         result = motion_gen.plan_single(
@@ -447,7 +454,9 @@ def main():
                         )
                     elif graspgen_move.type == "single_pose_joint_rad":
                         joints_goal = JointState(
-                            position=tensor_args.to_device(graspgen_move.single_pose_joint_rad_goal),
+                            position=tensor_args.to_device(
+                                graspgen_move.single_pose_joint_rad_goal
+                            ),
                             velocity=tensor_args.to_device(sim_js.velocities)
                             * 0.0,  # * 0.0,
                             acceleration=tensor_args.to_device(sim_js.velocities) * 0.0,
@@ -586,7 +595,7 @@ def main():
             # get full dof state
             art_action = ArticulationAction(
                 cmd_state,
-                [0.0,0.0,0.0,0.0,0.0,0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 joint_indices=idx_list,
             )
             # set desired joint angles obtained from IK:
