@@ -33,6 +33,17 @@ from isaacsim_utils.socket_communication import (
     NonBlockingJSONReceiver,
 )
 from isaacsim_utils import network_config
+from dataclasses import asdict
+
+# Import through realpath
+import os
+import sys
+current_file_dir = os.path.dirname(os.path.realpath(__file__)) # use realpath instead of abspath so we can debug under isaac-sim-4.5.0 folder
+project_root_dir = os.path.dirname(current_file_dir)
+if project_root_dir not in sys.path:
+    sys.path.insert(0, project_root_dir)
+
+from common_utils.movesets import SingleRobotMove # noqa: E402
 
 
 ############################################################
@@ -112,14 +123,9 @@ def init_pose_matric(args, motion_gen):
     return pose_metric
 
 
-# dataclass
-class Move:
-    def __init__(self, ROS2_move: dict, cmd_plan: list):
-        self.ROS2_move = ROS2_move
-        self.cmd_plan = cmd_plan
 
 
-def get_cuboid_list(move: dict, obstacles: dict) -> list:
+def get_cuboid_list(move: SingleRobotMove, obstacles: dict) -> list:
     cuboids = []
     cuboids.append(
         Cuboid(
@@ -130,7 +136,7 @@ def get_cuboid_list(move: dict, obstacles: dict) -> list:
     )
     for i, obstacle_name in enumerate(obstacles):
         if not (
-            "ignore_obstacles" in move and obstacle_name in move["ignore_obstacles"]
+            move.ignore_obstacle is not None and obstacle_name in move.ignore_obstacle
         ):
             middle_point = np.mean(
                 [
@@ -336,7 +342,7 @@ def main():
     ###### states ######
     planned_action_queue = queue.Queue()
     ROS2_fail_queue = queue.Queue()  # put message in if ROS2 fail
-    cmd_plan = None
+    cmd_plan_positions = None
     cmd_idx = 0
     articulation_controller = robot.get_articulation_controller()
     tick = 0
@@ -410,51 +416,50 @@ def main():
             graspgen_eof = False
             for graspgen_data in graspgen_datas:
                 before_move_joints = last_joint_states
-                curobo_planned_action_moves: list[Move] = []
-                for move in graspgen_data["moves"]:
-                    cuboids = get_cuboid_list(move, graspgen_data["obstacles"])
+                processed_moves: list[SingleRobotMove] = []
+                for move_dict in graspgen_data["moves"]:
+                    graspgen_move = SingleRobotMove(**move_dict)
+                    cuboids = get_cuboid_list(graspgen_move, graspgen_data["obstacles"])
+                    if graspgen_move.type == "gripper" or \
+                        graspgen_move.type == "sequence_joint_rad":
+                        processed_moves.append(graspgen_move)
+                        continue
+                    ### else, for "single_pose_meter_quaternion" and "single_pose_joint_rad", they need cuRobo
+                    # Update obstacles
                     obstacles = WorldConfig(cuboid=cuboids)
-                    if "no_obstacles" in move:
+                    if graspgen_move.no_obstacles:
                         motion_gen.update_world(zero_obstacles)
                     else:
                         motion_gen.update_world(obstacles)
                     # start handle move
-                    if move["type"] == "gripper":
-                        curobo_planned_action_moves.append(Move(move, None))
-                        continue
                     print("curoboing")
                     curobo_cu_js = still_joint_states(
                         last_joint_states, tensor_args, sim_js_names
                     )
-                    if "goal" in move:
+                    if graspgen_move.type == "single_pose_meter_quaternion":
                         ik_goal = Pose(
-                            position=tensor_args.to_device(move["goal"][:3]),
-                            quaternion=tensor_args.to_device(move["goal"][3:]),
+                            position=tensor_args.to_device(graspgen_move.single_pose_meter_quaternion_goal[:3]),
+                            quaternion=tensor_args.to_device(graspgen_move.single_pose_meter_quaternion_goal[3:]),
                         )
-
                         plan_config.pose_cost_metric = pose_metric
                         result = motion_gen.plan_single(
                             curobo_cu_js.unsqueeze(0), ik_goal, plan_config
                         )
-                    elif "joints_goal" in move:
-                        print("ALRIGHT?0")
+                    elif graspgen_move.type == "single_pose_joint_rad":
                         joints_goal = JointState(
-                            position=tensor_args.to_device(move["joints_goal"]),
+                            position=tensor_args.to_device(graspgen_move.single_pose_joint_rad_goal),
                             velocity=tensor_args.to_device(sim_js.velocities)
                             * 0.0,  # * 0.0,
                             acceleration=tensor_args.to_device(sim_js.velocities) * 0.0,
                             jerk=tensor_args.to_device(sim_js.velocities) * 0.0,
                             joint_names=sim_js_names,
                         )
-
                         plan_config.pose_cost_metric = pose_metric
                         result = motion_gen.plan_single_js(
                             curobo_cu_js.unsqueeze(0),
                             joints_goal.unsqueeze(0),
                             plan_config,
                         )
-                        print("ALRIGHT?3")
-
                     succ = result.success.item()  # ik_result.success.item()
                     if succ:
                         print("YES YES YES?")
@@ -465,7 +470,7 @@ def main():
                         )
                         # The following code block shows how to prune the plan to keep only the first and last waypoints
                         # Emulates IK method's behavior.
-                        if "no_curobo" in move:
+                        if graspgen_move.no_curobo:
                             new_cmd_plan = JointState(
                                 position=new_cmd_plan.position[[0, -1]],
                                 velocity=new_cmd_plan.velocity[[0, -1]],
@@ -474,16 +479,9 @@ def main():
                                 joint_names=new_cmd_plan.joint_names,
                             )
                         positions = cmd_to_move(new_cmd_plan)
-                        ROS2_move = {
-                            "type": move["type"],
-                            "wait_time": move["wait_time"],
-                            # "cmd_plan": cmd_plan, # only for later reuse by isaacsim, not for ROS2
-                            "joints_values": positions,
-                        }
-
-                        curobo_planned_action_moves.append(
-                            Move(ROS2_move, new_cmd_plan)
-                        )
+                        graspgen_move.type = "sequence_joint_rad"
+                        graspgen_move.sequence_joint_rad_goals = positions
+                        processed_moves.append(graspgen_move)
                         last_joint_states = positions[-1]
                     else:
                         print("This plan failed.")
@@ -494,7 +492,7 @@ def main():
                     print("-------------Successfully handled new action--------------")
                     graspgen_sender.send_data({"message": "Success"})
                     planned_action_queue.put(
-                        {"moves": curobo_planned_action_moves, "obstacles": cuboids}
+                        {"moves": processed_moves, "obstacles": cuboids}
                     )
                     break  # stop trying other acts
             else:  # all graspgen_datas failed
@@ -519,7 +517,7 @@ def main():
                         values=np.array([5000 for i in range(len(idx_list))]),
                         joint_indices=idx_list,
                     )
-                    cmd_plan = None
+                    cmd_plan_positions = None
                     planned_action_moves = []
                     # Finished handled
                     ROS2_fail_queue.put(
@@ -583,12 +581,12 @@ def main():
                         spheres[si].set_world_pose(position=np.ravel(s.position))
                         spheres[si].set_radius(float(s.radius))
         ###### update past_pose
-        if cmd_plan is not None:
-            cmd_state = cmd_plan[cmd_idx]
+        if cmd_plan_positions is not None:
+            cmd_state = cmd_plan_positions[cmd_idx]
             # get full dof state
             art_action = ArticulationAction(
-                cmd_state.position.cpu().numpy(),
-                cmd_state.velocity.cpu().numpy(),
+                cmd_state,
+                [0.0,0.0,0.0,0.0,0.0,0.0],
                 joint_indices=idx_list,
             )
             # set desired joint angles obtained from IK:
@@ -596,23 +594,23 @@ def main():
             cmd_idx += 1
             for _ in range(2):
                 my_world.step(render=False)
-            if cmd_idx >= len(cmd_plan.position):
+            if cmd_idx >= len(cmd_plan_positions):
                 cmd_idx = 0
-                cmd_plan = None
+                cmd_plan_positions = None
         if not wait_ros2 and len(planned_action_moves) > 0:
             # planned action
             wait_ros2 = True
-            move: Move = planned_action_moves.pop(0)
+            move: SingleRobotMove = planned_action_moves.pop(0)
             # For ROS2
-            ros2_sender.send_data(move.ROS2_move)
+            ros2_sender.send_data(asdict(move))
             # For isaac sim animation
             cmd_idx = 0
-            cmd_plan = move.cmd_plan
+            cmd_plan_positions = move.sequence_joint_rad_goals
 
         if len(planned_action_moves) == 0 and not planned_action_queue.empty():
             # currently no plan but we have more in queue, can start grab a new planned_action and apply here.
             planned_action = planned_action_queue.get()
-            planned_action_moves: list = planned_action["moves"]
+            planned_action_moves: list[SingleRobotMove] = planned_action["moves"]
             # visualize cuboids
             if temp_cuboid_paths:
                 for path in temp_cuboid_paths:
