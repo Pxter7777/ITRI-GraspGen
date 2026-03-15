@@ -25,6 +25,7 @@ class SingleMove:
     acc: int = 20
     blend: int = 100
     no_curobo: bool = False
+    no_obstacles: bool = False
     ignore_obstacle: list[str] | None = None
     sequence_joint_rad_goals: list[list[float]] | None = None
     single_pose_meter_quaternion_goal: list[float] | None = None
@@ -339,7 +340,7 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
         #     "no_curobo": True,
         #     "ignore_obstacles": [target_name],
         # }
-        SingleMove(type="single_pose_meter_quaternion", single_pose_meter_quaternion_goal=grasp_position + quaternion_orientation, no_curobo=True)
+        SingleMove(type="single_pose_meter_quaternion", single_pose_meter_quaternion_goal=grasp_position + quaternion_orientation, no_curobo=True, no_obstacles=True)
     )
     moves.append(SingleMove(type="gripper", grip_type="close", wait_time=1.0))
     moves.append(
@@ -357,10 +358,10 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
     )
     moves.append(SingleMove(type="gripper", grip_type="open", wait_time=1.0))
     moves.append(
-        SingleMove(type="single_pose_meter_quaternion", single_pose_meter_quaternion_goal=after_release_position + quaternion_orientation, no_curobo=True)
+        SingleMove(type="single_pose_meter_quaternion", single_pose_meter_quaternion_goal=after_release_position + quaternion_orientation, no_curobo=True, no_obstacles=True)
     )
     moves.append(
-        SingleMove(type="single_pose_meter_quaternion", single_pose_meter_quaternion_goal=after_release_position[:2] + [after_release_position[2]+ 0.1]+ quaternion_orientation, no_curobo=True)
+        SingleMove(type="single_pose_meter_quaternion", single_pose_meter_quaternion_goal=after_release_position[:2] + [after_release_position[2]+ 0.1]+ quaternion_orientation, no_curobo=True, no_obstacles=True)
     )
 
     full_act = {"moves": [asdict(move) for move in moves], "obstacles": obstacles}
