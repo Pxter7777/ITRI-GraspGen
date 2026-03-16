@@ -128,6 +128,7 @@ class TMRobotController(Node):
         isaacsim_data = self.isaacsim_receiver.capture_data()
         if isaacsim_data is None:
             return
+        logger.warning("---new command from isaacsim---")
         data_dict = isaacsim_data
         move = SingleRobotMove(**data_dict)
         logger.info("received new data")
@@ -223,7 +224,7 @@ class TMRobotController(Node):
             self.reached_time > current_time
             and current_time - self.start_command_time > 1.0
         ):  # hasn't reached yet
-            if self.current_moving_type == "arm" and is_pose_identical(
+            if self.current_moving_type == "sequence_joint_rad" and is_pose_identical(
                 msg.joint_pos, self.goal_joints
             ):  # Need to change this type name to JPP if possible.
                 self.reached_time = current_time
