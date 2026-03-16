@@ -3,10 +3,19 @@ import logging
 import numpy as np
 from common_utils.qualification import get_left_up_and_front
 from dataclasses import dataclass, asdict
+from typing import Literal
 
 HOME_SIGNAL = [326.8, -140.2, 212.6, 90.0, 0, 90.0]
 
 logger = logging.getLogger(__name__)
+
+MoveType = Literal[
+    "gripper",
+    "sequence_joint_rad",
+    "single_pose_meter_quaternion",
+    "single_pose_joint_rad",
+]
+GripType = Literal["open", "close"]
 
 
 @dataclass
@@ -18,7 +27,7 @@ class SingleRobotMove:
     For example, sync_with_ROS2.py may accept single_pose_meter_quaternion type, and transfer it to sequence_joint_rad type based on the info.
     """
 
-    type: str  # "gripper", "sequence_joint_rad", "single_pose_meter_quaternion", "single_pose_joint_rad"
+    type: MoveType  # "gripper", "sequence_joint_rad", "single_pose_meter_quaternion", "single_pose_joint_rad"
     """
     There are four types
     "gripper": modify gripper state, it won't move the arm.
@@ -26,7 +35,9 @@ class SingleRobotMove:
     "single_pose_meter_quaternion": move the arm given a single gripper pose(or called end effector/EE), with meter and quaternion.
     "single_pose_joint_rad": move the arm given a single jointstate rad.
     """
-    grip_type: str | None = None  # "open", "close", only useful when type is "gripper".
+    grip_type: GripType | None = (
+        None  # "open", "close", only useful when type is "gripper".
+    )
     wait_time: float = 0.0
     # vel, acc, blend will only have effect under "sequence_joint_rad"
     vel: int = 40
@@ -40,34 +51,22 @@ class SingleRobotMove:
     single_pose_joint_rad_goal: list[float] | None = None
 
 
-def pick_and_pour_and_put_back(grasp: np.array) -> list[dict]:
-    moves = []
-    # fetch basic infos
-    position = grasp[:3, 3].tolist()
-    position = [p * 1000 for p in position]
-    euler_orientation = list(trimesh.transformations.euler_from_matrix(grasp))
-    euler_orientation = np.rad2deg(euler_orientation).tolist()
-    _, _, front = get_left_up_and_front(grasp)
-
-    moves.append({"type": "move arm", "goal": HOME_SIGNAL, "wait_time": 0.0})
-    moves.append({"type": "move arm", "goal": HOME_SIGNAL, "wait_time": 0.0})
-    moves.append({"type": "move arm", "goal": HOME_SIGNAL, "wait_time": 0.0})
-    moves.append({"type": "move arm", "goal": HOME_SIGNAL, "wait_time": 0.0})
-
-
 def grab_and_pour_and_place_back(
-    grasp: np.array, args: list, scene_data: dict
+    grasp: np.ndarray, args: list, scene_data: dict
 ) -> list[dict]:
     moves = []
     # fetch basic infos
     position = grasp[:3, 3].tolist()
     position = [p * 1000 for p in position]
     logger.info(position)
-    euler_orientation = list(trimesh.transformations.euler_from_matrix(grasp))
-    euler_orientation = np.rad2deg(euler_orientation).tolist()
+    euler_rad = trimesh.transformations.euler_from_matrix(grasp)
+    euler_orientation: list[float] = np.rad2deg(euler_rad).tolist()  # type: ignore
+    # euler_orientation = list(trimesh.transformations.euler_from_matrix(grasp))
+    # euler_orientation = np.rad2deg(euler_orientation).tolist()
     _, _, front = get_left_up_and_front(grasp)
     front = front.tolist()
     # specific fixed poses
+    ready_pour_position: list[float] = []
     if isinstance(args[0], list):
         ready_pour_position = args[0]
     elif isinstance(args[0], str):
@@ -141,7 +140,7 @@ def grab_and_pour_and_place_back(
 
 
 def grab_and_pour_and_place_back_curobo(
-    target_name: str, grasp: np.array, args: list, scene_data: dict
+    target_name: str, grasp: np.ndarray, args: list, scene_data: dict
 ) -> dict:
     obstacles = []
     for obj_name in scene_data["object_infos"]:
@@ -164,13 +163,14 @@ def grab_and_pour_and_place_back_curobo(
     _, _, front = get_left_up_and_front(grasp)
     front = front.tolist()
     # specific fixed poses
+    ready_pour_position: list[float] = []
     if isinstance(args[0], list):
-        ready_pour_position = args[0]
+        ready_pour_position: list[float] = args[0]
     elif isinstance(args[0], str):
         obj_points = scene_data["object_infos"][args[0]]["points"]
         mass_center = np.mean(obj_points, axis=0)
         # std = np.std(obj_points, axis=0)
-        ready_pour_position = [
+        ready_pour_position: list[float] = [
             mass_center[0] - 0.175,
             mass_center[1] + 0.150,
             # mass_center[2] + 0.250,
@@ -240,7 +240,7 @@ def grab_and_pour_and_place_back_curobo(
 
 
 def grab_and_pour_and_place_back_curobo_by_rotation(
-    target_name: str, grasp: np.array, args: list, scene_data: dict
+    target_name: str, grasp: np.ndarray, args: list, scene_data: dict
 ) -> dict:
     obstacles = scene_data["obstacles"]
     moves: list[SingleRobotMove] = []
@@ -415,13 +415,13 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
     return full_act
 
 
-def grab_and_drop(grasp: np.array, args: list, scene_data: dict) -> list[dict]:
+def grab_and_drop(grasp: np.ndarray, args: list, scene_data: dict) -> list[dict]:
     moves = []
     # fetch basic infos
     position = grasp[:3, 3].tolist()
     position = [p * 1000 for p in position]
-    euler_orientation = list(trimesh.transformations.euler_from_matrix(grasp))
-    euler_orientation = np.rad2deg(euler_orientation).tolist()
+    euler_rad = trimesh.transformations.euler_from_matrix(grasp)
+    euler_orientation: list[float] = np.rad2deg(euler_rad).tolist()  # type: ignore
     _, _, front = get_left_up_and_front(grasp)
     front = front.tolist()
     # specific drop point
@@ -461,7 +461,7 @@ def grab_and_drop(grasp: np.array, args: list, scene_data: dict) -> list[dict]:
     return moves
 
 
-def move_to(grasp: np.array, args: list, scene_data: dict) -> list[dict]:
+def move_to(grasp: np.ndarray, args: list, scene_data: dict) -> list[dict]:
     pose = args[0] + [90, 0, 90]
     moves = []
     moves.append({"type": "move_arm", "goal": pose, "wait_time": 0.0})
@@ -469,8 +469,8 @@ def move_to(grasp: np.array, args: list, scene_data: dict) -> list[dict]:
 
 
 def move_to_curobo(
-    target_name: str, grasp: np.array, args: list, scene_data: dict
-) -> list[dict]:
+    target_name: str, grasp: np.ndarray, args: list, scene_data: dict
+) -> dict:
     pose = args[0] + [0.5, 0.5, 0.5, 0.5]
     obstacles = []
     for obj_name in scene_data["object_infos"]:
@@ -491,8 +491,8 @@ def move_to_curobo(
 
 
 def joints_rad_move_to_curobo(
-    target_name: str, grasp: np.array, args: list, scene_data: dict
-) -> list[dict]:
+    target_name: str, grasp: np.ndarray, args: list, scene_data: dict
+) -> dict:
     joints_goal = args[0]
     obstacles = scene_data["obstacles"]
     moves: list[SingleRobotMove] = []
@@ -501,13 +501,14 @@ def joints_rad_move_to_curobo(
             type="single_pose_joint_rad", single_pose_joint_rad_goal=joints_goal
         )
     )
+    moves.append(SingleRobotMove(type="gripper"))
     full_act = {"moves": [asdict(move) for move in moves], "obstacles": obstacles}
     return full_act
 
 
 def open_grip(
-    target_name: str, grasp: np.array, args: list, scene_data: dict
-) -> list[dict]:
+    target_name: str, grasp: np.ndarray, args: list, scene_data: dict
+) -> dict:
     obstacles = []
     moves = []
     moves.append(SingleRobotMove(type="gripper", grip_type="open", wait_time=1.0))
@@ -526,7 +527,7 @@ action_dict = {
 }
 
 
-def act(action: str, grasp: np.array, args: list, scene_data: dict) -> list[dict]:
+def act(action: str, grasp: np.ndarray, args: list, scene_data: dict) -> list[dict]:
     if action not in action_dict:
         logger.error(f"There is no such action: {action}")
     action_method = action_dict[action]

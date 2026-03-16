@@ -358,7 +358,7 @@ def main():
     ros2_sender = NonBlockingJSONSender(port=network_config.ISAACSIM_TO_ROS2_PORT)
     sim_js = robot.get_joints_state()
     sim_js_names = robot.dof_names
-    planned_action_moves: list = []
+    planned_action_moves: list[SingleRobotMove] = []
     idx_list = [0, 1, 2, 3, 4, 5]
     temp_cuboid_paths = []
     default_config = [
@@ -439,6 +439,10 @@ def main():
                         last_joint_states, tensor_args, sim_js_names
                     )
                     if graspgen_move.type == "single_pose_meter_quaternion":
+                        if graspgen_move.single_pose_meter_quaternion_goal is None:
+                            raise ValueError(
+                                "single_pose_meter_quaternion_goal is missing"
+                            )
                         ik_goal = Pose(
                             position=tensor_args.to_device(
                                 graspgen_move.single_pose_meter_quaternion_goal[:3]
@@ -618,7 +622,7 @@ def main():
         if len(planned_action_moves) == 0 and not planned_action_queue.empty():
             # currently no plan but we have more in queue, can start grab a new planned_action and apply here.
             planned_action = planned_action_queue.get()
-            planned_action_moves: list[SingleRobotMove] = planned_action["moves"]
+            planned_action_moves = planned_action["moves"]
             # visualize cuboids
             if temp_cuboid_paths:
                 for path in temp_cuboid_paths:
