@@ -26,7 +26,7 @@ from common_utils.socket_communication import (  # noqa: E402
     NonBlockingJSONSender,
 )
 from common_utils.custom_logger import CustomFormatter  # noqa: E402
-
+from common_utils.movesets import SingleRobotMove  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -125,44 +125,29 @@ class TMRobotController(Node):
     def _capture_command(self):
         if self.moving:
             return
-        # try capture csv first
-        csv_data = self.csv_receiver.capture_data()
-        if csv_data is not None:
-            data = csv_data
-            self.data_source = "csv"
-        else:
-            isaacsim_data = self.isaacsim_receiver.capture_data()
-            if isaacsim_data is not None:
-                data = isaacsim_data
-                self.data_source = "isaacsim"
-            else:
-                return  # no data
+        isaacsim_data = self.isaacsim_receiver.capture_data()
+        if isaacsim_data is None:
+            return
+        data_dict = isaacsim_data
+        move = SingleRobotMove(**data_dict)
         logger.info("received new data")
-        logger.debug(data)
         self.num_response_to_send_back += 1
         logger.debug(f"{self.num_response_to_send_back}")
+        # resets
         self.reached_time = float("inf")
         self.stuck_start_time = float("inf")
         self.start_command_time = time.time()
         self.moving = True
-        self.wait_time = data["wait_time"]
-        self.current_moving_type = data["type"]
-        command_lines = []
-        if data["type"] == "arm":
-            vel = data.get("custom_vel")
-            if vel is None:
-                vel = 40
-            acc = data.get("custom_acc")
-            if acc is None:
-                acc = 20
-            blend = data.get("custom_blend")
-            if blend is None:
-                blend = 100
-            self.goal_joints = data["joints_values"][-1]
+        self.wait_time = move.wait_time
+        self.current_moving_type = move.type
+
+        commands_to_sim = []
+        if move.type == "sequence_joint_rad":
+            self.goal_joints = move.sequence_joint_rad_goals[-1]
             joints_values_degree = [
-                np.rad2deg(joints) for joints in data["joints_values"]
+                np.rad2deg(joints) for joints in move.sequence_joint_rad_goals
             ]
-            command_lines = [
+            commands_to_sim = [
                 list(joint) + self.current_IO_states for joint in joints_values_degree
             ]
             goal_degree = joints_values_degree.pop()  # remove the goal
@@ -176,39 +161,25 @@ class TMRobotController(Node):
                     for j1, j2 in zip(joints, accepted_joints[-1], strict=False)
                 ):
                     accepted_joints.append(joints)
+            accepted_joints.append(goal_degree)
             for joints in accepted_joints:
-                self.append_jpp(joints, vel=vel, acc=acc, blend=blend)
-            self.append_jpp(goal_degree, vel=vel, acc=acc, blend=blend)
-        elif data["type"] == "PTP":
-            cartesian_poses_mm_degree = data["cartesian_poses"]
-            self.goal_cartesian_pose = cartesian_poses_mm_degree.pop()
-            accepted_cartesion_poses = []
-            for cartesian_pose in cartesian_poses_mm_degree:
-                if len(accepted_cartesion_poses) == 0:
-                    accepted_cartesion_poses.append(cartesian_pose)
-                    continue
-                if not is_cartesion_pose_similar(
-                    cartesian_pose, accepted_cartesion_poses[-1]
-                ):
-                    accepted_cartesion_poses.append(cartesian_pose)
-            for cartesian_pose in accepted_cartesion_poses:
-                self.append_ptp(cartesian_pose)
-            self.append_ptp(self.goal_cartesian_pose)
-        elif data["type"] == "gripper":
-            logger.debug(data["grip_type"])
-            if data["grip_type"] == "close":
+                self.append_jpp(joints, vel=move.vel, acc=move.acc, blend=move.blend)
+        elif move.type == "gripper":
+            logger.debug(move.grip_type)
+            if move.grip_type == "close":
                 self.goal_gripper = [1, 0, 0]
-            elif data["grip_type"] == "open":
+            elif move.grip_type == "open":
                 self.goal_gripper = [0, 0, 1]
-            elif data["grip_type"] == "half_open":
+            elif move.grip_type == "half_open":
                 self.goal_gripper = [0, 1, 0]
-            elif data["grip_type"] == "close_tight":
+            elif move.grip_type == "close_tight":
                 self.goal_gripper = [1, 1, 0]
+            commands_to_sim = [self.current_joints_states + self.goal_gripper]
             self.append_gripper_states(self.goal_gripper)
-            command_lines = [self.current_joints_states + self.goal_gripper]
+
         if self.real2sim:
             try:
-                send_traj(command_lines)
+                send_traj(commands_to_sim)
             except (
                 OSError
             ) as e:  # maybe, when the isaac-sim display pc is not reachable

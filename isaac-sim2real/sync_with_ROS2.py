@@ -33,6 +33,7 @@ from dataclasses import asdict
 # Add realpath
 import os
 import sys
+
 current_file_dir = os.path.dirname(
     os.path.realpath(__file__)
 )  # use realpath instead of abspath so we can debug under isaac-sim-4.5.0 folder
@@ -42,11 +43,11 @@ if project_root_dir not in sys.path:
 ############################################################
 # Imports from common_utils
 from common_utils.movesets import SingleRobotMove  # noqa: E402
-from common_utils.socket_communication import ( # noqa: E402
+from common_utils.socket_communication import (  # noqa: E402
     NonBlockingJSONSender,
     NonBlockingJSONReceiver,
 )
-from common_utils import network_config # noqa: E402
+from common_utils import network_config  # noqa: E402
 ############################################################
 
 # Third Party
