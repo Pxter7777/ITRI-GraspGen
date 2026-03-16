@@ -41,34 +41,6 @@ def is_joint_vel_near_zero(joint_vel: list):
     return all(abs(v) < 0.001 for v in joint_vel)
 
 
-def is_cartesion_pose_similar(
-    point1: list, point2: list
-):  # use euler angle, not quaternion
-    if point1 is None or point2 is None:
-        return False
-    pos_similar = all(
-        abs(p1 - p2) < 20 for p1, p2 in zip(point1[:3], point2[:3], strict=False)
-    )
-    orient_identical = all(
-        abs(o1 - o2) < 4 for o1, o2 in zip(point1[3:], point2[3:], strict=False)
-    )
-    return pos_similar and orient_identical
-
-
-def is_cartesion_pose_identical(
-    point1: list, point2: list
-):  # use euler angle, not quaternion
-    if point1 is None or point2 is None:
-        return False
-    pos_identical = all(
-        abs(p1 - p2) < 10 for p1, p2 in zip(point1[:3], point2[:3], strict=False)
-    )
-    orient_identical = all(
-        abs(o1 - o2) < 2 for o1, o2 in zip(point1[3:], point2[3:], strict=False)
-    )
-    return pos_identical and orient_identical
-
-
 def is_pose_identical(joints1: list, joints2: list):
     if joints1 is None or joints2 is None:
         return False
@@ -175,8 +147,12 @@ class TMRobotController(Node):
                 self.goal_gripper = [0, 1, 0]
             elif move.grip_type == "close_tight":
                 self.goal_gripper = [1, 1, 0]
+            else:
+                raise ValueError(f"Unknown grip type: {move.grip_type}")
             commands_to_sim = [self.current_joints_states + self.goal_gripper]
             self.append_gripper_states(self.goal_gripper)
+        else:
+            raise ValueError(f"Unknown move type: {move.type}")
 
         if self.real2sim:
             try:
@@ -227,10 +203,6 @@ class TMRobotController(Node):
             if self.current_moving_type == "sequence_joint_rad" and is_pose_identical(
                 msg.joint_pos, self.goal_joints
             ):  # Need to change this type name to JPP if possible.
-                self.reached_time = current_time
-            elif self.current_moving_type == "PTP" and is_cartesion_pose_identical(
-                mrad_to_mmdeg(msg.tool_pose), self.goal_cartesian_pose
-            ):
                 self.reached_time = current_time
             elif (
                 self.current_moving_type == "gripper"
