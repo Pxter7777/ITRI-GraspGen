@@ -135,9 +135,7 @@ def get_cuboid_list(move: SingleRobotMove, obstacles: dict) -> list:
         )
     )
     for i, obstacle_name in enumerate(obstacles):
-        if not (
-            move.ignore_obstacle is not None and obstacle_name in move.ignore_obstacle
-        ):
+        if obstacle_name not in move.ignore_obstacles:
             middle_point = np.mean(
                 [
                     obstacles[obstacle_name]["max"],

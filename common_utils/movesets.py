@@ -2,7 +2,7 @@ import trimesh
 import logging
 import numpy as np
 from common_utils.qualification import get_left_up_and_front
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from typing import Literal
 
 HOME_SIGNAL = [326.8, -140.2, 212.6, 90.0, 0, 90.0]
@@ -45,7 +45,7 @@ class SingleRobotMove:
     blend: int = 100
     no_curobo: bool = False
     no_obstacles: bool = False
-    ignore_obstacle: list[str] | None = None
+    ignore_obstacles: list[str] = field(default_factory=list)
     sequence_joint_rad_goals: list[list[float]] | None = None
     single_pose_meter_quaternion_goal: list[float] | None = None
     single_pose_joint_rad_goal: list[float] | None = None
@@ -364,7 +364,7 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
         SingleRobotMove(
             type="single_pose_meter_quaternion",
             single_pose_meter_quaternion_goal=ready_pour_pose,
-            ignore_obstacle=[target_name],
+            ignore_obstacles=[target_name],
         )
     )
 
@@ -387,7 +387,7 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
         SingleRobotMove(
             type="single_pose_meter_quaternion",
             single_pose_meter_quaternion_goal=release_position + quaternion_orientation,
-            ignore_obstacle=[target_name],
+            ignore_obstacles=[target_name],
         )
     )
     moves.append(SingleRobotMove(type="gripper", grip_type="open", wait_time=1.0))
@@ -491,7 +491,7 @@ def move_to_curobo(
 
 
 def joints_rad_move_to_curobo(
-    target_name: str, grasp: np.ndarray, args: list, scene_data: dict
+    args: list, scene_data: dict
 ) -> dict:
     joints_goal = args[0]
     obstacles = scene_data["obstacles"]
@@ -506,9 +506,7 @@ def joints_rad_move_to_curobo(
     return full_act
 
 
-def open_grip(
-    target_name: str, grasp: np.ndarray, args: list, scene_data: dict
-) -> dict:
+def open_grip() -> dict:
     obstacles = []
     moves = []
     moves.append(SingleRobotMove(type="gripper", grip_type="open", wait_time=1.0))
@@ -536,12 +534,28 @@ def act(action: str, grasp: np.ndarray, args: list, scene_data: dict) -> list[di
 
 def act_with_name(
     action: str,
-    target_name: str,
-    grasps: list[np.ndarray],
-    args: list,
-    scene_data: dict,
+    args: list | None = None,
+    grasps: list[np.ndarray] | None = None,
+    scene_data: dict | None = None,
+    target_name: str | None = None,
 ) -> list[dict]:
-    if action not in action_dict:
-        logger.error(f"There is no such action: {action}")
-    action_method = action_dict[action]
-    return [action_method(target_name, grasp, args, scene_data) for grasp in grasps]
+    if action == "grab_and_pour_and_place_back_curobo":
+        if grasps is None:
+            raise ValueError(f"grab_and_pour_and_place_back_curobo doesn't allow grasps to be None")
+        if target_name is None:
+            raise ValueError(f"grab_and_pour_and_place_back_curobo doesn't allow target_name to be None")
+        if scene_data is None:
+            raise ValueError(f"grab_and_pour_and_place_back_curobo doesn't allow scene_data to be None")
+        if args is None:
+            raise ValueError(f"grab_and_pour_and_place_back_curobo doesn't allow args to be None")
+        return [grab_and_pour_and_place_back_curobo_by_rotation(target_name, grasp, args, scene_data) for grasp in grasps]
+    elif action == "joints_rad_move_to_curobo":
+        if args is None:
+            raise ValueError(f"joints_rad_move_to_curobo doesn't allow args to be None")
+        if scene_data is None:
+            raise ValueError(f"joints_rad_move_to_curobo doesn't allow scene_data to be None")
+        return [joints_rad_move_to_curobo(args, scene_data)]
+    elif action == "open_grip":
+        return [open_grip()]
+    else:
+        raise ValueError(f"There is no such action: {action}")

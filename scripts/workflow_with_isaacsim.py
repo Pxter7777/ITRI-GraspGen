@@ -162,8 +162,8 @@ def main():
                 logger.error("failed reading file, try again.")
                 continue
             # start to generate pointcloud
-            scene_data = None
-            track_names = list(task.track)
+            scene_data:dict = {}
+            track_names = task.track
             # try five times
             detection_success = False
             while True:
@@ -207,10 +207,8 @@ def main():
                         while True:
                             full_acts = act_with_name(
                                 move.move_type,
-                                None,
-                                [None],
-                                move.args,
-                                scene_data,
+                                args = move.args,
+                                scene_data = scene_data,
                             )
                             if args.save_fullact:
                                 save_json("fullact", "fullact", full_acts)
@@ -238,10 +236,10 @@ def main():
                             grasps = grasp_generator.generate_grasp(scene_data, move)
                             full_acts = act_with_name(
                                 move.move_type,
-                                move.target_name,
-                                grasps,
-                                move.args,
-                                scene_data,
+                                target_name=move.target_name,
+                                grasps=grasps,
+                                args=move.args,
+                                scene_data=scene_data,
                             )
                             if args.save_fullact:
                                 save_json("fullact", "fullact_", full_acts)

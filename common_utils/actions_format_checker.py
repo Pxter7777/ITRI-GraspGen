@@ -39,9 +39,9 @@ class TaskConfig(BaseModel):
     moves: list[MoveItem]
 
     # Optional
-    blockages: list[FourIntList] | None = None
-    track: list[str] | None = None
-    extra_obstacles: dict[str, ObstacleBound] | None = None
+    blockages: list[FourIntList] = Field(default_factory=list)
+    track: list[str] = Field(default_factory=list)
+    extra_obstacles: dict[str, ObstacleBound] = Field(default_factory=dict)
     valid_region: FourIntList | None = None
 
     @model_validator(
