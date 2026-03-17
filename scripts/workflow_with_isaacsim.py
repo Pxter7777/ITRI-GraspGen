@@ -162,7 +162,7 @@ def main():
                 logger.error("failed reading file, try again.")
                 continue
             # start to generate pointcloud
-            scene_data:dict = {}
+            scene_data: dict = {}
             track_names = task.track
             # try five times
             detection_success = False
@@ -207,8 +207,8 @@ def main():
                         while True:
                             full_acts = act_with_name(
                                 move.move_type,
-                                args = move.args,
-                                scene_data = scene_data,
+                                args=move.args,
+                                scene_data=scene_data,
                             )
                             if args.save_fullact:
                                 save_json("fullact", "fullact", full_acts)

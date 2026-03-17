@@ -52,7 +52,9 @@ class TaskConfig(BaseModel):
             if move.target_name is None:
                 continue
             if self.track is None:
-                raise ValueError(f"'target_name' is {move.target_name} yet 'track' is None")
+                raise ValueError(
+                    f"'target_name' is {move.target_name} yet 'track' is None"
+                )
             if move.target_name not in self.track:
                 raise ValueError(f"'{move.target_name}' is not in 'track'")
         return self

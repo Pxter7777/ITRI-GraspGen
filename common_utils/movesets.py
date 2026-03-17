@@ -490,9 +490,7 @@ def move_to_curobo(
     return full_act
 
 
-def joints_rad_move_to_curobo(
-    args: list, scene_data: dict
-) -> dict:
+def joints_rad_move_to_curobo(args: list, scene_data: dict) -> dict:
     joints_goal = args[0]
     obstacles = scene_data["obstacles"]
     moves: list[SingleRobotMove] = []
@@ -541,19 +539,34 @@ def act_with_name(
 ) -> list[dict]:
     if action == "grab_and_pour_and_place_back_curobo":
         if grasps is None:
-            raise ValueError(f"grab_and_pour_and_place_back_curobo doesn't allow grasps to be None")
+            raise ValueError(
+                "grab_and_pour_and_place_back_curobo doesn't allow grasps to be None"
+            )
         if target_name is None:
-            raise ValueError(f"grab_and_pour_and_place_back_curobo doesn't allow target_name to be None")
+            raise ValueError(
+                "grab_and_pour_and_place_back_curobo doesn't allow target_name to be None"
+            )
         if scene_data is None:
-            raise ValueError(f"grab_and_pour_and_place_back_curobo doesn't allow scene_data to be None")
+            raise ValueError(
+                "grab_and_pour_and_place_back_curobo doesn't allow scene_data to be None"
+            )
         if args is None:
-            raise ValueError(f"grab_and_pour_and_place_back_curobo doesn't allow args to be None")
-        return [grab_and_pour_and_place_back_curobo_by_rotation(target_name, grasp, args, scene_data) for grasp in grasps]
+            raise ValueError(
+                "grab_and_pour_and_place_back_curobo doesn't allow args to be None"
+            )
+        return [
+            grab_and_pour_and_place_back_curobo_by_rotation(
+                target_name, grasp, args, scene_data
+            )
+            for grasp in grasps
+        ]
     elif action == "joints_rad_move_to_curobo":
         if args is None:
-            raise ValueError(f"joints_rad_move_to_curobo doesn't allow args to be None")
+            raise ValueError("joints_rad_move_to_curobo doesn't allow args to be None")
         if scene_data is None:
-            raise ValueError(f"joints_rad_move_to_curobo doesn't allow scene_data to be None")
+            raise ValueError(
+                "joints_rad_move_to_curobo doesn't allow scene_data to be None"
+            )
         return [joints_rad_move_to_curobo(args, scene_data)]
     elif action == "open_grip":
         return [open_grip()]
