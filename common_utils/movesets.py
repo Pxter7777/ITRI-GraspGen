@@ -15,7 +15,7 @@ MoveType = Literal[
     "single_pose_meter_quaternion",
     "single_pose_joint_rad",
 ]
-GripType = Literal["open", "close"]
+GripType = Literal["open", "close", "half_open", "close_tight"]
 
 
 @dataclass
