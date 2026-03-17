@@ -49,7 +49,11 @@ class TaskConfig(BaseModel):
     )  # mode="after" means we validate this after all basic type validations.
     def check_target_in_track(self):
         for move in self.moves:
-            if move.target_name is not None and move.target_name not in self.track:
+            if move.target_name is None:
+                continue
+            if self.track is None:
+                raise ValueError(f"'target_name' is {move.target_name} yet 'track' is None")
+            if move.target_name not in self.track:
                 raise ValueError(f"'{move.target_name}' is not in 'track'")
         return self
 
