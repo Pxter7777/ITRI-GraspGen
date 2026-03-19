@@ -188,9 +188,9 @@ class GraspGenController:
             raise ValueError(f"Unknown task_type {task_type}")
 
     def _process_graspgen_command(self):
-        GraspGen_filepath = PROJECT_ROOT_DIR / "actions" / "Grasp_and_Dump.json"
+        graspgen_filepath = PROJECT_ROOT_DIR / "actions" / "Grasp_and_Dump.json"
         task: TaskConfig
-        with open(GraspGen_filepath, "rb") as f:
+        with open(graspgen_filepath, "rb") as f:
             task_json = json.load(f)
             task = TaskConfig(**task_json)
         extra_obstacles: dict = load_extra_obstacles()
@@ -202,11 +202,11 @@ class GraspGenController:
         scene_data = create_obstacle_info(scene_data, extra_obstacles)
         self._run_graspgen(task, scene_data)
 
-    def _run_graspgen(self, task, scene_data):
+    def _run_graspgen(self, task: TaskConfig, scene_data):
         try:
             for move in task.moves:
                 while True:
-                    full_acts: list[dict]
+                    full_acts: list[dict] = []
                     if move.move_type in [  # Don't need GraspGen
                         "move_to_curobo",
                         "joints_rad_move_to_curobo",
