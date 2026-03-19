@@ -16,7 +16,7 @@ from common_utils.socket_communication import (
     NonBlockingJSONReceiver,
 )
 from common_utils.custom_logger import CustomFormatter
-from common_utils.common_utils import save_json, create_obstacle_info
+from common_utils.common_utils import create_obstacle_info
 
 
 # root logger setup
@@ -205,39 +205,19 @@ class GraspGenController:
     def _run_graspgen(self, task, scene_data):
         try:
             for move in task.moves:
-                # Don't need GraspGen
-                if move.move_type in [
-                    "move_to_curobo",
-                    "joints_rad_move_to_curobo",
-                    "open_grip",
-                ]:
-                    while True:
+                while True:
+                    full_acts: list[dict]
+                    if move.move_type in [  # Don't need GraspGen
+                        "move_to_curobo",
+                        "joints_rad_move_to_curobo",
+                        "open_grip",
+                    ]:
                         full_acts = act_with_name(
                             move.move_type,
                             args=move.args,
                             scene_data=scene_data,
                         )
-                        response = self.receiver.capture_data()
-                        if response is not None and response["message"] == "Abort":
-                            raise InterruptedError(
-                                "aborted by isaacsim, stop current action"
-                            )
-                        self.sender.send_data(full_acts)
-                        # wait for isaacsim's good news
-                        while response is None:
-                            response = self.receiver.capture_data()
-                        if response["message"] == "Success":
-                            logger.warning("Success")
-                            break
-                        elif response["message"] == "Fail":
-                            logger.warning("failed")
-                            continue
-                        elif response["message"] == "Abort":
-                            raise InterruptedError(
-                                "aborted by isaacsim, stop current action"
-                            )
-                else:  # Need GraspGen
-                    while True:
+                    else:  # Need GraspGen
                         grasps = self.grasp_generator.generate_grasp(scene_data, move)
                         full_acts = act_with_name(
                             move.move_type,
@@ -246,27 +226,13 @@ class GraspGenController:
                             args=move.args,
                             scene_data=scene_data,
                         )
-                        if self.args.save_fullact:
-                            save_json("fullact", "fullact_", full_acts)
-                        response = self.receiver.capture_data()
-                        if response is not None and response["message"] == "Abort":
-                            raise InterruptedError(
-                                "aborted by isaacsim, stop current action"
-                            )
-                        self.sender.send_data(full_acts)
-                        # wait for isaacsim's good news
-                        while response is None:
-                            response = self.receiver.capture_data()
-                        if response["message"] == "Success":
-                            logger.warning("Success")
-                            break
-                        elif response["message"] == "Fail":
-                            logger.warning("failed")
-                            continue
-                        elif response["message"] == "Abort":
-                            raise InterruptedError(
-                                "aborted by isaacsim, stop current action"
-                            )
+                    # execute isaacsim
+                    success = self._run_isaacsim(full_acts)
+                    if success:
+                        break
+                    else:
+                        continue
+            # end of move
             self.sender.send_data(["EOF"])
             response = self.receiver.capture_data()
             while response is None:
@@ -290,6 +256,25 @@ class GraspGenController:
                 f"Unknown Error while generating grasp for {name}, stopping. {e}"
             )
             raise e
+
+    def _run_isaacsim(self, full_acts: list[dict]) -> bool:
+        response = self.receiver.capture_data()
+        if response is not None and response["message"] == "Abort":
+            raise InterruptedError("aborted by isaacsim, stop current action")
+        self.sender.send_data(full_acts)
+        # wait for isaacsim's good news
+        while response is None:
+            response = self.receiver.capture_data()
+        if response["message"] == "Success":
+            logger.warning("Success")
+            return True
+        elif response["message"] == "Fail":
+            logger.warning("failed")
+            return False
+        elif response["message"] == "Abort":
+            raise InterruptedError("aborted by isaacsim, stop current action")
+        else:
+            raise ValueError(f"Can't recognize the response {response}")
 
     def _generate_scene_data(self, task, num_try=20) -> dict:
         # try 20 times
