@@ -11,6 +11,7 @@ from common_utils.actions_format_checker import ObstacleBound
 
 logger = logging.getLogger(__name__)
 
+
 class Mode(Enum):
     MOVE = 1
     OPEN = 2
@@ -95,11 +96,13 @@ def load_trajectory_from_csv(command: str) -> list[Movement]:
             gripper_prev = joint_values_float[6:9]
     return movements
 
+
 @dataclass
 class SpeedParam:
     vel: int = 40
     acc: int = 20
     blend: int = 100
+
 
 # A defaultdict automatically returns SpeedParam() (the defaults: 40, 20, 100) if a key is missing!
 SPEED_PARAM_DICT = defaultdict(SpeedParam)
@@ -118,13 +121,16 @@ SPEED_PARAM_DICT["pour_2nt_batter"] = SpeedParam(vel=100, acc=500)
 SPEED_PARAM_DICT["grab_fork"] = SpeedParam(vel=100, acc=500)
 SPEED_PARAM_DICT["drop_fork"] = SpeedParam(vel=100, acc=500)
 SPEED_PARAM_DICT["get_1st_waffle"] = SpeedParam(vel=50, acc=500, blend=80)
-SPEED_PARAM_DICT["get_2nd_waffle"] = SpeedParam(vel=35, acc=500, blend=80) # why different than 1st?
+SPEED_PARAM_DICT["get_2nd_waffle"] = SpeedParam(
+    vel=35, acc=500, blend=80
+)  # why different than 1st?
 SPEED_PARAM_DICT["close_1st_lid"] = SpeedParam(vel=100, acc=500)
 SPEED_PARAM_DICT["close_2nd_lid"] = SpeedParam(vel=100, acc=500)
-SPEED_PARAM_DICT["get_2nd_waffle_top_lid"] = SpeedParam(vel=35, acc=500, blend=100) # what is this?
+SPEED_PARAM_DICT["get_2nd_waffle_top_lid"] = SpeedParam(
+    vel=35, acc=500, blend=100
+)  # what is this?
 SPEED_PARAM_DICT["drop_waffle"] = SpeedParam(vel=40, acc=500)
 SPEED_PARAM_DICT["go_to_default"] = SpeedParam(vel=100, acc=500)
-
 
 
 def run_trajectory(command: str, obstacles: list | None = None) -> list[dict]:
@@ -200,7 +206,14 @@ def run_trajectory(command: str, obstacles: list | None = None) -> list[dict]:
     return [asdict(move) for move in movements]
 
 
-def csv_act(command: str, obstacles: dict[str, ObstacleBound] | None = None) -> list[dict]:
+def csv_act(
+    command: str, obstacles: dict[str, ObstacleBound] | None = None
+) -> list[dict]:
     if obstacles is None:
         obstacles = {}
-    return [{"moves": run_trajectory(command), "obstacles": {k: v.model_dump() for k, v in obstacles.items()}}]
+    return [
+        {
+            "moves": run_trajectory(command),
+            "obstacles": {k: v.model_dump() for k, v in obstacles.items()},
+        }
+    ]

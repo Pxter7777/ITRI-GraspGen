@@ -418,9 +418,9 @@ def main():
                 for move_dict in graspgen_data["moves"]:
                     graspgen_move = SingleRobotMove(**move_dict)
                     cuboids = get_cuboid_list(graspgen_move, graspgen_data["obstacles"])
-                    if (
-                        graspgen_move.type == "gripper"
-                        or (graspgen_move.type == "sequence_joint_rad" and graspgen_move.no_curobo)
+                    if graspgen_move.type == "gripper" or (
+                        graspgen_move.type == "sequence_joint_rad"
+                        and graspgen_move.no_curobo
                     ):
                         processed_moves.append(graspgen_move)
                         continue
@@ -471,8 +471,13 @@ def main():
                             plan_config,
                         )
                     elif graspgen_move.type == "sequence_joint_rad":
-                        if graspgen_move.sequence_joint_rad_goals is None or len(graspgen_move.sequence_joint_rad_goals) == 0:
-                            raise ValueError(f"Can't accept {graspgen_move.sequence_joint_rad_goals} as sequence_joint_rad_goals.")
+                        if (
+                            graspgen_move.sequence_joint_rad_goals is None
+                            or len(graspgen_move.sequence_joint_rad_goals) == 0
+                        ):
+                            raise ValueError(
+                                f"Can't accept {graspgen_move.sequence_joint_rad_goals} as sequence_joint_rad_goals."
+                            )
                         joints_goal = JointState(
                             position=tensor_args.to_device(
                                 graspgen_move.sequence_joint_rad_goals[0]
@@ -508,8 +513,12 @@ def main():
                                 joint_names=new_cmd_plan.joint_names,
                             )
                         positions = cmd_to_move(new_cmd_plan)
-                        if graspgen_move.type == "sequence_joint_rad": # need to append them back
-                            graspgen_move.sequence_joint_rad_goals = positions + graspgen_move.sequence_joint_rad_goals
+                        if (
+                            graspgen_move.type == "sequence_joint_rad"
+                        ):  # need to append them back
+                            graspgen_move.sequence_joint_rad_goals = (
+                                positions + graspgen_move.sequence_joint_rad_goals
+                            )
                         else:
                             graspgen_move.sequence_joint_rad_goals = positions
                         graspgen_move.type = "sequence_joint_rad"

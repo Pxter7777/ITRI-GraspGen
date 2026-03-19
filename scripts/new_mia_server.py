@@ -146,7 +146,9 @@ class GraspGenController:
         self.receiver = NonBlockingJSONReceiver(
             port=network_config.ISAACSIM_TO_GRASPGEN_PORT
         )
-        self.main_sender = NonBlockingJSONSender(port=network_config.GRASPGEN_TO_MIA_PORT)
+        self.main_sender = NonBlockingJSONSender(
+            port=network_config.GRASPGEN_TO_MIA_PORT
+        )
         self.main_receiver = NonBlockingJSONReceiver(
             port=network_config.MIA_TO_GRASPGEN_PORT
         )
@@ -187,10 +189,11 @@ class GraspGenController:
         else:
             raise ValueError(f"Unknown task_type {task_type}")
 
-    def _process_csv_command(self, command:str):
+    def _process_csv_command(self, command: str):
         extra_obstacles: dict[str, ObstacleBound] = load_extra_obstacles()
         self._run_csv(command, extra_obstacles)
-    def _run_csv(self, command:str, extra_obstacles: dict[str, ObstacleBound]):
+
+    def _run_csv(self, command: str, extra_obstacles: dict[str, ObstacleBound]):
         while True:
             full_acts: list[dict] = csv_act(command, extra_obstacles)
             success = self._run_isaacsim(full_acts)
@@ -199,6 +202,7 @@ class GraspGenController:
             else:
                 continue
         self._send_EOF()
+
     def _send_EOF(self):
         # end of move
         self.sender.send_data(["EOF"])
@@ -214,6 +218,7 @@ class GraspGenController:
             raise InterruptedError("aborted by isaacsim, stop current action")
         else:
             raise ValueError(f"Unknown message {response['message']}")
+
     def _process_graspgen_command(self):
         graspgen_filepath = PROJECT_ROOT_DIR / "actions" / "Grasp_and_Dump.json"
         task: TaskConfig
@@ -327,7 +332,7 @@ class GraspGenController:
             if text is None:
                 raise ValueError(f"received weird signal {task_signal}")
             break
-            
+
         if text == "end":
             raise KeyboardInterrupt
         if text == "Grasp_and_Dump":
