@@ -194,6 +194,8 @@ class GraspGenController:
                 break
             else:
                 continue
+        self._send_EOF()
+    def _send_EOF(self):
         # end of move
         self.sender.send_data(["EOF"])
         response = self.receiver.capture_data()
@@ -206,6 +208,7 @@ class GraspGenController:
             raise InterruptedError("aborted by isaacsim, stop current action")
         else:
             raise ValueError(f"Unknown message {response['message']}")
+        
     def _process_graspgen_command(self):
         graspgen_filepath = PROJECT_ROOT_DIR / "actions" / "Grasp_and_Dump.json"
         task: TaskConfig
@@ -251,18 +254,7 @@ class GraspGenController:
                         break
                     else:
                         continue
-            # end of move
-            self.sender.send_data(["EOF"])
-            response = self.receiver.capture_data()
-            while response is None:
-                response = self.receiver.capture_data()
-            if response["message"] == "EOF and ROS2 Complete":
-                logger.warning("Success")
-            elif response["message"] == "Abort":
-                logger.warning("Abort")
-                raise InterruptedError("aborted by isaacsim, stop current action")
-            else:
-                raise ValueError(f"Unknown message {response['message']}")
+            self._send_EOF()
         except KeyboardInterrupt:
             logger.info("Manual stopping current action.")
             self.sender.send_data(["Reset_to_default"])
