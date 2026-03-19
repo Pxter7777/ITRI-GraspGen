@@ -1,10 +1,15 @@
 import csv
+import logging
 import numpy as np
 from enum import Enum
 from pathlib import Path
 from common_utils.movesets import SingleRobotMove
-from dataclasses import asdict
+from dataclasses import dataclass, asdict
+from collections import defaultdict
 
+from common_utils.actions_format_checker import ObstacleBound
+
+logger = logging.getLogger(__name__)
 
 class Mode(Enum):
     MOVE = 1
@@ -28,10 +33,10 @@ class Movement:
 
 
 def load_trajectory_from_csv(command: str) -> list[Movement]:
-    base_dir = Path("~").expanduser() / "RobotSnackServing"
+    base_dir = Path("~").expanduser() / "RobotSnackServing-csv"
     if not base_dir.exists():
         raise FileNotFoundError(
-            "~/RobotSnackServing is missing. Is https://github.com/hongalicia/RobotSnackServing-csv.git cloned into ~/ ?"
+            "~/RobotSnackServing-csv is missing. Is https://github.com/hongalicia/RobotSnackServing-csv.git cloned into ~/ ?"
         )
 
     file_path = base_dir / "trajectories" / f"{command}.csv"
@@ -90,15 +95,46 @@ def load_trajectory_from_csv(command: str) -> list[Movement]:
             gripper_prev = joint_values_float[6:9]
     return movements
 
+@dataclass
+class SpeedParam:
+    vel: int = 40
+    acc: int = 20
+    blend: int = 100
 
-def run_trajectory(
-    command: str, obstacles: list | None = None, vel=40, acc=20, blend=100
-):
+# A defaultdict automatically returns SpeedParam() (the defaults: 40, 20, 100) if a key is missing!
+SPEED_PARAM_DICT = defaultdict(SpeedParam)
+# Specific overrides
+SPEED_PARAM_DICT["spoon_peanuts"] = SpeedParam(vel=60, acc=500)
+SPEED_PARAM_DICT["open_1st_lid"] = SpeedParam(vel=100, acc=500)
+SPEED_PARAM_DICT["open_2nd_lid"] = SpeedParam(vel=100, acc=500)
+SPEED_PARAM_DICT["close_1st_lid"] = SpeedParam(vel=100, acc=500)
+SPEED_PARAM_DICT["close_2nd_lid"] = SpeedParam(vel=100, acc=500)
+SPEED_PARAM_DICT["grab_1st_batter"] = SpeedParam(vel=100, acc=500)
+SPEED_PARAM_DICT["grab_2nd_batter"] = SpeedParam(vel=100, acc=500)
+SPEED_PARAM_DICT["drop_1st_batter"] = SpeedParam(vel=50, acc=500)
+SPEED_PARAM_DICT["drop_2nd_batter"] = SpeedParam(vel=50, acc=500)
+SPEED_PARAM_DICT["pour_1st_batter"] = SpeedParam(vel=100, acc=500)
+SPEED_PARAM_DICT["pour_2nt_batter"] = SpeedParam(vel=100, acc=500)
+SPEED_PARAM_DICT["grab_fork"] = SpeedParam(vel=100, acc=500)
+SPEED_PARAM_DICT["drop_fork"] = SpeedParam(vel=100, acc=500)
+SPEED_PARAM_DICT["get_1st_waffle"] = SpeedParam(vel=50, acc=500, blend=80)
+SPEED_PARAM_DICT["get_2nd_waffle"] = SpeedParam(vel=35, acc=500, blend=80) # why different than 1st?
+SPEED_PARAM_DICT["close_1st_lid"] = SpeedParam(vel=100, acc=500)
+SPEED_PARAM_DICT["close_2nd_lid"] = SpeedParam(vel=100, acc=500)
+SPEED_PARAM_DICT["get_2nd_waffle_top_lid"] = SpeedParam(vel=35, acc=500, blend=100) # what is this?
+SPEED_PARAM_DICT["drop_waffle"] = SpeedParam(vel=40, acc=500)
+SPEED_PARAM_DICT["go_to_default"] = SpeedParam(vel=100, acc=500)
+
+
+
+def run_trajectory(command: str, obstacles: list | None = None) -> list[dict]:
     if obstacles is None:
         obstacles = []
     nodes = load_trajectory_from_csv(command)
+    p = SPEED_PARAM_DICT[command]
+    vel, acc, blend = p.vel, p.acc, p.blend
+    logger.debug(f"{vel} {acc} {blend}")
     parsed_nodes: list[Movement] = []
-    print("Number of nodes:", len(nodes))
     last_is_move = False
     for node in nodes:
         if node.mode == Mode.MOVE:
@@ -161,5 +197,10 @@ def run_trajectory(
                         blend=blend,
                     )
                 )
-    full_act = {"moves": [asdict(move) for move in movements], "obstacles": obstacles}
-    return full_act
+    return [asdict(move) for move in movements]
+
+
+def csv_act(command: str, obstacles: dict[str, ObstacleBound] | None = None) -> list[dict]:
+    if obstacles is None:
+        obstacles = {}
+    return [{"moves": run_trajectory(command), "obstacles": {k: v.model_dump() for k, v in obstacles.items()}}]

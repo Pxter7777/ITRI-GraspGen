@@ -17,6 +17,7 @@ from common_utils.socket_communication import (
 )
 from common_utils.custom_logger import CustomFormatter
 from common_utils.common_utils import create_obstacle_info
+from common_utils.csv_traj_handler import csv_act
 
 
 # root logger setup
@@ -178,15 +179,33 @@ class GraspGenController:
         if task_type == "GraspGen" and task_name == "Grasp_and_Dump":
             self._process_graspgen_command()
         elif task_type == "csv":
-            _csv_filepath = (
-                Path("~").expanduser()
-                / "RobotSnackServing-csv"
-                / "trajectories"
-                / (task_name + ".csv")
-            )
+            self._process_csv_command(task_name)
         else:
             raise ValueError(f"Unknown task_type {task_type}")
 
+    def _process_csv_command(self, command:str):
+        extra_obstacles: dict[str, ObstacleBound] = load_extra_obstacles()
+        self._run_csv(command, extra_obstacles)
+    def _run_csv(self, command:str, extra_obstacles: dict[str, ObstacleBound]):
+        while True:
+            full_acts: list[dict] = csv_act(command, extra_obstacles)
+            success = self._run_isaacsim(full_acts)
+            if success:
+                break
+            else:
+                continue
+        # end of move
+        self.sender.send_data(["EOF"])
+        response = self.receiver.capture_data()
+        while response is None:
+            response = self.receiver.capture_data()
+        if response["message"] == "EOF and ROS2 Complete":
+            logger.warning("Success")
+        elif response["message"] == "Abort":
+            logger.warning("Abort")
+            raise InterruptedError("aborted by isaacsim, stop current action")
+        else:
+            raise ValueError(f"Unknown message {response['message']}")
     def _process_graspgen_command(self):
         graspgen_filepath = PROJECT_ROOT_DIR / "actions" / "Grasp_and_Dump.json"
         task: TaskConfig

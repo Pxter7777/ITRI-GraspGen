@@ -420,7 +420,7 @@ def main():
                     cuboids = get_cuboid_list(graspgen_move, graspgen_data["obstacles"])
                     if (
                         graspgen_move.type == "gripper"
-                        or graspgen_move.type == "sequence_joint_rad"
+                        or (graspgen_move.type == "sequence_joint_rad" and graspgen_move.no_curobo)
                     ):
                         processed_moves.append(graspgen_move)
                         continue
@@ -470,6 +470,25 @@ def main():
                             joints_goal.unsqueeze(0),
                             plan_config,
                         )
+                    elif graspgen_move.type == "sequence_joint_rad":
+                        if graspgen_move.sequence_joint_rad_goals is None or len(graspgen_move.sequence_joint_rad_goals) == 0:
+                            raise ValueError(f"Can't accept {graspgen_move.sequence_joint_rad_goals} as sequence_joint_rad_goals.")
+                        joints_goal = JointState(
+                            position=tensor_args.to_device(
+                                graspgen_move.sequence_joint_rad_goals[0]
+                            ),
+                            velocity=tensor_args.to_device(sim_js.velocities)
+                            * 0.0,  # * 0.0,
+                            acceleration=tensor_args.to_device(sim_js.velocities) * 0.0,
+                            jerk=tensor_args.to_device(sim_js.velocities) * 0.0,
+                            joint_names=sim_js_names,
+                        )
+                        plan_config.pose_cost_metric = pose_metric
+                        result = motion_gen.plan_single_js(
+                            curobo_cu_js.unsqueeze(0),
+                            joints_goal.unsqueeze(0),
+                            plan_config,
+                        )
                     succ = result.success.item()  # ik_result.success.item()
                     if succ:
                         print("YES YES YES?")
@@ -489,8 +508,11 @@ def main():
                                 joint_names=new_cmd_plan.joint_names,
                             )
                         positions = cmd_to_move(new_cmd_plan)
+                        if graspgen_move.type == "sequence_joint_rad": # need to append them back
+                            graspgen_move.sequence_joint_rad_goals = positions + graspgen_move.sequence_joint_rad_goals
+                        else:
+                            graspgen_move.sequence_joint_rad_goals = positions
                         graspgen_move.type = "sequence_joint_rad"
-                        graspgen_move.sequence_joint_rad_goals = positions
                         processed_moves.append(graspgen_move)
                         last_joint_states = positions[-1]
                     else:
