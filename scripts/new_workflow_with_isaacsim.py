@@ -4,6 +4,7 @@ import logging
 import json
 import time
 from pathlib import Path
+from collections.abc import Callable
 from PointCloud_Generation.pointcloud_generation import PointCloudGenerator
 from PointCloud_Generation.PC_transform import (
     silent_transform_multiple_obj_with_name_dict,
@@ -19,12 +20,15 @@ from common_utils.socket_communication import (
 from common_utils.custom_logger import CustomFormatter
 from common_utils.common_utils import save_json, create_obstacle_info
 
+
 # root logger setup
 handler = logging.StreamHandler()
 handler.setFormatter(CustomFormatter())
 logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
 logger = logging.getLogger(__name__)
 
+# Project root dir
+PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
@@ -122,6 +126,15 @@ def parse_args():
     )
     return parser.parse_args()
 
+def load_extra_obstacles() -> dict[str, ObstacleBound]:
+    extra_obstacles:dict = {}
+    extra_obstacles_path = PROJECT_ROOT_DIR / "actions" / "extra_obstacles.json"
+    with open(extra_obstacles_path, "rb") as f:
+        obstacles_dict = json.load(f)
+        for name, obstacle in obstacles_dict.items():
+            extra_obstacles[name] = ObstacleBound(**obstacle)
+    return extra_obstacles
+
 class GraspGenController:
     def __init__(self, args) -> None:
         self.args = args
@@ -155,13 +168,141 @@ class GraspGenController:
         return False
     def handle_task_command(self):
         task_type, task_name = self._capture_task_name()
-        # eat abort if there is any
+        self._eat_aborts()
+        if task_type == "GraspGen" and task_name == "Grasp_and_Dump":
+            self._process_graspgen_command()
+        elif task_type == "csv":
+            csv_filepath = Path("~").expanduser() / "RobotSnackServing-csv" / "trajectories" / (task_name + ".csv")
+        else:
+            raise ValueError(f"Unknown task_type {task_type}")
+
+    def _process_graspgen_command(self):
+        GraspGen_filepath = PROJECT_ROOT_DIR / "actions" / "Grasp_and_Dump.json"
+        task: TaskConfig
+        with open(GraspGen_filepath, "rb") as f:
+            task_json = json.load(f)
+            task = TaskConfig(**task_json)
+        extra_obstacles:dict = load_extra_obstacles()
+        scene_data:dict = self._generate_scene_data(task=task)
+        # transform
+        scene_data = silent_transform_multiple_obj_with_name_dict(
+            scene_data, self.args.transform_config
+        )
+        scene_data = create_obstacle_info(scene_data, extra_obstacles)
+        self._run_graspgen(task, scene_data)
+
+    def _run_graspgen(self, task, scene_data):
+        try:
+            for move in task.moves:
+                # Don't need GraspGen
+                if move.move_type in [
+                    "move_to_curobo",
+                    "joints_rad_move_to_curobo",
+                    "open_grip",
+                ]:
+                    while True:
+                        full_acts = act_with_name(
+                            move.move_type,
+                            args=move.args,
+                            scene_data=scene_data,
+                        )
+                        response = self.receiver.capture_data()
+                        if response is not None and response["message"] == "Abort":
+                            raise InterruptedError(
+                                "aborted by isaacsim, stop current action"
+                            )
+                        self.sender.send_data(full_acts)
+                        # wait for isaacsim's good news
+                        while response is None:
+                            response = self.receiver.capture_data()
+                        if response["message"] == "Success":
+                            logger.warning("Success")
+                            break
+                        elif response["message"] == "Fail":
+                            logger.warning("failed")
+                            continue
+                        elif response["message"] == "Abort":
+                            raise InterruptedError(
+                                "aborted by isaacsim, stop current action"
+                            )
+                else:  # Need GraspGen
+                    while True:
+                        grasps = self.grasp_generator.generate_grasp(scene_data, move)
+                        full_acts = act_with_name(
+                            move.move_type,
+                            target_name=move.target_name,
+                            grasps=grasps,
+                            args=move.args,
+                            scene_data=scene_data,
+                        )
+                        if self.args.save_fullact:
+                            save_json("fullact", "fullact_", full_acts)
+                        response = self.receiver.capture_data()
+                        if response is not None and response["message"] == "Abort":
+                            raise InterruptedError(
+                                "aborted by isaacsim, stop current action"
+                            )
+                        self.sender.send_data(full_acts)
+                        # wait for isaacsim's good news
+                        while response is None:
+                            response = self.receiver.capture_data()
+                        if response["message"] == "Success":
+                            logger.warning("Success")
+                            break
+                        elif response["message"] == "Fail":
+                            logger.warning("failed")
+                            continue
+                        elif response["message"] == "Abort":
+                            raise InterruptedError(
+                                "aborted by isaacsim, stop current action"
+                            )
+            self.sender.send_data(["EOF"])
+            response = self.receiver.capture_data()
+            while response is None:
+                response = self.receiver.capture_data()
+            if response["message"] == "EOF and ROS2 Complete":
+                logger.warning("Success")
+            elif response["message"] == "Abort":
+                logger.warning("Abort")
+                raise InterruptedError("aborted by isaacsim, stop current action")
+            else:
+                raise ValueError(f"Unknown message {response['message']}")
+        except KeyboardInterrupt:
+            logger.info("Manual stopping current action.")
+            self.sender.send_data(["Reset_to_default"])
+        except InterruptedError as e:
+            name = move.target_name
+            logger.exception(f"Action for {name} interrupted, stopping. {e}")
+        except Exception as e:
+            name = move.target_name
+            logger.exception(
+                f"Unknown Error while generating grasp for {name}, stopping. {e}"
+            )
+            raise e
+    def _generate_scene_data(self, task, num_try=20) -> dict:
+        # try 20 times
+        while True:
+            for _ in range(num_try):
+                try:
+                    scene_data:dict = self.pc_generator.generate_pointcloud(
+                        task.track,
+                        need_confirm=not self.args.no_confirm,
+                        blockages=task.blockages,
+                        valid_region=task.valid_region,
+                    )
+                    return scene_data
+                except ValueError as e:
+                    logger.exception(f"{e}, try again")
+                    time.sleep(0.1)
+                    continue
+            else:
+                logger.error("Failed to detect using groundingDINO")
+                input("Try Again:")
+
+    def _eat_aborts(self):
+        # eat aborts if there is any
         for _ in range(5):
             self.receiver.capture_data()
-        if task_type == "GraspGen" and task_name == "Grasp_and_Dump":
-            GraspGen_filepath = Path(__file__).resolve().parents[1] / "actions" / "Grasp_and_Dump.json"
-            
-
     def _capture_task_name(self) -> tuple[str, str]:
         print("Please provide the command, or type 'end' to end.")
         text = input("Command: ")
