@@ -1,10 +1,8 @@
-import os
 import argparse
 import logging
 import json
 import time
 from pathlib import Path
-from collections.abc import Callable
 from PointCloud_Generation.pointcloud_generation import PointCloudGenerator
 from PointCloud_Generation.PC_transform import (
     silent_transform_multiple_obj_with_name_dict,
@@ -29,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 # Project root dir
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
@@ -126,8 +125,9 @@ def parse_args():
     )
     return parser.parse_args()
 
+
 def load_extra_obstacles() -> dict[str, ObstacleBound]:
-    extra_obstacles:dict = {}
+    extra_obstacles: dict = {}
     extra_obstacles_path = PROJECT_ROOT_DIR / "actions" / "extra_obstacles.json"
     with open(extra_obstacles_path, "rb") as f:
         obstacles_dict = json.load(f)
@@ -135,10 +135,13 @@ def load_extra_obstacles() -> dict[str, ObstacleBound]:
             extra_obstacles[name] = ObstacleBound(**obstacle)
     return extra_obstacles
 
+
 class GraspGenController:
     def __init__(self, args) -> None:
         self.args = args
-        self.sender = NonBlockingJSONSender(port=network_config.GRASPGEN_TO_ISAACSIM_PORT)
+        self.sender = NonBlockingJSONSender(
+            port=network_config.GRASPGEN_TO_ISAACSIM_PORT
+        )
         self.receiver = NonBlockingJSONReceiver(
             port=network_config.ISAACSIM_TO_GRASPGEN_PORT
         )
@@ -151,9 +154,11 @@ class GraspGenController:
             not args.no_confirm,
         )
         logger.info("======Successfully initialized======")
+
     def __enter__(self):
         """Allows the use of 'with GraspGenController(args) as controller:'"""
         return self
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         """
         Automatically called when the 'with' block ends.
@@ -161,18 +166,24 @@ class GraspGenController:
         """
         if exc_type:
             logger.error(f"Exiting due to error: {exc_val}")
-        
+
         self._close()
-        # Returning False allows the exception to continue propagating 
+        # Returning False allows the exception to continue propagating
         # so you still see the traceback after cleanup.
         return False
+
     def handle_task_command(self):
         task_type, task_name = self._capture_task_name()
         self._eat_aborts()
         if task_type == "GraspGen" and task_name == "Grasp_and_Dump":
             self._process_graspgen_command()
         elif task_type == "csv":
-            csv_filepath = Path("~").expanduser() / "RobotSnackServing-csv" / "trajectories" / (task_name + ".csv")
+            _csv_filepath = (
+                Path("~").expanduser()
+                / "RobotSnackServing-csv"
+                / "trajectories"
+                / (task_name + ".csv")
+            )
         else:
             raise ValueError(f"Unknown task_type {task_type}")
 
@@ -182,8 +193,8 @@ class GraspGenController:
         with open(GraspGen_filepath, "rb") as f:
             task_json = json.load(f)
             task = TaskConfig(**task_json)
-        extra_obstacles:dict = load_extra_obstacles()
-        scene_data:dict = self._generate_scene_data(task=task)
+        extra_obstacles: dict = load_extra_obstacles()
+        scene_data: dict = self._generate_scene_data(task=task)
         # transform
         scene_data = silent_transform_multiple_obj_with_name_dict(
             scene_data, self.args.transform_config
@@ -279,12 +290,13 @@ class GraspGenController:
                 f"Unknown Error while generating grasp for {name}, stopping. {e}"
             )
             raise e
+
     def _generate_scene_data(self, task, num_try=20) -> dict:
         # try 20 times
         while True:
             for _ in range(num_try):
                 try:
-                    scene_data:dict = self.pc_generator.generate_pointcloud(
+                    scene_data: dict = self.pc_generator.generate_pointcloud(
                         task.track,
                         need_confirm=not self.args.no_confirm,
                         blockages=task.blockages,
@@ -303,6 +315,7 @@ class GraspGenController:
         # eat aborts if there is any
         for _ in range(5):
             self.receiver.capture_data()
+
     def _capture_task_name(self) -> tuple[str, str]:
         print("Please provide the command, or type 'end' to end.")
         text = input("Command: ")
@@ -313,7 +326,9 @@ class GraspGenController:
         # check if it's in csv
         base_dir = Path("~").expanduser() / "RobotSnackServing-csv"
         if not base_dir.exists():
-            raise FileNotFoundError(f"~/RobotSnackServing is missing. Is https://github.com/hongalicia/RobotSnackServing-csv.git cloned into ~/ ?")
+            raise FileNotFoundError(
+                "~/RobotSnackServing is missing. Is https://github.com/hongalicia/RobotSnackServing-csv.git cloned into ~/ ?"
+            )
         traj_dir = base_dir / "trajectories"
         csv_paths = list(traj_dir.glob("*.csv"))
         filenames = [path.stem for path in csv_paths]
@@ -321,19 +336,25 @@ class GraspGenController:
             return "csv", text
         else:
             avail_commands = ["Grasp_and_Dump"] + filenames
-            print(f"There's no such command called {text}. \nAvailable commands are {avail_commands}")
+            print(
+                f"There's no such command called {text}. \nAvailable commands are {avail_commands}"
+            )
             return self._capture_task_name()
+
     def _close(self):
         logger.info("Cleaning up resources...")
         try:
             self.pc_generator.close()
         except Exception as e:
             logger.exception(f"Error during pc_generator cleanup: {e}")
+
+
 def main():
     args = parse_args()
     with GraspGenController(args) as controller:
         while True:
             controller.handle_task_command()
+
 
 if __name__ == "__main__":
     main()
