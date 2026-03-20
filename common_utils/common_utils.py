@@ -4,10 +4,14 @@ import logging
 import os
 import numpy as np
 
+from pathlib import Path
 from common_utils.actions_format_checker import ObstacleBound
 
 
 logger = logging.getLogger(__name__)
+
+# Project root dir
+PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 
 
 def save_json(dir: str, prefix: str, data) -> True:  # save json data for test
@@ -54,3 +58,13 @@ def create_obstacle_info(
         }
 
     return new_scene_data
+
+
+def load_extra_obstacles() -> dict[str, ObstacleBound]:
+    extra_obstacles: dict = {}
+    extra_obstacles_path = PROJECT_ROOT_DIR / "actions" / "extra_obstacles.json"
+    with open(extra_obstacles_path, "rb") as f:
+        obstacles_dict = json.load(f)
+        for name, obstacle in obstacles_dict.items():
+            extra_obstacles[name] = ObstacleBound(**obstacle)
+    return extra_obstacles

@@ -16,7 +16,7 @@ from common_utils.socket_communication import (
     NonBlockingJSONReceiver,
 )
 from common_utils.custom_logger import CustomFormatter
-from common_utils.common_utils import create_obstacle_info
+from common_utils.common_utils import create_obstacle_info, load_extra_obstacles
 from common_utils.csv_traj_handler import csv_act
 
 
@@ -125,16 +125,6 @@ def parse_args():
         help="Use exisiting images at sample_data/zed_images instead of the real zed camera",
     )
     return parser.parse_args()
-
-
-def load_extra_obstacles() -> dict[str, ObstacleBound]:
-    extra_obstacles: dict = {}
-    extra_obstacles_path = PROJECT_ROOT_DIR / "actions" / "extra_obstacles.json"
-    with open(extra_obstacles_path, "rb") as f:
-        obstacles_dict = json.load(f)
-        for name, obstacle in obstacles_dict.items():
-            extra_obstacles[name] = ObstacleBound(**obstacle)
-    return extra_obstacles
 
 
 class GraspGenController:
