@@ -207,8 +207,10 @@ class BaseWorkflowController:
         self._run_graspgen(task, scene_data)
 
     def _run_graspgen(self, task: TaskConfig, scene_data):
+        current_target = "Unknown Setup"
         try:
             for move in task.moves:
+                current_target = move.target_name
                 while True:
                     full_acts: list[dict] = []
                     if move.move_type in [  # Don't need GraspGen
@@ -240,12 +242,10 @@ class BaseWorkflowController:
         except KeyboardInterrupt:
             self._handle_keyboard_interrupt()
         except InterruptedError as e:
-            name = move.target_name
-            logger.exception(f"Action for {name} interrupted, stopping. {e}")
+            logger.exception(f"Action for {current_target} interrupted, stopping. {e}")
         except Exception as e:
-            name = move.target_name
             logger.exception(
-                f"Unknown Error while generating grasp for {name}, stopping. {e}"
+                f"Unknown Error while generating grasp for {current_target}, stopping. {e}"
             )
             raise e
 
