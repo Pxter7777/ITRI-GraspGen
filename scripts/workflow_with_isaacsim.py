@@ -1,22 +1,12 @@
-import os
-import argparse
 import logging
-import json
-import time
-from PointCloud_Generation.pointcloud_generation import PointCloudGenerator
-from PointCloud_Generation.PC_transform import (
-    silent_transform_multiple_obj_with_name_dict,
-)
-from common_utils import config, network_config
-from common_utils.graspgen_utils import GraspGeneratorUI
-from common_utils.actions_format_checker import TaskConfig
-from common_utils.movesets import act_with_name
+from pathlib import Path
+from common_utils import network_config
+from common_utils.custom_logger import CustomFormatter
+from common_utils.workflow_control import BaseWorkflowController, parse_args
 from common_utils.socket_communication import (
     NonBlockingJSONSender,
     NonBlockingJSONReceiver,
 )
-from common_utils.custom_logger import CustomFormatter
-from common_utils.common_utils import save_json, create_obstacle_info
 
 # root logger setup
 handler = logging.StreamHandler()
@@ -24,271 +14,46 @@ handler.setFormatter(CustomFormatter())
 logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
 logger = logging.getLogger(__name__)
 
-
-def parse_args():
-    parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
-    parser.add_argument(
-        "--ckpt_dir",
-        default=str(config.FOUNDATIONSTEREO_CHECKPOINT),
-        type=str,
-        help="pretrained model path",
-    )
-
-    parser.add_argument(
-        "--scale",
-        default=1,
-        type=float,
-        help="downsize the image by scale, must be <=1",
-    )
-    parser.add_argument("--hiera", default=0, type=int, help="hierarchical inference")
-    parser.add_argument(
-        "--valid_iters",
-        type=int,
-        default=32,
-        help="number of flow-field updates during forward pass",
-    )
-    parser.add_argument(
-        "--out_dir", default="./output/", type=str, help="the directory to save results"
-    )
-    parser.add_argument(
-        "--output-tag",
-        default="",
-        type=str,
-        help="pretrained model path",
-    )
-    parser.add_argument(
-        "--erosion_iterations",
-        type=int,
-        default=1,  # can be 6
-        help="Number of erosion iterations for the SAM mask.",
-    )
-    parser.add_argument(
-        "--max-depth",
-        type=float,
-        default=3.0,
-        help="max depth for generating pointcloud",
-    )
-    parser.add_argument(
-        "--transform-config",
-        type=str,
-        default="sim2.json",
-        help="transform-config",
-    )
-    parser.add_argument(
-        "--gripper_config",
-        type=str,
-        default=str(config.GRIPPER_CFG),
-        help="Path to gripper configuration YAML file",
-    )
-    parser.add_argument(
-        "--grasp_threshold",
-        type=float,
-        default=0.70,
-        help="Threshold for valid grasps. If -1.0, then the top 100 grasps will be ranked and returned",
-    )
-    parser.add_argument(
-        "--num_grasps",
-        type=int,
-        default=200,
-        help="Number of grasps to generate",
-    )
-    parser.add_argument(
-        "--return_topk",
-        action="store_true",
-        help="Whether to return only the top k grasps",
-    )
-    parser.add_argument(
-        "--topk_num_grasps",
-        type=int,
-        default=5,
-        help="Number of top grasps to return when return_topk is True",
-    )
-    parser.add_argument(
-        "--no-confirm",
-        action="store_true",
-        help="decide if we need confirm for groundingDINO detect and grasp Generation",
-    )
-    parser.add_argument(
-        "--save-fullact",
-        action="store_true",
-        help="save the fullact",
-    )
-    parser.add_argument(
-        "--use-png",
-        type=str,
-        default="",
-        help="Use exisiting images at sample_data/zed_images instead of the real zed camera",
-    )
-    return parser.parse_args()
+# Project root dir
+PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 
 
-def main():
-    logger.info("starting the program")
-    args = parse_args()
-    # Directory path handle
-    current_file_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root_dir = os.path.dirname(current_file_dir)
-    try:
+class CLIWorkflowController(BaseWorkflowController):
+    def __init__(self, args) -> None:
         sender = NonBlockingJSONSender(port=network_config.GRASPGEN_TO_ISAACSIM_PORT)
         receiver = NonBlockingJSONReceiver(
             port=network_config.ISAACSIM_TO_GRASPGEN_PORT
         )
-        pc_generator = PointCloudGenerator(args)
-        grasp_generator = GraspGeneratorUI(
-            args.gripper_config,
-            args.grasp_threshold,
-            args.num_grasps,
-            args.topk_num_grasps,
-            not args.no_confirm,
-        )
+        super().__init__(args, sender, receiver)
+
+    def _send_EOF(self):
+        # end of move
+        self.sender.send_data(["EOF"])
+        response = self.receiver.capture_data()
+        while response is None:
+            response = self.receiver.capture_data()
+        if response["message"] == "EOF and ROS2 Complete":
+            logger.warning("Success")
+        elif response["message"] == "Abort":
+            logger.warning("Abort")
+            raise InterruptedError("aborted by isaacsim, stop current action")
+        else:
+            raise ValueError(f"Unknown message {response['message']}")
+
+    def _handle_keyboard_interrupt(self):
+        logger.info("Manual stopping current action.")
+        self.sender.send_data(["Reset_to_default"])
+
+    def _grab_command(self):
+        print("Please provide the command, or type 'end' to end.")
+        return input("Command: ")
+
+
+def main():
+    args = parse_args()
+    with CLIWorkflowController(args) as controller:
         while True:
-            print("Please provide the <name> of actions to start, or type end to end.")
-            text = input("./actions/<name>.json: ")
-            if text == "end":
-                break
-            # eat abort if there is any
-            for _ in range(5):
-                receiver.capture_data()
-
-            actions_filepath = os.path.join(project_root_dir, "actions", text + ".json")
-
-            task = None
-            try:
-                with open(actions_filepath, "rb") as f:
-                    task_json = json.load(f)
-                    task = TaskConfig(**task_json)
-            except Exception as e:
-                logger.exception(e)
-                logger.error("failed reading file, try again.")
-                continue
-            # start to generate pointcloud
-            scene_data: dict = {}
-            track_names = task.track
-            # try five times
-            detection_success = False
-            while True:
-                for _ in range(20):
-                    try:
-                        scene_data = pc_generator.generate_pointcloud(
-                            track_names,
-                            need_confirm=not args.no_confirm,
-                            blockages=task.blockages,
-                            valid_region=task.valid_region,
-                        )
-                        detection_success = True
-                        break  # Success
-                    except ValueError as e:
-                        logger.exception(f"{e}, try again")
-                        time.sleep(0.1)
-                        continue
-                else:
-                    logger.error("Failed to detect using groundingDINO")
-                    # continue
-                if detection_success:
-                    break
-                else:
-                    input("Try Again:")
-
-            logger.info(scene_data)
-            # transform
-            scene_data = silent_transform_multiple_obj_with_name_dict(
-                scene_data, args.transform_config
-            )
-            scene_data = create_obstacle_info(scene_data, task.extra_obstacles)
-            # GraspGen
-            try:
-                for move in task.moves:
-                    # Don't need GraspGen
-                    if move.move_type in [
-                        "move_to_curobo",
-                        "joints_rad_move_to_curobo",
-                        "open_grip",
-                    ]:
-                        while True:
-                            full_acts = act_with_name(
-                                move.move_type,
-                                args=move.args,
-                                scene_data=scene_data,
-                            )
-                            if args.save_fullact:
-                                save_json("fullact", "fullact", full_acts)
-                            response = receiver.capture_data()
-                            if response is not None and response["message"] == "Abort":
-                                raise InterruptedError(
-                                    "aborted by isaacsim, stop current action"
-                                )
-                            sender.send_data(full_acts)
-                            # wait for isaacsim's good news
-                            while response is None:
-                                response = receiver.capture_data()
-                            if response["message"] == "Success":
-                                logger.warning("Success")
-                                break
-                            elif response["message"] == "Fail":
-                                logger.warning("failed")
-                                continue
-                            elif response["message"] == "Abort":
-                                raise InterruptedError(
-                                    "aborted by isaacsim, stop current action"
-                                )
-                    else:  # Need GraspGen
-                        while True:
-                            grasps = grasp_generator.generate_grasp(scene_data, move)
-                            full_acts = act_with_name(
-                                move.move_type,
-                                target_name=move.target_name,
-                                grasps=grasps,
-                                args=move.args,
-                                scene_data=scene_data,
-                            )
-                            if args.save_fullact:
-                                save_json("fullact", "fullact_", full_acts)
-                            response = receiver.capture_data()
-                            if response is not None and response["message"] == "Abort":
-                                raise InterruptedError(
-                                    "aborted by isaacsim, stop current action"
-                                )
-                            sender.send_data(full_acts)
-                            # wait for isaacsim's good news
-                            while response is None:
-                                response = receiver.capture_data()
-                            if response["message"] == "Success":
-                                logger.warning("Success")
-                                break
-                            elif response["message"] == "Fail":
-                                logger.warning("failed")
-                                continue
-                            elif response["message"] == "Abort":
-                                raise InterruptedError(
-                                    "aborted by isaacsim, stop current action"
-                                )
-                sender.send_data(["EOF"])
-                response = receiver.capture_data()
-                while response is None:
-                    response = receiver.capture_data()
-                if response["message"] == "EOF and ROS2 Complete":
-                    logger.warning("Success")
-                elif response["message"] == "Abort":
-                    logger.warning("Abort")
-                    raise InterruptedError("aborted by isaacsim, stop current action")
-                else:
-                    raise ValueError(f"Unknown message {response['message']}")
-            except KeyboardInterrupt:
-                logger.info("Manual stopping current action.")
-                sender.send_data(["Reset_to_default"])
-            except InterruptedError as e:
-                name = move.target_name
-                logger.exception(f"Action for {name} interrupted, stopping. {e}")
-            except Exception as e:
-                name = move.target_name
-                logger.exception(
-                    f"Unknown Error while generating grasp for {name}, stopping. {e}"
-                )
-                raise e
-    finally:
-        logger.info("turning off zed camera")
-        pc_generator.close()
-        logger.info("terminating process")
+            controller.handle_task_command()
 
 
 if __name__ == "__main__":
