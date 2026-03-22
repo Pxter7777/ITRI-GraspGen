@@ -494,9 +494,9 @@ class PointCloudGenerator:
         self,
         target_names: list[str],
         need_confirm=True,
-        blockages: list = None,
-        valid_region: list = None,
-    ):
+        blockages: list | None = None,
+        valid_region: list | None = None,
+    ) -> dict:
         """
         bloackages[
             [minX, minY, maxX, maxY],

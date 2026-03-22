@@ -59,14 +59,14 @@
             ]
         },
         {
-            "name": "gripper.py",
+            "name": "gripper_server.py",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/gripper.py",
+            "program": "${workspaceFolder}/ROS2_server/gripper_server.py",
             "console": "integratedTerminal",
             "python": "/usr/bin/python3",
             "args": [
-                "--input", "grasp_scene_20251016_131337_transformed.json"
+
             ]
         },
         {

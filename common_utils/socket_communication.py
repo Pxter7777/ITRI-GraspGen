@@ -85,7 +85,7 @@ class NonBlockingJSONSender:
         self.disconnect()
         return self._connect_on_init()
 
-    def send_data(self, data: dict) -> bool:
+    def send_data(self, data: dict | list) -> bool:
         """
         Sends a single joint position goal to the robot bridge.
         Attempts to reconnect if the connection is lost.

@@ -38,7 +38,7 @@ try:
             continue
         logger.info("Received data!")
         try:
-            if data["type"] == "arm":
+            if data["type"] == "sequence_joint_rad":
                 time.sleep(2)
             time.sleep(data["wait_time"])
         except KeyError as e:
