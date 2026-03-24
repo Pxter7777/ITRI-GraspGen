@@ -102,7 +102,7 @@ def parse_args():
         help="Number of top grasps to return when return_topk is True",
     )
     parser.add_argument(
-        "--no-confirm",
+        "--need-confirm",
         action="store_true",
         help="decide if we need confirm for groundingDINO detect and grasp Generation",
     )
@@ -133,7 +133,7 @@ class BaseWorkflowController:
             args.grasp_threshold,
             args.num_grasps,
             args.topk_num_grasps,
-            not args.no_confirm,
+            args.need_confirm,
         )
         logger.info("======Successfully initialized======")
 
@@ -275,7 +275,6 @@ class BaseWorkflowController:
                 try:
                     scene_data: dict = self.pc_generator.generate_pointcloud(
                         task.track,
-                        need_confirm=not self.args.no_confirm,
                         blockages=task.blockages,
                         valid_region=task.valid_region,
                     )
