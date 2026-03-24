@@ -481,6 +481,7 @@ class PointCloudGenerator:
         torch.autograd.set_grad_enabled(False)
         # Init configs
         self.erosion_iterations = args.erosion_iterations
+        self.need_confirm = args.need_confirm
         self.max_depth = args.max_depth
         self.scale = args.scale
         # This part could take a while, to load all these three models
@@ -493,7 +494,6 @@ class PointCloudGenerator:
     def generate_pointcloud(
         self,
         target_names: list[str],
-        need_confirm=True,
         blockages: list | None = None,
         valid_region: list | None = None,
     ) -> dict:
@@ -588,7 +588,7 @@ class PointCloudGenerator:
         But then it won't be able to know if that things has been detected and recorded before...
         """
 
-        if need_confirm:
+        if self.need_confirm:
             win_name = "RGB + Mask | Depth"
             cv2.namedWindow(win_name)
             display_frame = color_np_for_GroundingDINO.copy()
