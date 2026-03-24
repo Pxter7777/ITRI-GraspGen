@@ -29,17 +29,15 @@ import time
 import queue
 import numpy as np
 from dataclasses import asdict
+from pathlib import Path
 
 # Add realpath
-import os
 import sys
 
-current_file_dir = os.path.dirname(
-    os.path.realpath(__file__)
-)  # use realpath instead of abspath so we can debug under isaac-sim-4.5.0 folder
-project_root_dir = os.path.dirname(current_file_dir)
-if project_root_dir not in sys.path:
-    sys.path.insert(0, project_root_dir)
+# use realpath instead of abspath so we can debug under isaac-sim-4.5.0 folder
+PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT_DIR))
 ############################################################
 # Imports from common_utils
 from common_utils.movesets import SingleRobotMove  # noqa: E402
