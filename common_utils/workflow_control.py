@@ -1,4 +1,3 @@
-import argparse
 import logging
 import json
 import time
@@ -7,7 +6,7 @@ from PointCloud_Generation.pointcloud_generation import PointCloudGenerator
 from PointCloud_Generation.PC_transform import (
     silent_transform_multiple_obj_with_name_dict,
 )
-from common_utils import config
+
 from common_utils.graspgen_utils import GraspGeneratorUI
 from common_utils.actions_format_checker import TaskConfig, ObstacleBound
 from common_utils.movesets import act_with_name
@@ -21,103 +20,6 @@ from common_utils.csv_traj_handler import csv_act
 logger = logging.getLogger(__name__)
 
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
-
-
-def parse_args():
-    parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
-    parser.add_argument(
-        "--ckpt_dir",
-        default=str(config.FOUNDATIONSTEREO_CHECKPOINT),
-        type=str,
-        help="pretrained model path",
-    )
-
-    parser.add_argument(
-        "--scale",
-        default=1,
-        type=float,
-        help="downsize the image by scale, must be <=1",
-    )
-    parser.add_argument("--hiera", default=0, type=int, help="hierarchical inference")
-    parser.add_argument(
-        "--valid_iters",
-        type=int,
-        default=32,
-        help="number of flow-field updates during forward pass",
-    )
-    parser.add_argument(
-        "--out_dir", default="./output/", type=str, help="the directory to save results"
-    )
-    parser.add_argument(
-        "--output-tag",
-        default="",
-        type=str,
-        help="pretrained model path",
-    )
-    parser.add_argument(
-        "--erosion_iterations",
-        type=int,
-        default=1,  # can be 6
-        help="Number of erosion iterations for the SAM mask.",
-    )
-    parser.add_argument(
-        "--max-depth",
-        type=float,
-        default=3.0,
-        help="max depth for generating pointcloud",
-    )
-    parser.add_argument(
-        "--transform-config",
-        type=str,
-        default="sim2.json",
-        help="transform-config",
-    )
-    parser.add_argument(
-        "--gripper_config",
-        type=str,
-        default=str(config.GRIPPER_CFG),
-        help="Path to gripper configuration YAML file",
-    )
-    parser.add_argument(
-        "--grasp_threshold",
-        type=float,
-        default=0.70,
-        help="Threshold for valid grasps. If -1.0, then the top 100 grasps will be ranked and returned",
-    )
-    parser.add_argument(
-        "--num_grasps",
-        type=int,
-        default=200,
-        help="Number of grasps to generate",
-    )
-    parser.add_argument(
-        "--return_topk",
-        action="store_true",
-        help="Whether to return only the top k grasps",
-    )
-    parser.add_argument(
-        "--topk_num_grasps",
-        type=int,
-        default=5,
-        help="Number of top grasps to return when return_topk is True",
-    )
-    parser.add_argument(
-        "--need-confirm",
-        action="store_true",
-        help="decide if we need confirm for groundingDINO detect and grasp Generation",
-    )
-    parser.add_argument(
-        "--save-fullact",
-        action="store_true",
-        help="save the fullact",
-    )
-    parser.add_argument(
-        "--use-png",
-        type=str,
-        default="",
-        help="Use exisiting images at sample_data/zed_images instead of the real zed camera",
-    )
-    return parser.parse_args()
 
 
 class BaseWorkflowController:
