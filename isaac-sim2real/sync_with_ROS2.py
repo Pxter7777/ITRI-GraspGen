@@ -7,7 +7,8 @@ PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT_DIR))
 
-from omni.isaac.kit import SimulationApp
+from omni.isaac.kit import SimulationApp  # noqa: E402
+
 
 def get_headless_mode():
     peek_parser = argparse.ArgumentParser(add_help=False)
@@ -19,6 +20,7 @@ def get_headless_mode():
     )
     peek_args, _ = peek_parser.parse_known_args()
     return peek_args.headless_mode
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -73,6 +75,7 @@ def parse_args():
     )
     return parser.parse_args()
 
+
 def main():
     headless = get_headless_mode()
     simulation_app = SimulationApp(
@@ -88,6 +91,7 @@ def main():
 
     with IsaacSimController(args, simulation_app) as controller:
         controller.simulation_loop()
+
 
 if __name__ == "__main__":
     main()
