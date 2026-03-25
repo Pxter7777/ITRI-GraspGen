@@ -461,16 +461,6 @@ class IsaacSimController:
                 self.cmd_idx = 0
                 self.cmd_plan_positions = move.sequence_joint_rad_goals
                 self.ros2state = "Busy"
-            elif (
-                len(self.planned_action_moves) == 0
-                and self.planned_action_queue.empty()
-            ):
-                logger.debug("ROS2 Finished all tasks")
-                self.ros2state = "Ready"
-            else:
-                raise ValueError(
-                    "Unexpected logical error, please enter debug mode to checkout this bug."
-                )
         elif self.ros2state == "Error":
             logger.error(
                 "ROS2 failed to move the robot arm, telling graspgen to stop, and resetting JointState"
