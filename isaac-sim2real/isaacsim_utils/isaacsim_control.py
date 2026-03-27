@@ -37,10 +37,10 @@ if str(PROJECT_ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT_DIR))
 
 from common_utils.movesets import SingleRobotMove  # noqa: E402
-from common_utils.socket_communication import (
+from common_utils.socket_communication import (  # noqa: E402
     NonBlockingJSONSender,
     NonBlockingJSONReceiver,
-)  # noqa: E402
+)
 from common_utils import network_config  # noqa: E402
 
 logger = logging.getLogger(__name__)

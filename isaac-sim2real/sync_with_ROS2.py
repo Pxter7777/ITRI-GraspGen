@@ -1,13 +1,5 @@
 import argparse
-import sys
-from pathlib import Path
-
-# use realpath instead of abspath so we can debug under isaac-sim-4.5.0 folder
-PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT_DIR))
-
-from omni.isaac.kit import SimulationApp  # noqa: E402
+from omni.isaac.kit import SimulationApp
 
 
 def get_headless_mode():
