@@ -2,18 +2,6 @@ import argparse
 from omni.isaac.kit import SimulationApp
 
 
-def get_headless_mode():
-    peek_parser = argparse.ArgumentParser(add_help=False)
-    peek_parser.add_argument(
-        "--headless_mode",
-        type=str,
-        default=None,
-        help="To run headless, use one of [native, websocket], webrtc might not work.",
-    )
-    peek_args, _ = peek_parser.parse_known_args()
-    return peek_args.headless_mode
-
-
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -69,16 +57,15 @@ def parse_args():
 
 
 def main():
-    headless = get_headless_mode()
+    args = parse_args()
     simulation_app = SimulationApp(
         {
-            "headless": headless is not None,
+            "headless": args.headless_mode is not None,
             "width": "1920",
             "height": "1080",
         }
     )
 
-    args = parse_args()
     from isaacsim_utils.isaacsim_control import IsaacSimController
 
     with IsaacSimController(args, simulation_app) as controller:
