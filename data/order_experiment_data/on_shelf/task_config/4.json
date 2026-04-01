@@ -1,0 +1,104 @@
+{
+  "robot_jointstate": [
+    1.37296326,
+    0.08553859,
+    1.05554023,
+    2.76803983,
+    -1.48792809,
+    3.09947786
+  ],
+  "target": {
+    "instance_id": "Board_0",
+    "category": "Board",
+    "obj_id": "eee8651057dacb532214ff09b39580e9",
+    "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Board/eee8651057dacb532214ff09b39580e9",
+    "obj_type": "mesh",
+    "x": -0.05,
+    "y": 0.61,
+    "z": 0.24,
+    "roll": -13.0,
+    "pitch": 0.0,
+    "yaw": 172.0,
+    "scale": 1.0,
+    "pose_meter_quat": [
+      -0.05,
+      0.61,
+      0.24,
+      -0.00789665700895158,
+      -0.11292745642874172,
+      0.9911515645729061,
+      0.06930806906340566
+    ]
+  },
+  "obstacles": [
+    {
+      "instance_id": "Stool_0",
+      "category": "Stool",
+      "obj_id": "1b0626e5a8bf92b3945a77b945b7b70f",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Stool/1b0626e5a8bf92b3945a77b945b7b70f",
+      "obj_type": "mesh",
+      "x": -0.13,
+      "y": -0.12,
+      "z": -0.55,
+      "roll": 0.0,
+      "pitch": 0.0,
+      "yaw": 0.0,
+      "scale": 3.0,
+      "pose_meter_quat": [
+        -0.13,
+        -0.12,
+        -0.55,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "instance_id": "2Shelves_0",
+      "category": "2Shelves",
+      "obj_id": "1ab8202a944a6ff1de650492e45fb14f",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/2Shelves/1ab8202a944a6ff1de650492e45fb14f",
+      "obj_type": "mesh",
+      "x": -0.24,
+      "y": 0.43,
+      "z": 0.0,
+      "roll": 0.0,
+      "pitch": 0.0,
+      "yaw": 52.0,
+      "scale": 2.39,
+      "pose_meter_quat": [
+        -0.24,
+        0.43,
+        0.0,
+        0.0,
+        0.0,
+        0.4383711467890774,
+        0.898794046299167
+      ]
+    },
+    {
+      "instance_id": "Backpack_0",
+      "category": "Backpack",
+      "obj_id": "54cd45b275f551b276bb31db0358e9c6",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Backpack/54cd45b275f551b276bb31db0358e9c6",
+      "obj_type": "mesh",
+      "x": -0.09,
+      "y": 0.48,
+      "z": 0.57,
+      "roll": -90.0,
+      "pitch": 0.0,
+      "yaw": 85.0,
+      "scale": 1.0,
+      "pose_meter_quat": [
+        -0.09,
+        0.48,
+        0.57,
+        -0.5213338044735968,
+        -0.47771441710826085,
+        0.4777144171082609,
+        0.5213338044735969
+      ]
+    }
+  ]
+}

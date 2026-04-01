@@ -1,0 +1,127 @@
+{
+  "robot_jointstate": [
+    1.37296326,
+    0.08553859,
+    1.05554023,
+    2.76803983,
+    -1.48792809,
+    3.09947786
+  ],
+  "target": {
+    "instance_id": "Candle_0",
+    "category": "Candle",
+    "obj_id": "a5b4acee07e43a9cc19773ea4151b25b",
+    "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Candle/a5b4acee07e43a9cc19773ea4151b25b",
+    "obj_type": "mesh",
+    "x": 0.57,
+    "y": 0.1,
+    "z": 0.13,
+    "roll": 0.0,
+    "pitch": 0.0,
+    "yaw": 0.0,
+    "scale": 1.0,
+    "pose_meter_quat": [
+      0.57,
+      0.1,
+      0.13,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  },
+  "obstacles": [
+    {
+      "instance_id": "Table_0",
+      "category": "Table",
+      "obj_id": "d9c11381adf0cf48f1783a44a88d6274",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Table/d9c11381adf0cf48f1783a44a88d6274",
+      "obj_type": "mesh",
+      "x": 0.4,
+      "y": -0.7,
+      "z": -0.78,
+      "roll": 0.0,
+      "pitch": 0.0,
+      "yaw": 0.0,
+      "scale": 10.0,
+      "pose_meter_quat": [
+        0.4,
+        -0.7,
+        -0.78,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "instance_id": "Stool_0",
+      "category": "Stool",
+      "obj_id": "1b0626e5a8bf92b3945a77b945b7b70f",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Stool/1b0626e5a8bf92b3945a77b945b7b70f",
+      "obj_type": "mesh",
+      "x": -0.13,
+      "y": -0.12,
+      "z": -0.55,
+      "roll": 0.0,
+      "pitch": 0.0,
+      "yaw": 0.0,
+      "scale": 3.0,
+      "pose_meter_quat": [
+        -0.13,
+        -0.12,
+        -0.55,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "instance_id": "Bucket_0",
+      "category": "Bucket",
+      "obj_id": "997f1218df2b1909ce0e7190fd762087",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Bucket/997f1218df2b1909ce0e7190fd762087",
+      "obj_type": "mesh",
+      "x": 0.83,
+      "y": 0.0,
+      "z": 0.0,
+      "roll": 0.0,
+      "pitch": 0.0,
+      "yaw": 90.0,
+      "scale": 1.75,
+      "pose_meter_quat": [
+        0.83,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.7071067811865475,
+        0.7071067811865476
+      ]
+    },
+    {
+      "instance_id": "Camera_0",
+      "category": "Camera",
+      "obj_id": "155ffb08fba5df33f0c6f578f0594c3",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Camera/155ffb08fba5df33f0c6f578f0594c3",
+      "obj_type": "mesh",
+      "x": 0.69,
+      "y": 0.26,
+      "z": 0.15,
+      "roll": 0.0,
+      "pitch": 0.0,
+      "yaw": 30.0,
+      "scale": 1.0,
+      "pose_meter_quat": [
+        0.69,
+        0.26,
+        0.15,
+        0.0,
+        0.0,
+        0.25881904510252074,
+        0.9659258262890683
+      ]
+    }
+  ]
+}

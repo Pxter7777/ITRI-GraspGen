@@ -1,0 +1,104 @@
+{
+  "robot_jointstate": [
+    1.37296326,
+    0.08553859,
+    1.05554023,
+    2.76803983,
+    -1.48792809,
+    3.09947786
+  ],
+  "target": {
+    "instance_id": "Fruit_0",
+    "category": "Fruit",
+    "obj_id": "45b11723630a657e32e150233fdd42e9",
+    "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Fruit/45b11723630a657e32e150233fdd42e9",
+    "obj_type": "mesh",
+    "x": 0.72,
+    "y": 0.0,
+    "z": 0.05,
+    "roll": 0.0,
+    "pitch": 0.0,
+    "yaw": 0.0,
+    "scale": 0.75,
+    "pose_meter_quat": [
+      0.72,
+      0.0,
+      0.05,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  },
+  "obstacles": [
+    {
+      "instance_id": "Table_0",
+      "category": "Table",
+      "obj_id": "1b44b8c1d714e271aac156c397da9fd0",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Table/1b44b8c1d714e271aac156c397da9fd0",
+      "obj_type": "mesh",
+      "x": 0.81,
+      "y": -0.36,
+      "z": -0.495,
+      "roll": 0.0,
+      "pitch": 0.0,
+      "yaw": 90.0,
+      "scale": 5.0,
+      "pose_meter_quat": [
+        0.81,
+        -0.36,
+        -0.495,
+        0.0,
+        0.0,
+        0.7071067811865475,
+        0.7071067811865476
+      ]
+    },
+    {
+      "instance_id": "Bag_0",
+      "category": "Bag",
+      "obj_id": "dc0f03ff60628a16978cfd2f5138d5f5",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Bag/dc0f03ff60628a16978cfd2f5138d5f5",
+      "obj_type": "mesh",
+      "x": 0.55,
+      "y": -0.1,
+      "z": 0.0,
+      "roll": 0.0,
+      "pitch": 0.0,
+      "yaw": 51.0,
+      "scale": 1.0,
+      "pose_meter_quat": [
+        0.55,
+        -0.1,
+        0.0,
+        0.0,
+        0.0,
+        0.43051109680829514,
+        0.9025852843498606
+      ]
+    },
+    {
+      "instance_id": "Cake_0",
+      "category": "Cake",
+      "obj_id": "655c8c60dfc6fd4e594e9dc890a68696",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Cake/655c8c60dfc6fd4e594e9dc890a68696",
+      "obj_type": "mesh",
+      "x": 0.72,
+      "y": -0.28,
+      "z": 0.0,
+      "roll": 0.0,
+      "pitch": 0.0,
+      "yaw": 0.0,
+      "scale": 1.0,
+      "pose_meter_quat": [
+        0.72,
+        -0.28,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    }
+  ]
+}
