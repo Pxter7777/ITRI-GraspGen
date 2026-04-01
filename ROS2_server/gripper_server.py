@@ -93,7 +93,17 @@ class TMRobotController(Node):
         self.current_IO_states = [0, 0, 1]
         self.current_joints_states = [0.0] * 6
         self.real2sim = real2sim
-
+    def _real2sim(self, commands_to_sim):
+        try:
+            send_traj(commands_to_sim)
+        except (
+            OSError
+        ) as e:  # maybe, when the isaac-sim display pc is not reachable
+            logger.error(f"OSError, send_traj failed, not connected: {e}")
+        except (
+            TimeoutError
+        ) as e:  # maybe when the isaac-sim display pc is not listening
+            logger.error(f"TimeoutError, send_traj failed, not listening: {e}")
     def _capture_command(self):
         if self.moving:
             return
@@ -123,6 +133,8 @@ class TMRobotController(Node):
             commands_to_sim = [
                 list(joint) + self.current_IO_states for joint in joints_values_degree
             ]
+            if self.real2sim:
+                self._real2sim(commands_to_sim)
             goal_degree = joints_values_degree.pop()  # remove the goal
             accepted_joints = []
             for joints in joints_values_degree:
@@ -150,21 +162,14 @@ class TMRobotController(Node):
             else:
                 raise ValueError(f"Unknown grip type: {move.grip_type}")
             commands_to_sim = [self.current_joints_states + self.goal_gripper]
+            if self.real2sim:
+                self._real2sim(commands_to_sim)
             self.append_gripper_states(self.goal_gripper)
         else:
             raise ValueError(f"Unknown move type: {move.type}")
 
-        if self.real2sim:
-            try:
-                send_traj(commands_to_sim)
-            except (
-                OSError
-            ) as e:  # maybe, when the isaac-sim display pc is not reachable
-                logger.error(f"OSError, send_traj failed, not connected: {e}")
-            except (
-                TimeoutError
-            ) as e:  # maybe when the isaac-sim display pc is not listening
-                logger.error(f"TimeoutError, send_traj failed, not listening: {e}")
+        # if self.real2sim:
+            
 
     def setup_services(self):
         logger.info("等待 ROS 2 服務啟動...")
