@@ -68,7 +68,7 @@ def init_pose_matric(args, motion_gen):
 def get_cuboid_list(move: SingleRobotMove, obstacles: dict) -> list:
     cuboids = []
     cuboids.append(
-        Cuboid(name="table", pose=[0, 0, -1.97] + [1, 0, 0, 0], dims=[4, 4, 4])
+        Cuboid(name="table", pose=[0, 1, -1.97] + [1, 0, 0, 0], dims=[2, 2, 4])
     )
     for i, obstacle_name in enumerate(obstacles):
         if obstacle_name not in move.ignore_obstacles:
