@@ -301,12 +301,6 @@ class IsaacSimController:
             for move_dict in graspgen_data["moves"]:
                 graspgen_move = SingleRobotMove(**move_dict)
                 cuboids = get_cuboid_list(graspgen_move, graspgen_data["obstacles"])
-                if graspgen_move.type == "gripper" or (
-                    graspgen_move.type == "sequence_joint_rad"
-                    and graspgen_move.no_curobo
-                ):
-                    processed_moves.append(graspgen_move)
-                    continue
 
                 obstacles = WorldConfig(cuboid=cuboids)
                 if graspgen_move.no_obstacles:
@@ -318,7 +312,10 @@ class IsaacSimController:
                 curobo_cu_js = still_joint_states(
                     self.last_joint_states, self.tensor_args, self.sim_js_names
                 )
-                if graspgen_move.type == "single_pose_meter_quaternion":
+                if graspgen_move.type == "gripper":
+                    processed_moves.append(graspgen_move)
+                    continue
+                elif graspgen_move.type == "single_pose_meter_quaternion":
                     if graspgen_move.single_pose_meter_quaternion_goal is None:
                         raise ValueError("single_pose_meter_quaternion_goal is missing")
                     ik_goal = Pose(
@@ -359,6 +356,10 @@ class IsaacSimController:
                         raise ValueError(
                             f"Can't accept {graspgen_move.sequence_joint_rad_goals} as sequence_joint_rad_goals."
                         )
+                    if graspgen_move.no_curobo:
+                        processed_moves.append(graspgen_move)
+                        self.last_joint_states = graspgen_move.sequence_joint_rad_goals[-1]
+                        continue
                     joints_goal = JointState(
                         position=self.tensor_args.to_device(
                             graspgen_move.sequence_joint_rad_goals[0]
