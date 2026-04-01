@@ -14,7 +14,7 @@ from grasp_gen.grasp_server import GraspGenSampler, load_grasp_cfg
 from grasp_gen.utils.point_cloud_utils import filter_colliding_grasps
 from grasp_gen.robot import get_gripper_info
 from common_utils.grasp_data_format import GraspPack, GraspData
-
+from common_utils.qualification import get_left_up_and_front
 
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -37,6 +37,25 @@ def set_seed(seed):
     torch.manual_seed(seed)
     np.random.seed(seed)
 
+def ndgrasp_to_pre_quat(grasp: np.ndarray):
+    quaternion_orientation = list(trimesh.transformations.quaternion_from_matrix(grasp))
+    _, _, front = get_left_up_and_front(grasp)
+    front = front.tolist()
+    # Grasp Position
+    position = grasp[:3, 3].tolist()
+    pre_grasp_position = [
+        p - f * 0.050 for p, f in zip(position, front, strict=False)
+    ]
+    return pre_grasp_position + quaternion_orientation
+
+def ndgrasp_to_quat(grasp: np.ndarray):
+    quaternion_orientation = list(trimesh.transformations.quaternion_from_matrix(grasp))
+    _, _, front = get_left_up_and_front(grasp)
+    front = front.tolist()
+    # Grasp Position
+    position = grasp[:3, 3].tolist()
+    grasp_position = [p + f * 0.048 for p, f in zip(position, front, strict=False)]
+    return grasp_position + quaternion_orientation
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
@@ -287,6 +306,8 @@ class ExperimentWorkflowController:
             grasps=[
                 GraspData(
                     grasp_pose=grasp,
+                    grasp_pose_pre_quat=ndgrasp_to_pre_quat(grasp),
+                    grasp_pose_quat=ndgrasp_to_quat(grasp),
                     curobo_success="Unknown",
                     collision_detected_by_graspgen=not bool(collision_free_mask[i]),
                 )
