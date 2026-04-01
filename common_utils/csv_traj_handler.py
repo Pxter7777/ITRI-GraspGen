@@ -181,28 +181,27 @@ def run_trajectory(command: str, obstacles: list | None = None) -> list[dict]:
                 SingleRobotMove(type="gripper", grip_type="close_tight", wait_time=0.9)
             )
         elif node.mode == Mode.MOVE:
-            if move_at_least_once:
+            if not move_at_least_once:
                 movements.append(
                     SingleRobotMove(
-                        type="sequence_joint_rad",
-                        sequence_joint_rad_goals=node.joints_values,
-                        vel=vel,
-                        acc=acc,
-                        blend=blend,
-                        no_curobo=True,
+                        type="single_pose_joint_rad",
+                        single_pose_joint_rad_goal=node.joints_values[0],
+                        vel=40,
+                        acc=20,
+                        blend=100,
                     )
                 )
-            else:
-                move_at_least_once = True
-                movements.append(
-                    SingleRobotMove(
-                        type="sequence_joint_rad",
-                        sequence_joint_rad_goals=node.joints_values,
-                        vel=vel,
-                        acc=acc,
-                        blend=blend,
-                    )
+            movements.append(
+                SingleRobotMove(
+                    type="sequence_joint_rad",
+                    sequence_joint_rad_goals=node.joints_values,
+                    vel=vel,
+                    acc=acc,
+                    blend=blend,
+                    no_curobo=True,
                 )
+            )
+
     return [asdict(move) for move in movements]
 
 
