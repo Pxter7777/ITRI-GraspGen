@@ -153,6 +153,25 @@ def parse_args():
     )
     return parser.parse_args()
 
+def angle_diff_rad(grasp: np.ndarray) -> float:
+    position = grasp[:3, 3].tolist()
+    left, up, front = get_left_up_and_front(grasp)
+    position += front * 0.20  # offset
+    # Rule: planar 2D angle between grasp approach (front) vector and grasp position vector should be small
+    angle_front = np.arctan2(front[1], front[0])
+    angle_position = np.arctan2(position[1], position[0])
+    angle_diff = np.abs(angle_front - angle_position)
+    if angle_diff > np.pi:
+        angle_diff = 2 * np.pi - angle_diff
+    return angle_diff
+
+def distance_meter(grasp: np.ndarray) -> float:
+    return np.linalg.norm(grasp[:3, 3])
+    
+def up_vector(grasp: np.ndarray) -> float:
+    position = grasp[:3, 3].tolist()
+    left, up, front = get_left_up_and_front(grasp)
+    return front[2]
 
 class ExperimentWorkflowController:
     def __init__(self, args) -> None:
@@ -310,6 +329,9 @@ class ExperimentWorkflowController:
                     grasp_pose_quat=ndgrasp_to_quat(grasp),
                     curobo_success="Unknown",
                     collision_detected_by_graspgen=not bool(collision_free_mask[i]),
+                    distance=distance_meter(grasp),
+                    horizontal_angle_diff=angle_diff_rad(grasp),
+                    up_vector=up_vector(grasp)
                 )
                 for i, grasp in enumerate(grasps)
             ],

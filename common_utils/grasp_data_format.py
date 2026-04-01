@@ -21,6 +21,9 @@ class GraspData(BaseModel):
     grasp_pose_quat: list[float] = Field(..., min_length=7, max_length=7)
     curobo_success: CuroboSuccessType
     collision_detected_by_graspgen: bool
+    distance: float
+    horizontal_angle_diff: float
+    up_vector: float
 
 
 class GraspPack(BaseModel):
