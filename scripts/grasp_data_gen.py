@@ -6,21 +6,16 @@ import json
 import trimesh
 import trimesh.transformations as tra
 from pathlib import Path
-from common_utils import network_config
 from common_utils.custom_logger import CustomFormatter
-from common_utils.workflow_control import BaseWorkflowController
-from common_utils.socket_communication import (
-    NonBlockingJSONSender,
-    NonBlockingJSONReceiver,
-)
 from common_utils import config
 from common_utils.graspgen_utils import GraspGeneratorUI, flip_upside_down_grasps
 from common_utils.order_task_config import OrderTaskConfig
 from grasp_gen.grasp_server import GraspGenSampler, load_grasp_cfg
-from grasp_gen.dataset.eval_utils import save_to_isaac_grasp_format
 from grasp_gen.utils.point_cloud_utils import filter_colliding_grasps
 from grasp_gen.robot import get_gripper_info
 from common_utils.grasp_data_format import GraspPack, GraspData
+
+
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
@@ -140,8 +135,6 @@ def parse_args():
     return parser.parse_args()
 
 
-
-
 class ExperimentWorkflowController:
     def __init__(self, args) -> None:
         self.args = args
@@ -175,16 +168,23 @@ class ExperimentWorkflowController:
         # Returning False allows the exception to continue propagating
         # so you still see the traceback after cleanup.
         return False
+
     def _close(self):
         logger.info("Cleaning up resources...")
         try:
-            pass # nothing to do, actually.
+            pass  # nothing to do, actually.
         except Exception as e:
             logger.exception(f"Error during pc_generator cleanup: {e}")
-    
+
     def run_experiment(self):
         for dir in ["in_basket", "on_shelf", "on_table"]:
-            task_config_path = PROJECT_ROOT_DIR / "data" / "order_experiment_data" / dir / "task_config"
+            task_config_path = (
+                PROJECT_ROOT_DIR
+                / "data"
+                / "order_experiment_data"
+                / dir
+                / "task_config"
+            )
             json_paths = list(task_config_path.glob("*.json"))
             for json_path in json_paths:
                 grasp_data_pack = self._generate_grasp_datas(json_path)
@@ -194,8 +194,11 @@ class ExperimentWorkflowController:
                 output_dir.mkdir(exist_ok=True)
                 output_file = output_dir / json_path.name
                 with open(output_file, "w") as f:
-                    json.dump(grasp_data_pack.model_dump(), f, cls=NumpyEncoder, indent=2)
+                    json.dump(
+                        grasp_data_pack.model_dump(), f, cls=NumpyEncoder, indent=2
+                    )
                 logger.info(f"Saved grasp data to {output_file}")
+
     def _generate_grasp_datas(self, json_path: Path) -> GraspPack:
         with open(json_path, "rb") as f:
             task_json = json.load(f)
@@ -232,7 +235,9 @@ class ExperimentWorkflowController:
         grasps = grasps.cpu().numpy()
         grasps[:, 3, 3] = 1
         grasps = flip_upside_down_grasps(grasps)
-        logger.info(f"Generated {len(grasps)} grasps (scores {grasp_conf.min():.3f}–{grasp_conf.max():.3f})")
+        logger.info(
+            f"Generated {len(grasps)} grasps (scores {grasp_conf.min():.3f}–{grasp_conf.max():.3f})"
+        )
 
         # Transform grasps from centered mesh frame → target local frame → world frame
         T_restore = tra.inverse_matrix(T_subtract_mean)
@@ -253,7 +258,11 @@ class ExperimentWorkflowController:
             T_obs_world = tra.quaternion_matrix([qw, qx, qy, qz])
             T_obs_world[:3, 3] = obstacle.pose_meter_quat[:3]
             obstacle_clouds.append(tra.transform_points(obs_pts, T_obs_world))
-        xyz_scene = np.vstack(obstacle_clouds).astype(np.float32) if obstacle_clouds else np.zeros((0, 3), dtype=np.float32)
+        xyz_scene = (
+            np.vstack(obstacle_clouds).astype(np.float32)
+            if obstacle_clouds
+            else np.zeros((0, 3), dtype=np.float32)
+        )
 
         # Downsample scene point cloud for faster collision checking
         if len(xyz_scene) > 8192:

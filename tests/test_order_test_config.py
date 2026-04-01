@@ -1,7 +1,5 @@
 import json
-import pytest
 
-from pydantic import ValidationError
 from common_utils.order_task_config import OrderTaskConfig
 
 
@@ -140,4 +138,3 @@ def test_standard_valid():
     data_dict = json.loads(STANDARD_VALID_JSON)
     config = OrderTaskConfig(**data_dict)
     assert config
-

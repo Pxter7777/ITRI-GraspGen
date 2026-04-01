@@ -10,7 +10,11 @@ from common_utils import config
 from common_utils.graspgen_utils import start_meshcat_server, open_meshcat_url
 from common_utils.order_task_config import OrderTaskConfig
 from grasp_gen.grasp_server import load_grasp_cfg
-from grasp_gen.utils.meshcat_utils import create_visualizer, visualize_grasp, visualize_mesh
+from grasp_gen.utils.meshcat_utils import (
+    create_visualizer,
+    visualize_grasp,
+    visualize_mesh,
+)
 
 # root logger setup
 handler = logging.StreamHandler()
@@ -23,7 +27,9 @@ PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Visualize grasp data for a given scene.")
+    parser = argparse.ArgumentParser(
+        description="Visualize grasp data for a given scene."
+    )
     parser.add_argument(
         "--class",
         type=str,
@@ -50,8 +56,22 @@ def main():
     scene_class = getattr(args, "class")
     name = args.name
 
-    task_config_path = PROJECT_ROOT_DIR / "data" / "order_experiment_data" / scene_class / "task_config" / f"{name}.json"
-    grasp_data_path = PROJECT_ROOT_DIR / "data" / "order_experiment_data" / scene_class / "grasp_data" / f"{name}.json"
+    task_config_path = (
+        PROJECT_ROOT_DIR
+        / "data"
+        / "order_experiment_data"
+        / scene_class
+        / "task_config"
+        / f"{name}.json"
+    )
+    grasp_data_path = (
+        PROJECT_ROOT_DIR
+        / "data"
+        / "order_experiment_data"
+        / scene_class
+        / "grasp_data"
+        / f"{name}.json"
+    )
 
     # Load task config
     with open(task_config_path) as f:

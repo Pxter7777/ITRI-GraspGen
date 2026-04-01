@@ -7,6 +7,7 @@ logger = logging.getLogger(__name__)
 
 CuroboSuccessType = Literal["Success", "Fail", "Unknown"]
 
+
 class GraspData(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
