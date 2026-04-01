@@ -8,6 +8,13 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Literal
 
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
+
+
 from isaacsim_utils.helper import add_extensions, add_robot_to_scene
 from omni.isaac.core import World
 from omni.isaac.core.objects import cuboid, sphere
@@ -596,7 +603,12 @@ class MotionPlanController:
             # success
             grasp.curobo_success = "Success"
         ### Write grasp_pack
-        # TODO: Write grasp_pack to result data
+        result_dir = PROJECT_ROOT_DIR / "data" / "order_experiment_data" / task_class / "result_data"
+        result_dir.mkdir(exist_ok=True)
+        result_file = result_dir / f"{task_name}.json"
+        with open(result_file, "w") as f:
+            json.dump(grasp_pack.model_dump(), f, cls=NumpyEncoder, indent=2)
+        logger.info(f"Saved curobo result to {result_file}")
     def _step_physics_and_visualize(self):
         self.my_world.step(render=True)
         step_index = self.my_world.current_time_step_index
