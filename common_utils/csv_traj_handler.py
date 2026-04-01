@@ -182,6 +182,7 @@ def run_trajectory(command: str, obstacles: list | None = None) -> list[dict]:
             )
         elif node.mode == Mode.MOVE:
             if not move_at_least_once:
+                move_at_least_once = True
                 movements.append(
                     SingleRobotMove(
                         type="single_pose_joint_rad",
