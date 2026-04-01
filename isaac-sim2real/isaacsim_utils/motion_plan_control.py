@@ -14,7 +14,7 @@ from omni.isaac.core.objects import cuboid, sphere
 from omni.isaac.core.utils.types import ArticulationAction
 
 from curobo.geom.sdf.world import CollisionCheckerType
-from curobo.geom.types import Cuboid, WorldConfig
+from curobo.geom.types import Cuboid, Mesh, WorldConfig
 from curobo.types.base import TensorDeviceType
 from curobo.types.math import Pose
 from curobo.types.robot import JointState
@@ -39,6 +39,7 @@ if str(PROJECT_ROOT_DIR) not in sys.path:
 
 from common_utils.movesets import SingleRobotMove  # noqa: E402
 from common_utils.grasp_data_format import GraspPack
+from common_utils.order_task_config import OrderTaskConfig
 from common_utils.socket_communication import (  # noqa: E402
     NonBlockingJSONSender,
     NonBlockingJSONReceiver,
@@ -504,7 +505,25 @@ class MotionPlanController:
         with open(grasps_path) as f:
             grasp_pack_dict = json.load(f)
         grasp_pack = GraspPack(**grasp_pack_dict)
-        self.motion_gen.update_world() # TODO: provide the meshes, only load obstacle meshes, ignore robot and target meshes.
+
+        with open(task_config_path) as f:
+            task = OrderTaskConfig(**json.load(f))
+        obstacle_meshes = []
+        for obstacle in task.obstacles:
+            mesh_file = Path(obstacle.obj_dir) / "mesh.obj"
+            x, y, z, qx, qy, qz, qw = obstacle.pose_meter_quat
+            obstacle_meshes.append(
+                Mesh(
+                    name=obstacle.instance_id,
+                    file_path=str(mesh_file),
+                    pose=[x, y, z, qw, qx, qy, qz],
+                    scale=[obstacle.scale] * 3,
+                )
+            )
+        base_world_cfg = basic_world_config()
+        self.motion_gen.update_world(
+            WorldConfig(cuboid=base_world_cfg.cuboid, mesh=base_world_cfg.mesh + obstacle_meshes)
+        )
 
         ### curobo loop
         for grasp in grasp_pack.grasps:
@@ -530,7 +549,7 @@ class MotionPlanController:
             if not succ:
                 logger.warning("This plan failed.")
                 grasp.curobo_success = "Fail"
-                break
+                continue
 
             new_cmd_plan = result.get_interpolated_plan()
             new_cmd_plan = self.motion_gen.get_full_js(new_cmd_plan)
@@ -541,8 +560,9 @@ class MotionPlanController:
             processed_moves.append(
                 SingleRobotMove(type="sequence_joint_rad", sequence_joint_rad_goals=positions)
             )
+            ### Actually, need to move forward a bit to grasp pose, but skip it for now
             ### Second curobo: move to a fixed pose [0, 0.5, 0.5, 0.0, 0.0, 0.707, 0.707]
-            last_joint_states = grasp.grasp_pose_pre_quat
+            last_joint_states = positions[-1]
             curobo_cu_js = still_joint_states(
                 last_joint_states, self.tensor_args, self.sim_js_names
             )
@@ -562,7 +582,7 @@ class MotionPlanController:
             if not succ:
                 logger.warning("This plan failed.")
                 grasp.curobo_success = "Fail"
-                break
+                continue
 
             new_cmd_plan = result.get_interpolated_plan()
             new_cmd_plan = self.motion_gen.get_full_js(new_cmd_plan)
