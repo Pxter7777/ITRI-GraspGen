@@ -16,8 +16,10 @@ from common_utils.socket_communication import (
 from common_utils import config
 from common_utils.graspgen_utils import GraspGeneratorUI, flip_upside_down_grasps
 from common_utils.order_task_config import OrderTaskConfig
-from grasp_gen.grasp_server import GraspGenSampler
+from grasp_gen.grasp_server import GraspGenSampler, load_grasp_cfg
 from grasp_gen.dataset.eval_utils import save_to_isaac_grasp_format
+from grasp_gen.utils.point_cloud_utils import filter_colliding_grasps
+from grasp_gen.robot import get_gripper_info
 from common_utils.grasp_data_format import GraspPack, GraspData
 # root logger setup
 handler = logging.StreamHandler()
@@ -143,6 +145,11 @@ class ExperimentWorkflowController:
             args.topk_num_grasps,
             args.need_confirm,
         )
+        # get gripper collision mesh
+        grasp_cfg = load_grasp_cfg(args.gripper_config)
+        gripper_name = grasp_cfg.data.gripper_name
+        gripper_info = get_gripper_info(gripper_name)
+        self.gripper_collision_mesh = gripper_info.collision_mesh
         logger.info("======Successfully initialized======")
 
     def __enter__(self):
@@ -212,14 +219,55 @@ class ExperimentWorkflowController:
         grasps = flip_upside_down_grasps(grasps)
         logger.info(f"Generated {len(grasps)} grasps (scores {grasp_conf.min():.3f}–{grasp_conf.max():.3f})")
 
-        # Transform grasps back from centered mesh frame to original mesh frame
+        # Transform grasps from centered mesh frame → target local frame → world frame
         T_restore = tra.inverse_matrix(T_subtract_mean)
-        grasps = np.array([T_restore @ g for g in grasps])
+        qx, qy, qz, qw = task.target.pose_meter_quat[3:]
+        T_target_world = tra.quaternion_matrix([qw, qx, qy, qz])
+        T_target_world[:3, 3] = task.target.pose_meter_quat[:3]
+        grasps = np.array([T_target_world @ T_restore @ g for g in grasps])
 
-        # Save results next to the task config
+        # Build scene point cloud from obstacles in world frame
+        obstacle_clouds = []
+        for obstacle in task.obstacles:
+            obs_mesh_file = Path(obstacle.obj_dir) / "mesh.obj"
+            obs_obj = trimesh.load(str(obs_mesh_file), force="mesh", process=False)
+            obs_obj.apply_scale(obstacle.scale)
+            obs_pts, _ = trimesh.sample.sample_surface(obs_obj, 500)
+            obs_pts = np.array(obs_pts, dtype=np.float32)
+            qx, qy, qz, qw = obstacle.pose_meter_quat[3:]
+            T_obs_world = tra.quaternion_matrix([qw, qx, qy, qz])
+            T_obs_world[:3, 3] = obstacle.pose_meter_quat[:3]
+            obstacle_clouds.append(tra.transform_points(obs_pts, T_obs_world))
+        xyz_scene = np.vstack(obstacle_clouds).astype(np.float32) if obstacle_clouds else np.zeros((0, 3), dtype=np.float32)
+
+        # Downsample scene point cloud for faster collision checking
+        if len(xyz_scene) > 8192:
+            indices = np.random.choice(len(xyz_scene), 8192, replace=False)
+            xyz_scene_downsampled = xyz_scene[indices]
+            logger.debug(
+                f"Downsampled scene point cloud from {len(xyz_scene)} to {len(xyz_scene_downsampled)} points"
+            )
+        else:
+            xyz_scene_downsampled = xyz_scene
+            logger.debug(
+                f"Scene point cloud has {len(xyz_scene)} points (no downsampling needed)"
+            )
+        collision_free_mask = filter_colliding_grasps(
+            scene_pc=xyz_scene_downsampled,
+            grasp_poses=grasps,
+            gripper_collision_mesh=self.gripper_collision_mesh,
+            collision_threshold=0.03,
+        )
         return GraspPack(
             num_grasps=len(grasps),
-            grasps=[GraspData(grasp_pose=grasp, curobo_success="Unknown", collision_detected_by_graspgen=False) for grasp in grasps]
+            grasps=[
+                GraspData(
+                    grasp_pose=grasp,
+                    curobo_success="Unknown",
+                    collision_detected_by_graspgen=not bool(collision_free_mask[i]),
+                )
+                for i, grasp in enumerate(grasps)
+            ],
         )
 
 
