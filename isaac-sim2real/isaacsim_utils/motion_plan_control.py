@@ -2,6 +2,7 @@ import logging
 import sys
 import time
 import queue
+import json
 import numpy as np
 from dataclasses import asdict
 from pathlib import Path
@@ -37,6 +38,7 @@ if str(PROJECT_ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT_DIR))
 
 from common_utils.movesets import SingleRobotMove  # noqa: E402
+from common_utils.grasp_data_format import GraspPack
 from common_utils.socket_communication import (  # noqa: E402
     NonBlockingJSONSender,
     NonBlockingJSONReceiver,
@@ -294,7 +296,7 @@ class MotionPlanController:
             else:
                 raise ValueError("Unknown message")
 
-    def _process_graspgen_commands(self, graspgen_datas: list):
+    def _process_graspgen_commands_old(self, graspgen_datas: list):
         for graspgen_data in graspgen_datas:
             before_move_joints = self.last_joint_states
             processed_moves: list[SingleRobotMove] = []
@@ -490,23 +492,91 @@ class MotionPlanController:
                 f"Unexpected logical error, self.ros2state = {self.ros2state}, please enter debug mode to checkout this bug."
             )
 
-    def _communicate_with_graspgen(self) -> None:
+    def _handle_task(self) -> None:
         if self.my_world.current_time_step_index < 50 or (len(self.planned_action_moves) == 0 and not self.planned_action_queue.empty()):
-            return
-        graspgen_datas: list = self.graspgen_receiver.capture_data()
+            return # go run the simulation, don't stuck here.
+        # CLI
+        task_class = input("Provide the class:")
+        task_name = input("Provide the name:")
+        task_config_path = PROJECT_ROOT_DIR / "data" / "order_experiment_data" / task_class / "task_config" / f"{task_name}.json"
+        grasps_path = PROJECT_ROOT_DIR / "data" / "order_experiment_data" / task_class / "grasp_data" / f"{task_name}.json"
+        ### Load configs. Obstacles visual, create curobo world containning obstacles
+        with open(grasps_path) as f:
+            grasp_pack_dict = json.load(f)
+        grasp_pack = GraspPack(**grasp_pack_dict)
+        self.motion_gen.update_world() # TODO: provide the meshes, only load obstacle meshes, ignore robot and target meshes.
 
-        if graspgen_datas is None:
-            return
-        elif graspgen_datas[0] == "EOF":
-            self.graspgen_eof = True
-            return
-        elif graspgen_datas[0] == "Reset_to_default":
-            self.last_joint_states = self.default_config
-            return
-        else:
-            logger.info("Receiving new action.")
-            self._process_graspgen_commands(graspgen_datas)
+        ### curobo loop
+        for grasp in grasp_pack.grasps:
+            processed_moves:list[SingleRobotMove] = []
+            ### First curobo: reach to pre-grasp from 
+            last_joint_states = self.default_config
+            curobo_cu_js = still_joint_states(
+                last_joint_states, self.tensor_args, self.sim_js_names
+            )
+            ik_goal = Pose(
+                position=self.tensor_args.to_device(
+                    grasp.grasp_pose_pre_quat[:3]
+                ),
+                quaternion=self.tensor_args.to_device(
+                    grasp.grasp_pose_pre_quat[3:]
+                ),
+            )
+            self.plan_config.pose_cost_metric = self.pose_metric
+            result = self.motion_gen.plan_single(
+                curobo_cu_js.unsqueeze(0), ik_goal, self.plan_config
+            )
+            succ = result.success.item()
+            if not succ:
+                logger.warning("This plan failed.")
+                grasp.curobo_success = "Fail"
+                break
 
+            new_cmd_plan = result.get_interpolated_plan()
+            new_cmd_plan = self.motion_gen.get_full_js(new_cmd_plan)
+            new_cmd_plan = new_cmd_plan.get_ordered_joint_state(
+                self.common_js_names
+            )
+            positions = cmd_to_move(new_cmd_plan)
+            processed_moves.append(
+                SingleRobotMove(type="sequence_joint_rad", sequence_joint_rad_goals=positions)
+            )
+            ### Second curobo: move to a fixed pose [0, 0.5, 0.5, 0.0, 0.0, 0.707, 0.707]
+            last_joint_states = grasp.grasp_pose_pre_quat
+            curobo_cu_js = still_joint_states(
+                last_joint_states, self.tensor_args, self.sim_js_names
+            )
+            ik_goal = Pose(
+                position=self.tensor_args.to_device(
+                    [0,0.5,0.5]
+                ),
+                quaternion=self.tensor_args.to_device(
+                    [0.0,0.0,0.707,0.707]
+                ),
+            )
+            self.plan_config.pose_cost_metric = self.pose_metric
+            result = self.motion_gen.plan_single(
+                curobo_cu_js.unsqueeze(0), ik_goal, self.plan_config
+            )
+            succ = result.success.item()
+            if not succ:
+                logger.warning("This plan failed.")
+                grasp.curobo_success = "Fail"
+                break
+
+            new_cmd_plan = result.get_interpolated_plan()
+            new_cmd_plan = self.motion_gen.get_full_js(new_cmd_plan)
+            new_cmd_plan = new_cmd_plan.get_ordered_joint_state(
+                self.common_js_names
+            )
+            positions = cmd_to_move(new_cmd_plan)
+            processed_moves.append(
+                SingleRobotMove(type="sequence_joint_rad", sequence_joint_rad_goals=positions)
+            )
+            # success
+            grasp.curobo_success = "Success"
+        ### Write grasp_pack
+        # TODO: Write grasp_pack to result data
     def _step_physics_and_visualize(self):
         self.my_world.step(render=True)
         step_index = self.my_world.current_time_step_index
@@ -579,7 +649,7 @@ class MotionPlanController:
     def simulation_loop(self):
         while self.simulation_app.is_running():
             self._communicate_with_ros2()
-            self._communicate_with_graspgen()
+            self._handle_task()
             self._step_physics_and_visualize()
             # check if idle and eof
             if self.ros2state == "Ready" and self.graspgen_eof:
