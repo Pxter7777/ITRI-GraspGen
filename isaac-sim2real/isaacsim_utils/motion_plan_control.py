@@ -601,6 +601,7 @@ class MotionPlanController:
                 SingleRobotMove(type="sequence_joint_rad", sequence_joint_rad_goals=positions)
             )
             # success
+            logger.warning("This plan success.")
             grasp.curobo_success = "Success"
         ### Write grasp_pack
         result_dir = PROJECT_ROOT_DIR / "data" / "order_experiment_data" / task_class / "result_data"
