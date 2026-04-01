@@ -1,5 +1,7 @@
 import argparse
 import logging
+import numpy as np
+import torch
 from pathlib import Path
 from common_utils import network_config
 from common_utils.custom_logger import CustomFormatter
@@ -18,6 +20,11 @@ logger = logging.getLogger(__name__)
 
 # Project root dir
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
+
+
+def set_seed(seed):
+    torch.manual_seed(seed)
+    np.random.seed(seed)
 
 
 def parse_args():
@@ -165,6 +172,7 @@ class MiaWorkflowController(BaseWorkflowController):
 
 def main():
     args = parse_args()
+    set_seed(42)
     with MiaWorkflowController(args) as controller:
         while True:
             controller.handle_task_command()

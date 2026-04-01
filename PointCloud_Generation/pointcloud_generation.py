@@ -34,11 +34,6 @@ class NamedMask:
         self.mask = mask
 
 
-def set_seed(seed):
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-
-
 def depth2xyzmap(depth, K):
     vy, vx = np.meshgrid(
         np.arange(depth.shape[0]), np.arange(depth.shape[1]), indexing="ij"
@@ -477,7 +472,6 @@ def generate_pointcloud_multiple_obj_with_name_dict(
 class PointCloudGenerator:
     def __init__(self, args):
         # Init
-        set_seed(0)
         torch.autograd.set_grad_enabled(False)
         # Init configs
         self.erosion_iterations = args.erosion_iterations
