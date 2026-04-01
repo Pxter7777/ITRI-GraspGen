@@ -1,0 +1,143 @@
+import json
+import pytest
+
+from pydantic import ValidationError
+from common_utils.order_task_config import OrderTaskConfig
+
+
+STANDARD_VALID_JSON = """
+{
+  "robot_jointstate": [
+    1.37296326,
+    0.08553859,
+    1.05554023,
+    2.76803983,
+    -1.48792809,
+    3.09947786
+  ],
+  "target": {
+    "instance_id": "Cup_0",
+    "category": "Cup",
+    "obj_id": "dc1c220c8ef89a5d1a57566a9a7e5976",
+    "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Cup/dc1c220c8ef89a5d1a57566a9a7e5976",
+    "obj_type": "mesh",
+    "x": 0.64,
+    "y": -0.31,
+    "z": -0.09,
+    "roll": 0.0,
+    "pitch": 0.0,
+    "yaw": 0.0,
+    "scale": 1.5,
+    "pose_meter_quat": [
+      0.64,
+      -0.31,
+      -0.09,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  },
+  "obstacles": [
+    {
+      "instance_id": "Table_0",
+      "category": "Table",
+      "obj_id": "d9c11381adf0cf48f1783a44a88d6274",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Table/d9c11381adf0cf48f1783a44a88d6274",
+      "obj_type": "mesh",
+      "x": 0.4,
+      "y": -0.7,
+      "z": -0.78,
+      "roll": 0.0,
+      "pitch": 0.0,
+      "yaw": 0.0,
+      "scale": 10.0,
+      "pose_meter_quat": [
+        0.4,
+        -0.7,
+        -0.78,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "instance_id": "Stool_0",
+      "category": "Stool",
+      "obj_id": "1b0626e5a8bf92b3945a77b945b7b70f",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Stool/1b0626e5a8bf92b3945a77b945b7b70f",
+      "obj_type": "mesh",
+      "x": -0.13,
+      "y": -0.12,
+      "z": -0.55,
+      "roll": 0.0,
+      "pitch": 0.0,
+      "yaw": 0.0,
+      "scale": 3.0,
+      "pose_meter_quat": [
+        -0.13,
+        -0.12,
+        -0.55,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "instance_id": "Teapot_0",
+      "category": "Teapot",
+      "obj_id": "ce04f39420c7c3e82fb82d326efadfe3",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Teapot/ce04f39420c7c3e82fb82d326efadfe3",
+      "obj_type": "mesh",
+      "x": 0.57,
+      "y": -0.57,
+      "z": -0.15,
+      "roll": 0.0,
+      "pitch": 0.0,
+      "yaw": 45.0,
+      "scale": 1.2,
+      "pose_meter_quat": [
+        0.57,
+        -0.57,
+        -0.15,
+        0.0,
+        0.0,
+        0.3826834323650898,
+        0.9238795325112867
+      ]
+    },
+    {
+      "instance_id": "Suitcase_0",
+      "category": "Suitcase",
+      "obj_id": "766fe076d4cdef8cf0117851f0671fde",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Suitcase/766fe076d4cdef8cf0117851f0671fde",
+      "obj_type": "mesh",
+      "x": 0.48,
+      "y": -0.4,
+      "z": 0.0,
+      "roll": 0.0,
+      "pitch": 0.0,
+      "yaw": 38.0,
+      "scale": 1.0,
+      "pose_meter_quat": [
+        0.48,
+        -0.4,
+        0.0,
+        0.0,
+        0.0,
+        0.3255681544571567,
+        0.9455185755993168
+      ]
+    }
+  ]
+}
+"""
+
+
+def test_standard_valid():
+    data_dict = json.loads(STANDARD_VALID_JSON)
+    config = OrderTaskConfig(**data_dict)
+    assert config
+
