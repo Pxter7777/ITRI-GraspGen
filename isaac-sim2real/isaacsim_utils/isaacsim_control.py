@@ -358,7 +358,9 @@ class IsaacSimController:
                         )
                     if graspgen_move.no_curobo:
                         processed_moves.append(graspgen_move)
-                        self.last_joint_states = graspgen_move.sequence_joint_rad_goals[-1]
+                        self.last_joint_states = graspgen_move.sequence_joint_rad_goals[
+                            -1
+                        ]
                         continue
                     joints_goal = JointState(
                         position=self.tensor_args.to_device(
