@@ -13,6 +13,7 @@ class ObjectBound(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     pose_meter_quat: list[float] = Field(..., min_length=7, max_length=7)
+    obj_dir: str
     scale: float
     x: float
     y: float
