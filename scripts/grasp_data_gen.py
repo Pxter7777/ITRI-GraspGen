@@ -21,6 +21,13 @@ from grasp_gen.dataset.eval_utils import save_to_isaac_grasp_format
 from grasp_gen.utils.point_cloud_utils import filter_colliding_grasps
 from grasp_gen.robot import get_gripper_info
 from common_utils.grasp_data_format import GraspPack, GraspData
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
+
+
 # root logger setup
 handler = logging.StreamHandler()
 handler.setFormatter(CustomFormatter())
@@ -181,6 +188,14 @@ class ExperimentWorkflowController:
             json_paths = list(task_config_path.glob("*.json"))
             for json_path in json_paths:
                 grasp_data_pack = self._generate_grasp_datas(json_path)
+                if grasp_data_pack is None:
+                    continue
+                output_dir = json_path.parent.parent / "grasp_data"
+                output_dir.mkdir(exist_ok=True)
+                output_file = output_dir / json_path.name
+                with open(output_file, "w") as f:
+                    json.dump(grasp_data_pack.model_dump(), f, cls=NumpyEncoder, indent=2)
+                logger.info(f"Saved grasp data to {output_file}")
     def _generate_grasp_datas(self, json_path: Path) -> GraspPack:
         with open(json_path, "rb") as f:
             task_json = json.load(f)
