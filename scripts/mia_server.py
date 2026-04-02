@@ -159,15 +159,18 @@ class MiaWorkflowController(BaseWorkflowController):
         self.sender.send_data(["Reset_to_default"])
         self.main_sender.send_data({"message": "Fail"})
 
-    def _grab_command(self) -> str:
+    def _grab_command(self) -> tuple[str, bool]:
         while True:
             task_signal = self.main_receiver.capture_data()
             if task_signal is None:
                 continue
             text = task_signal.get("actions")
+            no_need_curobo = False
+            if task_signal.get("no_curobo"):
+                no_need_curobo = True
             if text is None:
                 raise ValueError(f"received weird signal {task_signal}")
-            return text
+            return text, no_need_curobo
 
 
 def main():

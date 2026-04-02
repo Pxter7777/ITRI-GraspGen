@@ -47,7 +47,7 @@ class BaseWorkflowController:
             "Child class must implement how to handle keyboard interrupt"
         )
 
-    def _grab_command(self) -> str:
+    def _grab_command(self) -> tuple[str, bool]:
         raise NotImplementedError(
             "Child class must implement how to grab command, through CLI input or socket"
         )
@@ -70,22 +70,22 @@ class BaseWorkflowController:
         return False
 
     def handle_task_command(self):
-        task_type, task_name = self._capture_task_name()
+        task_type, task_name, no_need_curobo = self._capture_task_name()
         self._eat_aborts()
         if task_type == "GraspGen" and task_name == "Grasp_and_Dump":
             self._process_graspgen_command()
         elif task_type == "csv":
-            self._process_csv_command(task_name)
+            self._process_csv_command(task_name, no_need_curobo=no_need_curobo)
         else:
             raise ValueError(f"Unknown task_type {task_type}")
 
-    def _process_csv_command(self, command: str):
+    def _process_csv_command(self, command: str, no_need_curobo:bool = False):
         extra_obstacles: dict[str, ObstacleBound] = load_extra_obstacles()
-        self._run_csv(command, extra_obstacles)
+        self._run_csv(command, extra_obstacles, no_need_curobo=no_need_curobo)
 
-    def _run_csv(self, command: str, extra_obstacles: dict[str, ObstacleBound]):
+    def _run_csv(self, command: str, extra_obstacles: dict[str, ObstacleBound], no_need_curobo:bool = False):
         while True:
-            full_acts: list[dict] = csv_act(command, extra_obstacles)
+            full_acts: list[dict] = csv_act(command, extra_obstacles, no_need_curobo=no_need_curobo)
             success = self._run_isaacsim(full_acts)
             if success:
                 break
@@ -194,12 +194,12 @@ class BaseWorkflowController:
         for _ in range(5):
             self.receiver.capture_data()
 
-    def _capture_task_name(self) -> tuple[str, str]:
-        text = self._grab_command()
+    def _capture_task_name(self) -> tuple[str, str, bool]:
+        text, no_need_curobo = self._grab_command()
         if text == "end":
             raise KeyboardInterrupt
         if text == "Grasp_and_Dump":
-            return "GraspGen", text
+            return "GraspGen", text, False
         # check if it's in csv
         base_dir = Path("~").expanduser() / "RobotSnackServing-csv"
         if not base_dir.exists():
@@ -210,7 +210,7 @@ class BaseWorkflowController:
         csv_paths = list(traj_dir.glob("*.csv"))
         filenames = [path.stem for path in csv_paths]
         if text in filenames:
-            return "csv", text
+            return "csv", text, no_need_curobo
         else:
             avail_commands = ["Grasp_and_Dump"] + filenames
             print(
