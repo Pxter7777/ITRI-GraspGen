@@ -160,7 +160,7 @@ class TMRobotController(Node):
             elif move.grip_type == "close_tight":
                 self.goal_gripper = [1, 1, 0]
             else:
-                raise ValueError(f"Unknown grip type: {move.grip_type}")
+                raise ValueError(f"Unknown grip type: {move}")
             commands_to_sim = [self.current_joints_states + self.goal_gripper]
             if self.real2sim:
                 self._real2sim(commands_to_sim)
