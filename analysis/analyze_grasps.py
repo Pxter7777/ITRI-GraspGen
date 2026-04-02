@@ -152,70 +152,102 @@ def train_and_evaluate(records):
     return model, scaler, auc_scores
 
 
-def plot_ranking_comparison(records, model, scaler):
+def topk_table(records, model, scaler):  # model/scaler unused — kept for signature compatibility
     """
-    Compare grasp selection strategies per scene:
-    - Vanilla: try grasps in discriminator order (rank 0 first)
-    - Learned: try grasps in model-predicted order
-    Metric: how many attempts needed before first success?
+    For each scene, rank grasps by model score vs random.
+    Report: % of scenes with at least one success in top-k, for k = 1,3,5,10,20.
+    Also report mean attempts to first success.
     """
-    # Group by scene
+    # Group by scene key
     scenes = {}
     for r in records:
         key = (r["scenario"], r["file"])
         scenes.setdefault(key, []).append(r)
+    scene_keys = list(scenes.keys())
 
-    vanilla_attempts, learned_attempts = [], []
+    K_VALUES = [1, 3, 5, 10, 20]
+    results = {k: {"random": [], "learned": []} for k in K_VALUES}
+    learned_attempts, random_attempts = [], []
 
-    for key, grasps in scenes.items():
-        grasps_sorted_vanilla = sorted(grasps, key=lambda r: r["discriminator_rank"])
+    np.random.seed(42)
+    # Leave-one-scene-out: train on 14 scenes, evaluate on held-out scene
+    for held_out_key in scene_keys:
+        train_records = [r for r in records if (r["scenario"], r["file"]) != held_out_key]
+        test_grasps   = scenes[held_out_key]
 
-        X = np.array([[r[f] for f in FEATURE_NAMES] for r in grasps])
-        X_scaled = scaler.transform(X)
-        scores = model.predict_proba(X_scaled)[:, 1]
-        grasps_sorted_learned = [g for _, g in sorted(zip(scores, grasps), key=lambda x: -x[0])]
+        X_train = np.array([[r[f] for f in FEATURE_NAMES] for r in train_records])
+        y_train = np.array([r["success"] for r in train_records])
+        scaler_cv = StandardScaler().fit(X_train)
+        X_train_s = scaler_cv.transform(X_train)
 
-        def attempts_to_first_success(sorted_grasps):
-            for i, g in enumerate(sorted_grasps):
-                if g["success"] == 1:
-                    return i + 1
-            return len(sorted_grasps) + 1  # never succeeded
+        cw = compute_class_weight("balanced", classes=np.array([0, 1]), y=y_train)
+        clf = LogisticRegression(class_weight={0: cw[0], 1: cw[1]}, max_iter=1000, random_state=42)
+        clf.fit(X_train_s, y_train)
 
-        vanilla_attempts.append(attempts_to_first_success(grasps_sorted_vanilla))
-        learned_attempts.append(attempts_to_first_success(grasps_sorted_learned))
+        X_test = np.array([[r[f] for f in FEATURE_NAMES] for r in test_grasps])
+        X_test_s = scaler_cv.transform(X_test)
+        scores = clf.predict_proba(X_test_s)[:, 1]
 
+        grasps = test_grasps
+        grasps_learned = [g for _, g in sorted(zip(scores, grasps), key=lambda x: -x[0])]
+        grasps_random  = list(np.random.permutation(grasps))
+
+        for k in K_VALUES:
+            results[k]["learned"].append(int(any(g["success"] for g in grasps_learned[:k])))
+            results[k]["random"].append(int(any(g["success"] for g in grasps_random[:k])))
+
+        def first_success(gs):
+            for i, g in enumerate(gs):
+                if g["success"]: return i + 1
+            return len(gs) + 1
+
+        learned_attempts.append(first_success(grasps_learned))
+        random_attempts.append(first_success(grasps_random))
+
+    print("\n--- Top-K Success Rate Table ---")
+    print(f"{'k':<6} {'Random (baseline)':>20} {'Learned re-ranking':>20}")
+    print("-" * 48)
+    for k in K_VALUES:
+        r_rate = 100 * np.mean(results[k]["random"])
+        l_rate = 100 * np.mean(results[k]["learned"])
+        print(f"{k:<6} {r_rate:>19.1f}% {l_rate:>19.1f}%")
+
+    print(f"\nMean attempts to first success:")
+    print(f"  Random baseline : {np.mean(random_attempts):.1f}")
+    print(f"  Learned re-rank : {np.mean(learned_attempts):.1f}")
+
+    # Plot
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-    fig.suptitle("Attempts Before First Successful Grasp", fontsize=13, fontweight="bold")
-
-    scene_labels = [f"{s[0].replace('_',' ')}\n#{s[1]}" for s in scenes.keys()]
-    x = np.arange(len(scene_labels))
-    width = 0.35
+    fig.suptitle("Grasp Selection: Random Baseline vs Learned Re-ranking", fontsize=13, fontweight="bold")
 
     ax = axes[0]
-    ax.bar(x - width/2, vanilla_attempts, width, label="Discriminator Order", color="#2196F3", alpha=0.8)
-    ax.bar(x + width/2, learned_attempts, width, label="Learned Re-ranking", color="#FF9800", alpha=0.8)
+    r_rates = [100 * np.mean(results[k]["random"]) for k in K_VALUES]
+    l_rates = [100 * np.mean(results[k]["learned"]) for k in K_VALUES]
+    x = np.arange(len(K_VALUES))
+    width = 0.35
+    ax.bar(x - width/2, r_rates, width, label="Discriminator Baseline", color="#2196F3", alpha=0.8)
+    ax.bar(x + width/2, l_rates, width, label="Learned Re-ranking", color="#FF9800", alpha=0.8)
     ax.set_xticks(x)
-    ax.set_xticklabels(scene_labels, fontsize=7)
-    ax.set_ylabel("Attempts to First Success")
+    ax.set_xticklabels([f"Top-{k}" for k in K_VALUES])
+    ax.set_ylabel("% Scenes with ≥1 Success")
+    ax.set_title("Success Rate in Top-K Attempts")
     ax.legend()
-    ax.set_title("Per Scene")
+    for xi, (r, l) in enumerate(zip(r_rates, l_rates)):
+        ax.text(xi - width/2, r + 0.5, f"{r:.0f}%", ha="center", fontsize=7)
+        ax.text(xi + width/2, l + 0.5, f"{l:.0f}%", ha="center", fontsize=7)
 
     ax2 = axes[1]
-    ax2.bar(["Discriminator\nOrder", "Learned\nRe-ranking"],
-            [np.mean(vanilla_attempts), np.mean(learned_attempts)],
-            color=["#2196F3", "#FF9800"], alpha=0.8, edgecolor="black")
+    means = [np.mean(random_attempts), np.mean(learned_attempts)]
+    bars = ax2.bar(["Discriminator\nBaseline", "Learned\nRe-ranking"], means,
+                   color=["#2196F3", "#FF9800"], alpha=0.8, edgecolor="black")
     ax2.set_ylabel("Mean Attempts to First Success")
-    ax2.set_title("Average Across All Scenes")
-    for i, v in enumerate([np.mean(vanilla_attempts), np.mean(learned_attempts)]):
-        ax2.text(i, v + 0.3, f"{v:.1f}", ha="center", fontweight="bold")
-
-    print(f"\nRanking Comparison:")
-    print(f"  Vanilla (discriminator order) - mean attempts: {np.mean(vanilla_attempts):.1f}")
-    print(f"  Learned re-ranking            - mean attempts: {np.mean(learned_attempts):.1f}")
+    ax2.set_title("Efficiency: Attempts to First Success")
+    for bar, v in zip(bars, means):
+        ax2.text(bar.get_x() + bar.get_width()/2, v + 0.3, f"{v:.1f}", ha="center", fontweight="bold")
 
     plt.tight_layout()
-    fig.savefig(OUTPUT_DIR / "ranking_comparison.png", dpi=150)
-    print(f"Saved: {OUTPUT_DIR / 'ranking_comparison.png'}")
+    fig.savefig(OUTPUT_DIR / "topk_comparison.png", dpi=150)
+    print(f"Saved: {OUTPUT_DIR / 'topk_comparison.png'}")
     plt.close()
 
 
@@ -232,6 +264,9 @@ def main():
 
     print("\nTraining model...")
     model, scaler, auc_scores = train_and_evaluate(records)
+
+    print("\nGenerating top-k table...")
+    topk_table(records, model, scaler)
 
     print("\nDone. Figures saved to:", OUTPUT_DIR)
 
