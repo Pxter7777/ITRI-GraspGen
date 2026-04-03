@@ -7,14 +7,6 @@ import numpy as np
 from dataclasses import asdict
 from pathlib import Path
 from typing import Literal
-
-class NumpyEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        return super().default(obj)
-
-
 from isaacsim_utils.helper import add_extensions, add_robot_to_scene
 from omni.isaac.core import World
 from omni.isaac.core.objects import cuboid, sphere
@@ -45,8 +37,8 @@ if str(PROJECT_ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT_DIR))
 
 from common_utils.movesets import SingleRobotMove  # noqa: E402
-from common_utils.grasp_data_format import GraspPack
-from common_utils.order_task_config import OrderTaskConfig
+from common_utils.grasp_data_format import GraspPack  # noqa: E402
+from common_utils.order_task_config import OrderTaskConfig  # noqa: E402
 from common_utils.socket_communication import (  # noqa: E402
     NonBlockingJSONSender,
     NonBlockingJSONReceiver,
@@ -54,6 +46,13 @@ from common_utils.socket_communication import (  # noqa: E402
 from common_utils import network_config  # noqa: E402
 
 logger = logging.getLogger(__name__)
+
+
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
 
 
 def cmd_to_move(cmd_plan):
@@ -501,13 +500,30 @@ class MotionPlanController:
             )
 
     def _handle_task(self) -> None:
-        if self.my_world.current_time_step_index < 50 or (len(self.planned_action_moves) == 0 and not self.planned_action_queue.empty()):
-            return # go run the simulation, don't stuck here.
+        if self.my_world.current_time_step_index < 50 or (
+            len(self.planned_action_moves) == 0
+            and not self.planned_action_queue.empty()
+        ):
+            return  # go run the simulation, don't stuck here.
         # CLI
         task_class = input("Provide the class:")
         task_name = input("Provide the name:")
-        task_config_path = PROJECT_ROOT_DIR / "data" / "order_experiment_data" / task_class / "task_config" / f"{task_name}.json"
-        grasps_path = PROJECT_ROOT_DIR / "data" / "order_experiment_data" / task_class / "grasp_data" / f"{task_name}.json"
+        task_config_path = (
+            PROJECT_ROOT_DIR
+            / "data"
+            / "order_experiment_data"
+            / task_class
+            / "task_config"
+            / f"{task_name}.json"
+        )
+        grasps_path = (
+            PROJECT_ROOT_DIR
+            / "data"
+            / "order_experiment_data"
+            / task_class
+            / "grasp_data"
+            / f"{task_name}.json"
+        )
         ### Load configs. Obstacles visual, create curobo world containning obstacles
         with open(grasps_path) as f:
             grasp_pack_dict = json.load(f)
@@ -529,24 +545,22 @@ class MotionPlanController:
             )
         base_world_cfg = basic_world_config()
         self.motion_gen.update_world(
-            WorldConfig(cuboid=base_world_cfg.cuboid, mesh=base_world_cfg.mesh + obstacle_meshes)
+            WorldConfig(
+                cuboid=base_world_cfg.cuboid, mesh=base_world_cfg.mesh + obstacle_meshes
+            )
         )
 
         ### curobo loop
         for grasp in grasp_pack.grasps:
-            processed_moves:list[SingleRobotMove] = []
-            ### First curobo: reach to pre-grasp from 
+            processed_moves: list[SingleRobotMove] = []
+            ### First curobo: reach to pre-grasp from
             last_joint_states = self.default_config
             curobo_cu_js = still_joint_states(
                 last_joint_states, self.tensor_args, self.sim_js_names
             )
             ik_goal = Pose(
-                position=self.tensor_args.to_device(
-                    grasp.grasp_pose_pre_quat[:3]
-                ),
-                quaternion=self.tensor_args.to_device(
-                    grasp.grasp_pose_pre_quat[3:]
-                ),
+                position=self.tensor_args.to_device(grasp.grasp_pose_pre_quat[:3]),
+                quaternion=self.tensor_args.to_device(grasp.grasp_pose_pre_quat[3:]),
             )
             self.plan_config.pose_cost_metric = self.pose_metric
             result = self.motion_gen.plan_single(
@@ -560,12 +574,12 @@ class MotionPlanController:
 
             new_cmd_plan = result.get_interpolated_plan()
             new_cmd_plan = self.motion_gen.get_full_js(new_cmd_plan)
-            new_cmd_plan = new_cmd_plan.get_ordered_joint_state(
-                self.common_js_names
-            )
+            new_cmd_plan = new_cmd_plan.get_ordered_joint_state(self.common_js_names)
             positions = cmd_to_move(new_cmd_plan)
             processed_moves.append(
-                SingleRobotMove(type="sequence_joint_rad", sequence_joint_rad_goals=positions)
+                SingleRobotMove(
+                    type="sequence_joint_rad", sequence_joint_rad_goals=positions
+                )
             )
             ### Actually, need to move forward a bit to grasp pose, but skip it for now
             ### Second curobo: move to a fixed pose [0, 0.5, 0.5, 0.0, 0.0, 0.707, 0.707]
@@ -574,12 +588,8 @@ class MotionPlanController:
                 last_joint_states, self.tensor_args, self.sim_js_names
             )
             ik_goal = Pose(
-                position=self.tensor_args.to_device(
-                    [0,0.5,0.5]
-                ),
-                quaternion=self.tensor_args.to_device(
-                    [0.0,0.0,0.707,0.707]
-                ),
+                position=self.tensor_args.to_device([0, 0.5, 0.5]),
+                quaternion=self.tensor_args.to_device([0.0, 0.0, 0.707, 0.707]),
             )
             self.plan_config.pose_cost_metric = self.pose_metric
             result = self.motion_gen.plan_single(
@@ -593,23 +603,30 @@ class MotionPlanController:
 
             new_cmd_plan = result.get_interpolated_plan()
             new_cmd_plan = self.motion_gen.get_full_js(new_cmd_plan)
-            new_cmd_plan = new_cmd_plan.get_ordered_joint_state(
-                self.common_js_names
-            )
+            new_cmd_plan = new_cmd_plan.get_ordered_joint_state(self.common_js_names)
             positions = cmd_to_move(new_cmd_plan)
             processed_moves.append(
-                SingleRobotMove(type="sequence_joint_rad", sequence_joint_rad_goals=positions)
+                SingleRobotMove(
+                    type="sequence_joint_rad", sequence_joint_rad_goals=positions
+                )
             )
             # success
             logger.warning("This plan success.")
             grasp.curobo_success = "Success"
         ### Write grasp_pack
-        result_dir = PROJECT_ROOT_DIR / "data" / "order_experiment_data" / task_class / "result_data"
+        result_dir = (
+            PROJECT_ROOT_DIR
+            / "data"
+            / "order_experiment_data"
+            / task_class
+            / "result_data"
+        )
         result_dir.mkdir(exist_ok=True)
         result_file = result_dir / f"{task_name}.json"
         with open(result_file, "w") as f:
             json.dump(grasp_pack.model_dump(), f, cls=NumpyEncoder, indent=2)
         logger.info(f"Saved curobo result to {result_file}")
+
     def _step_physics_and_visualize(self):
         self.my_world.step(render=True)
         step_index = self.my_world.current_time_step_index

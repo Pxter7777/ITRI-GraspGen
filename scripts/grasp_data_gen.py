@@ -16,6 +16,7 @@ from grasp_gen.robot import get_gripper_info
 from common_utils.grasp_data_format import GraspPack, GraspData
 from common_utils.qualification import get_left_up_and_front
 
+
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
@@ -37,16 +38,16 @@ def set_seed(seed):
     torch.manual_seed(seed)
     np.random.seed(seed)
 
+
 def ndgrasp_to_pre_quat(grasp: np.ndarray):
     quaternion_orientation = list(trimesh.transformations.quaternion_from_matrix(grasp))
     _, _, front = get_left_up_and_front(grasp)
     front = front.tolist()
     # Grasp Position
     position = grasp[:3, 3].tolist()
-    pre_grasp_position = [
-        p - f * 0.050 for p, f in zip(position, front, strict=False)
-    ]
+    pre_grasp_position = [p - f * 0.050 for p, f in zip(position, front, strict=False)]
     return pre_grasp_position + quaternion_orientation
+
 
 def ndgrasp_to_quat(grasp: np.ndarray):
     quaternion_orientation = list(trimesh.transformations.quaternion_from_matrix(grasp))
@@ -56,6 +57,7 @@ def ndgrasp_to_quat(grasp: np.ndarray):
     position = grasp[:3, 3].tolist()
     grasp_position = [p + f * 0.048 for p, f in zip(position, front, strict=False)]
     return grasp_position + quaternion_orientation
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
@@ -153,6 +155,7 @@ def parse_args():
     )
     return parser.parse_args()
 
+
 def angle_diff_rad(grasp: np.ndarray) -> float:
     position = grasp[:3, 3].tolist()
     left, up, front = get_left_up_and_front(grasp)
@@ -165,13 +168,15 @@ def angle_diff_rad(grasp: np.ndarray) -> float:
         angle_diff = 2 * np.pi - angle_diff
     return angle_diff
 
+
 def distance_meter(grasp: np.ndarray) -> float:
     return np.linalg.norm(grasp[:3, 3])
-    
+
+
 def up_vector(grasp: np.ndarray) -> float:
-    position = grasp[:3, 3].tolist()
     left, up, front = get_left_up_and_front(grasp)
     return front[2]
+
 
 class ExperimentWorkflowController:
     def __init__(self, args) -> None:
@@ -331,7 +336,7 @@ class ExperimentWorkflowController:
                     collision_detected_by_graspgen=not bool(collision_free_mask[i]),
                     distance=distance_meter(grasp),
                     horizontal_angle_diff=angle_diff_rad(grasp),
-                    up_vector=up_vector(grasp)
+                    up_vector=up_vector(grasp),
                 )
                 for i, grasp in enumerate(grasps)
             ],

@@ -17,6 +17,7 @@ class GraspData(BaseModel):
     @classmethod
     def coerce_to_ndarray(cls, v):
         return np.array(v)
+
     grasp_pose_pre_quat: list[float] = Field(..., min_length=7, max_length=7)
     grasp_pose_quat: list[float] = Field(..., min_length=7, max_length=7)
     curobo_success: CuroboSuccessType
