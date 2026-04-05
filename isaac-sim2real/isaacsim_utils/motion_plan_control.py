@@ -269,6 +269,15 @@ class MotionPlanController:
         self.graspgen_eof = False
         self.ros2state: ROS2StateType = "Ready"
 
+        self.task_queue: list[tuple[str, str]] = []
+        if args.automate:
+            for dir_name in ["in_basket", "on_shelf", "on_table"]:
+                task_config_dir = PROJECT_ROOT_DIR / "data" / "order_experiment_data" / dir_name / "task_config"
+                if task_config_dir.exists():
+                    for json_path in sorted(task_config_dir.glob("*.json")):
+                        self.task_queue.append((dir_name, json_path.stem))
+            logger.info(f"Automate mode: {len(self.task_queue)} tasks queued")
+
     def __enter__(self):
         return self
 
@@ -505,9 +514,13 @@ class MotionPlanController:
             and not self.planned_action_queue.empty()
         ):
             return  # go run the simulation, don't stuck here.
-        # CLI
-        task_class = input("Provide the class:")
-        task_name = input("Provide the name:")
+        if self.args.automate:
+            if not self.task_queue:
+                return
+            task_class, task_name = self.task_queue.pop(0)
+        else:
+            task_class = input("Provide the class:")
+            task_name = input("Provide the name:")
         task_config_path = (
             PROJECT_ROOT_DIR
             / "data"

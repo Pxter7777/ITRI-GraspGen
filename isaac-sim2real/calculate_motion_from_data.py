@@ -53,6 +53,12 @@ def parse_args():
         type=float,
         default=None,
     )
+    parser.add_argument(
+        "--automate",
+        action="store_true",
+        help="Automatically iterate over all task configs, like grasp_data_gen.py",
+        default=False,
+    )
     return parser.parse_args()
 
 
