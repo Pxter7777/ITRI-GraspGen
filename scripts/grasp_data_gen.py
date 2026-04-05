@@ -264,11 +264,11 @@ class ExperimentWorkflowController:
         grasps, grasp_conf = GraspGenSampler.run_inference(
             xyz,
             self.grasp_generator.grasp_sampler,
-            grasp_threshold=0.0,
+            grasp_threshold=0.7,
             num_grasps=200,
             # topk_num_grasps=5,
-            min_grasps=80,
-            max_tries=20,
+            min_grasps=200,
+            max_tries=100,
         )
         if len(grasps) == 0:
             logger.warning(f"No grasps found for {json_path.name}")
@@ -278,6 +278,11 @@ class ExperimentWorkflowController:
         grasps = grasps.cpu().numpy()
         grasps[:, 3, 3] = 1
         grasps = flip_upside_down_grasps(grasps)
+
+        # Sort by discriminator score low→high, keep at most 200
+        sort_idx = np.argsort(grasp_conf)
+        grasps = grasps[sort_idx][:200]
+        grasp_conf = grasp_conf[sort_idx][:200]
         logger.info(
             f"Generated {len(grasps)} grasps (scores {grasp_conf.min():.3f}–{grasp_conf.max():.3f})"
         )
