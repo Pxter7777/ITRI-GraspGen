@@ -272,7 +272,13 @@ class MotionPlanController:
         self.task_queue: list[tuple[str, str]] = []
         if args.automate:
             for dir_name in ["in_basket", "on_shelf", "on_table"]:
-                task_config_dir = PROJECT_ROOT_DIR / "data" / "order_experiment_data" / dir_name / "task_config"
+                task_config_dir = (
+                    PROJECT_ROOT_DIR
+                    / "data"
+                    / "order_experiment_data"
+                    / dir_name
+                    / "task_config"
+                )
                 if task_config_dir.exists():
                     for json_path in sorted(task_config_dir.glob("*.json")):
                         self.task_queue.append((dir_name, json_path.stem))
