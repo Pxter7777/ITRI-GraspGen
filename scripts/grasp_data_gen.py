@@ -337,6 +337,8 @@ class ExperimentWorkflowController:
                     distance=distance_meter(grasp),
                     horizontal_angle_diff=angle_diff_rad(grasp),
                     up_vector=up_vector(grasp),
+                    discriminator_score=float(grasp_conf[i]),
+                    motion_plan_time=-1.0,
                 )
                 for i, grasp in enumerate(grasps)
             ],

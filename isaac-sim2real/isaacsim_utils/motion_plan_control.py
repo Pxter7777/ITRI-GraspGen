@@ -553,6 +553,7 @@ class MotionPlanController:
         ### curobo loop
         for grasp in grasp_pack.grasps:
             processed_moves: list[SingleRobotMove] = []
+            plan_start_time = time.time()
             ### First curobo: reach to pre-grasp from
             last_joint_states = self.default_config
             curobo_cu_js = still_joint_states(
@@ -570,6 +571,7 @@ class MotionPlanController:
             if not succ:
                 logger.warning("This plan failed.")
                 grasp.curobo_success = "Fail"
+                grasp.motion_plan_time = time.time() - plan_start_time
                 continue
 
             new_cmd_plan = result.get_interpolated_plan()
@@ -599,6 +601,7 @@ class MotionPlanController:
             if not succ:
                 logger.warning("This plan failed.")
                 grasp.curobo_success = "Fail"
+                grasp.motion_plan_time = time.time() - plan_start_time
                 continue
 
             new_cmd_plan = result.get_interpolated_plan()
@@ -613,6 +616,7 @@ class MotionPlanController:
             # success
             logger.warning("This plan success.")
             grasp.curobo_success = "Success"
+            grasp.motion_plan_time = time.time() - plan_start_time
         ### Write grasp_pack
         result_dir = (
             PROJECT_ROOT_DIR

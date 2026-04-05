@@ -25,6 +25,8 @@ class GraspData(BaseModel):
     distance: float
     horizontal_angle_diff: float
     up_vector: float
+    discriminator_score: float
+    motion_plan_time: float
 
 
 class GraspPack(BaseModel):
