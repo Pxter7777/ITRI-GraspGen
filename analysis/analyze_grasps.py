@@ -20,8 +20,9 @@ OUTPUT_DIR = Path(__file__).resolve().parent / "figures"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
 SCENARIOS = ["in_basket", "on_shelf", "on_table"]
-FEATURE_NAMES = ["distance", "horizontal_angle_diff", "up_vector", "collision_free"]
+FEATURE_NAMES = ["discriminator_score", "distance", "horizontal_angle_diff", "up_vector", "collision_free"]
 FEATURE_LABELS = {
+    "discriminator_score": "Discriminator Score",
     "distance": "Distance from Base (m)",
     "horizontal_angle_diff": "Approach Angle Diff (rad)",
     "up_vector": "Approach Vector Z",
@@ -41,6 +42,8 @@ def load_all_data():
                     {
                         "scenario": scenario,
                         "file": i,
+                        "discriminator_score": grasp["discriminator_score"],
+                        "motion_plan_time": grasp["motion_plan_time"],
                         "distance": grasp["distance"],
                         "horizontal_angle_diff": grasp["horizontal_angle_diff"],
                         "up_vector": grasp["up_vector"],
@@ -195,7 +198,8 @@ def topk_table(
 
     K_VALUES = [1, 3, 5, 10, 20]
     results = {k: {"random": [], "learned": []} for k in K_VALUES}
-    learned_attempts, random_attempts = [], []
+    learned_attempts, discriminator_attempts = [], []
+    learned_times, discriminator_times = [], []
 
     np.random.seed(42)
     # Leave-one-scene-out: train on 14 scenes, evaluate on held-out scene
@@ -224,7 +228,7 @@ def topk_table(
         grasps_learned = [
             g for _, g in sorted(zip(scores, grasps, strict=True), key=lambda x: -x[0])
         ]
-        grasps_random = list(np.random.permutation(grasps))
+        grasps_random = sorted(grasps, key=lambda g: -g["discriminator_score"])
 
         for k in K_VALUES:
             results[k]["learned"].append(
@@ -240,23 +244,37 @@ def topk_table(
                     return i + 1
             return len(gs) + 1
 
+        def time_to_first_success(gs):
+            total = 0.0
+            for g in gs:
+                total += g["motion_plan_time"]
+                if g["success"]:
+                    return total
+            return total
+
         learned_attempts.append(first_success(grasps_learned))
-        random_attempts.append(first_success(grasps_random))
+        discriminator_attempts.append(first_success(grasps_random))
+        learned_times.append(time_to_first_success(grasps_learned))
+        discriminator_times.append(time_to_first_success(grasps_random))
 
     print("\n--- Top-K Success Rate Table ---")
-    print(f"{'k':<6} {'Random (baseline)':>20} {'Learned re-ranking':>20}")
-    print("-" * 48)
+    print(f"{'k':<6} {'Discriminator (baseline)':>25} {'Learned re-ranking':>20}")
+    print("-" * 53)
     for k in K_VALUES:
         r_rate = 100 * np.mean(results[k]["random"])
         l_rate = 100 * np.mean(results[k]["learned"])
-        print(f"{k:<6} {r_rate:>19.1f}% {l_rate:>19.1f}%")
+        print(f"{k:<6} {r_rate:>24.1f}% {l_rate:>19.1f}%")
 
     print("\nMean attempts to first success:")
-    print(f"  Random baseline : {np.mean(random_attempts):.1f}")
-    print(f"  Learned re-rank : {np.mean(learned_attempts):.1f}")
+    print(f"  Discriminator baseline : {np.mean(discriminator_attempts):.1f}")
+    print(f"  Learned re-rank        : {np.mean(learned_attempts):.1f}")
+
+    print("\nMean time to first success (s):")
+    print(f"  Discriminator baseline : {np.mean(discriminator_times):.2f}")
+    print(f"  Learned re-rank        : {np.mean(learned_times):.2f}")
 
     # Plot
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
     fig.suptitle(
         "Grasp Selection: Random Baseline vs Learned Re-ranking",
         fontsize=13,
@@ -272,7 +290,7 @@ def topk_table(
         x - width / 2,
         r_rates,
         width,
-        label="Discriminator Baseline",
+        label="Discriminator Score Order",
         color="#2196F3",
         alpha=0.8,
     )
@@ -300,9 +318,9 @@ def topk_table(
         )
 
     ax2 = axes[1]
-    means = [np.mean(random_attempts), np.mean(learned_attempts)]
+    means = [np.mean(discriminator_attempts), np.mean(learned_attempts)]
     bars = ax2.bar(
-        ["Discriminator\nBaseline", "Learned\nRe-ranking"],
+        ["Discriminator\nScore Order", "Learned\nRe-ranking"],
         means,
         color=["#2196F3", "#FF9800"],
         alpha=0.8,
@@ -319,6 +337,26 @@ def topk_table(
             fontweight="bold",
         )
 
+    ax3 = axes[2]
+    time_means = [np.mean(discriminator_times), np.mean(learned_times)]
+    bars3 = ax3.bar(
+        ["Discriminator\nScore Order", "Learned\nRe-ranking"],
+        time_means,
+        color=["#2196F3", "#FF9800"],
+        alpha=0.8,
+        edgecolor="black",
+    )
+    ax3.set_ylabel("Mean Time to First Success (s)")
+    ax3.set_title("Efficiency: Time to First Success")
+    for bar, v in zip(bars3, time_means, strict=True):
+        ax3.text(
+            bar.get_x() + bar.get_width() / 2,
+            v + 0.1,
+            f"{v:.2f}s",
+            ha="center",
+            fontweight="bold",
+        )
+
     plt.tight_layout()
     fig.savefig(OUTPUT_DIR / "topk_comparison.png", dpi=150)
     print(f"Saved: {OUTPUT_DIR / 'topk_comparison.png'}")
@@ -331,6 +369,13 @@ def main():
     print(
         f"Loaded {len(records)} grasps, {sum(r['success'] for r in records)} successes ({100 * sum(r['success'] for r in records) / len(records):.1f}%)"
     )
+
+    print("\n--- Point-biserial correlation with curobo_success ---")
+    labels = np.array([r["success"] for r in records])
+    for feat in FEATURE_NAMES:
+        vals = np.array([r[feat] for r in records])
+        corr, pval = stats.pointbiserialr(labels, vals)
+        print(f"  {FEATURE_LABELS[feat]:35s}: r={corr:+.3f}  p={pval:.4f}")
 
     print("\nPlotting feature distributions...")
     plot_feature_distributions(records)
