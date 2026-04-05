@@ -20,7 +20,13 @@ OUTPUT_DIR = Path(__file__).resolve().parent / "figures"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
 SCENARIOS = ["in_basket", "on_shelf", "on_table"]
-FEATURE_NAMES = ["discriminator_score", "distance", "horizontal_angle_diff", "up_vector", "collision_free"]
+FEATURE_NAMES = [
+    "discriminator_score",
+    "distance",
+    "horizontal_angle_diff",
+    "up_vector",
+    "collision_free",
+]
 FEATURE_LABELS = {
     "discriminator_score": "Discriminator Score",
     "distance": "Distance from Base (m)",
