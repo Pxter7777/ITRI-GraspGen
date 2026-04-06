@@ -890,6 +890,14 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/5a/3f/efeb7c6801c46e11bd666a5180f0d615f74f72264212f74f39586c6fda9d/glfw-2.10.0-py2.py27.py3.py30.py31.py32.py33.py34.py35.py36.py37.py38.py39.py310.py311.py312.py313.py314-none-manylinux_2_28_x86_64.whl", hash = "sha256:ce6724bb7cb3d0543dcba17206dce909f94176e68220b8eafee72e9f92bcf542", size = 243522, upload-time = "2026-01-28T05:58:03.517Z" },
     { url = "https://files.pythonhosted.org/packages/cf/b9/b04c3aa0aad2870cfe799f32f8b59789c98e1816bbce9e83f4823c5b840b/glfw-2.10.0-py2.py27.py3.py30.py31.py32.py33.py34.py35.py36.py37.py38.py39.py310.py311.py312.py313.py314-none-win32.whl", hash = "sha256:fca724a21a372731edb290841edd28a9fb1ee490f833392752844ac807c0086a", size = 552682, upload-time = "2026-01-28T05:58:05.649Z" },
     { url = "https://files.pythonhosted.org/packages/bd/e1/6d6816b296a529ac9b897ad228b1e084eb1f92319e96371880eebdc874a6/glfw-2.10.0-py2.py27.py3.py30.py31.py32.py33.py34.py35.py36.py37.py38.py39.py310.py311.py312.py313.py314-none-win_amd64.whl", hash = "sha256:823c0bd7770977d4b10e0ed0aef2f3682276b7c88b8b65cfc540afce5951392f", size = 559464, upload-time = "2026-01-28T05:58:07.261Z" },
+    { url = "https://files.pythonhosted.org/packages/8c/a8/d4dab8a58fc2e6981fc7a58c4e56ba9d777fb24931cec6a22152edbb3540/glfw-2.10.0-py2.py3-none-macosx_10_6_intel.whl", hash = "sha256:a0d1f29f206219cc291edfb6cace663a86da2470632551c998e3db82d48ea177", size = 105288, upload-time = "2026-03-10T17:21:19.929Z" },
+    { url = "https://files.pythonhosted.org/packages/14/61/68d35e001872a7705112418da236fa2418d4f2e5419f8b2837f9b81bb3da/glfw-2.10.0-py2.py3-none-macosx_11_0_arm64.whl", hash = "sha256:d28d6f3ef217e64e35dc6fd0a7acb4cec9bfe7cd14dd9b35a7228a87002de154", size = 102139, upload-time = "2026-03-10T17:21:21.645Z" },
+    { url = "https://files.pythonhosted.org/packages/4e/e1/ca5984081aaae07c9d371cb11dc4e4ff603510678ed9b73e58b6c351fe63/glfw-2.10.0-py2.py3-none-manylinux2014_aarch64.whl", hash = "sha256:f968b522bb6a0e04aaf4dcac30a476d7229308bb2bac406a60587debb5a61e29", size = 229998, upload-time = "2026-03-10T17:21:23.549Z" },
+    { url = "https://files.pythonhosted.org/packages/fa/c4/82ac75fdcfba2896da7a573c0fc7f8ceb8f77ead6866d500d06c32f1c464/glfw-2.10.0-py2.py3-none-manylinux2014_x86_64.whl", hash = "sha256:68cf3752bdadb6f4bc0a876247c28c88c7251ac39f8af076ed938fdfd71e72dd", size = 241944, upload-time = "2026-03-10T17:21:26.102Z" },
+    { url = "https://files.pythonhosted.org/packages/e3/96/9f691823cca5eb6a08f346bd0ff03b78032db9370b509a1e9c8976fb20a5/glfw-2.10.0-py2.py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:44d98de5dbf8f727e0cb29f9b29d29528ea7570f2e6f42f8430a69df05f12b48", size = 231009, upload-time = "2026-03-10T17:21:28.481Z" },
+    { url = "https://files.pythonhosted.org/packages/3f/93/977b9e679e356871d428ae7a1139ec767dd5177bed58a6344b4d2199e00f/glfw-2.10.0-py2.py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:cca5158d62189e08792b1ae54f92307a282921a0e7783315b467e21b0a381c88", size = 243480, upload-time = "2026-03-10T17:21:30.538Z" },
+    { url = "https://files.pythonhosted.org/packages/f9/bd/cea9569c8f2188b0a104472951420434a3e1f5cf26f5836ef9d7227a1a30/glfw-2.10.0-py2.py3-none-win32.whl", hash = "sha256:5e024509989740e8e7b86cc4aab508195495f79879072b0e1f68bd036a2916ad", size = 552641, upload-time = "2026-03-10T17:21:32.653Z" },
+    { url = "https://files.pythonhosted.org/packages/cc/9b/4366ad3e1c0688146c70aa6143584d6a8d88583b9390f106250e25a3d5cd/glfw-2.10.0-py2.py3-none-win_amd64.whl", hash = "sha256:7f787ee8645781f10e8800438ce4357ab38c573ffb191aba380c1e72eba6311c", size = 559423, upload-time = "2026-03-10T17:21:34.766Z" },
 ]
 
 [[package]]
@@ -1344,6 +1352,7 @@ dependencies = [
     { name = "transformations" },
     { name = "trimesh" },
     { name = "ultralytics" },
+    { name = "xgboost" },
 ]
 
 [package.optional-dependencies]
@@ -1407,6 +1416,7 @@ requires-dist = [
     { name = "transformations" },
     { name = "trimesh" },
     { name = "ultralytics" },
+    { name = "xgboost", specifier = ">=3.2.0" },
 ]
 provides-extras = ["localextras"]
 
@@ -4096,7 +4106,7 @@ dependencies = [
     { name = "torch", version = "2.5.1+cu121", source = { registry = "https://download.pytorch.org/whl/cu121" }, marker = "sys_platform == 'linux'" },
 ]
 wheels = [
-    { url = "https://download.pytorch.org/whl/cu121/torchaudio-2.5.1%2Bcu121-cp311-cp311-linux_x86_64.whl", hash = "sha256:9e6f03e6410cb3557978dea25fb30ce3e7c165e8377fcc8e0e1ddc700503d38b" },
+    { url = "https://download-r2.pytorch.org/whl/cu121/torchaudio-2.5.1%2Bcu121-cp311-cp311-linux_x86_64.whl", hash = "sha256:9e6f03e6410cb3557978dea25fb30ce3e7c165e8377fcc8e0e1ddc700503d38b" },
 ]
 
 [[package]]
@@ -4132,7 +4142,7 @@ dependencies = [
     { name = "torch", version = "2.5.1+cu121", source = { registry = "https://download.pytorch.org/whl/cu121" }, marker = "sys_platform == 'linux'" },
 ]
 wheels = [
-    { url = "https://download.pytorch.org/whl/cu121/torchvision-0.20.1%2Bcu121-cp311-cp311-linux_x86_64.whl", hash = "sha256:237609a3551c2b68f32bcd3f3875dca93836010d83922ef2f3bd3a7540caee58" },
+    { url = "https://download-r2.pytorch.org/whl/cu121/torchvision-0.20.1%2Bcu121-cp311-cp311-linux_x86_64.whl", hash = "sha256:237609a3551c2b68f32bcd3f3875dca93836010d83922ef2f3bd3a7540caee58" },
 ]
 
 [[package]]
@@ -4546,6 +4556,24 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/f9/34/ce1812f2396ee187f9744e415050f44112089911de3ef8b1bff7b3e00e8b/xatlas-0.0.11-pp311-pypy311_pp73-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:430a0553f539f4d2ea0180cbfa7888b596393ae9dd1ad4b046df6895b87f4703", size = 268799, upload-time = "2025-07-04T16:46:26.831Z" },
     { url = "https://files.pythonhosted.org/packages/73/3f/34beca37b4b66fa11f7932ef73f147a43c413b704ccf029d638eccb23ac2/xatlas-0.0.11-pp311-pypy311_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:54569a3aba9c1081ca23209391feecd1639228aad08c384c2995432dd57a3919", size = 263463, upload-time = "2025-07-04T16:46:28.093Z" },
     { url = "https://files.pythonhosted.org/packages/5b/95/6e7999da339ea492ad562b6b46a2f58e6d1c8e3d87f6f0acb67fb426ebc0/xatlas-0.0.11-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:3e4b3fd1b22d44d669c997c2196d608060220fcc631fa258fb8530c1c34563e3", size = 206464, upload-time = "2025-07-04T16:46:29.476Z" },
+]
+
+[[package]]
+name = "xgboost"
+version = "3.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "nvidia-nccl-cu12", marker = "sys_platform == 'linux'" },
+    { name = "scipy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/91/bb/1eb0242409d22db725d7a88088e6cfd6556829fb0736f9ff69aa9f1e9455/xgboost-3.2.0.tar.gz", hash = "sha256:99b0e9a2a64896cdaf509c5e46372d336c692406646d20f2af505003c0c5d70d", size = 1263936, upload-time = "2026-02-10T11:03:05.542Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2d/49/6e4cdd877c24adf56cb3586bc96d93d4dcd780b5ea1efb32e1ee0de08bae/xgboost-3.2.0-py3-none-macosx_10_15_x86_64.whl", hash = "sha256:2f661966d3e322536d9c448090a870fcba1e32ee5760c10b7c46bac7a342079a", size = 2507014, upload-time = "2026-02-10T10:50:57.44Z" },
+    { url = "https://files.pythonhosted.org/packages/93/f1/c09ef1add609453aa3ba5bafcd0d1c1a805c1263c0b60138ec968f8ec296/xgboost-3.2.0-py3-none-macosx_12_0_arm64.whl", hash = "sha256:eabbd40d474b8dbf6cb3536325f9150b9e6f0db32d18de9914fb3227d0bef5b7", size = 2328527, upload-time = "2026-02-10T10:51:17.502Z" },
+    { url = "https://files.pythonhosted.org/packages/96/9f/d9914a7b8df842832850b1a18e5f47aaa071c217cdd1da2ae9deb291018b/xgboost-3.2.0-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:852eabc6d3b3702a59bf78dbfdcd1cb9c4d3a3b6e5ed1f8781d8b9512354fdd2", size = 131100954, upload-time = "2026-02-10T11:02:42.704Z" },
+    { url = "https://files.pythonhosted.org/packages/79/98/679de17c2caa4fd3b0b4386ecf7377301702cb0afb22930a07c142fcb1d8/xgboost-3.2.0-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:99b4a6bbcb47212fec5cf5fbe12347215f073c08967431b0122cfbd1ee70312c", size = 131748579, upload-time = "2026-02-10T10:54:40.424Z" },
+    { url = "https://files.pythonhosted.org/packages/1f/3d/1661dd114a914a67e3f7ab66fa1382e7599c2a8c340f314ad30a3e2b4d08/xgboost-3.2.0-py3-none-win_amd64.whl", hash = "sha256:0d169736fd836fc13646c7ab787167b3a8110351c2c6bc770c755ee1618f0442", size = 101681668, upload-time = "2026-02-10T10:59:31.202Z" },
 ]
 
 [[package]]

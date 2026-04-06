@@ -14,6 +14,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.utils.class_weight import compute_class_weight
 from scipy import stats
+from xgboost import XGBClassifier
 
 DATA_ROOT = Path(__file__).resolve().parents[1] / "data" / "order_experiment_data"
 OUTPUT_DIR = Path(__file__).resolve().parent / "figures"
@@ -161,7 +162,7 @@ def plot_success_rate_by_bin(records):
 
 
 def train_and_evaluate(records):
-    """Train logistic regression, evaluate with cross-validation."""
+    """Train logistic regression and XGBoost, evaluate with cross-validation."""
     X = np.array([[r[f] for f in FEATURE_NAMES] for r in records])
     y = np.array([r["success"] for r in records])
 
@@ -170,26 +171,37 @@ def train_and_evaluate(records):
 
     class_weights = compute_class_weight("balanced", classes=np.array([0, 1]), y=y)
     cw_dict = {0: class_weights[0], 1: class_weights[1]}
+    scale_pos_weight = class_weights[1] / class_weights[0]
 
-    model = LogisticRegression(class_weight=cw_dict, max_iter=1000, random_state=42)
+    lr = LogisticRegression(class_weight=cw_dict, max_iter=1000, random_state=42)
+    xgb = XGBClassifier(
+        n_estimators=100, max_depth=3, scale_pos_weight=scale_pos_weight,
+        random_state=42, eval_metric="logloss", verbosity=0,
+    )
 
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    auc_scores = cross_val_score(model, X_scaled, y, cv=cv, scoring="roc_auc")
+
+    lr_auc = cross_val_score(lr, X_scaled, y, cv=cv, scoring="roc_auc")
+    xgb_auc = cross_val_score(xgb, X, y, cv=cv, scoring="roc_auc")
 
     print("\nLogistic Regression (5-fold CV)")
-    print(f"  ROC-AUC: {auc_scores.mean():.3f} ± {auc_scores.std():.3f}")
+    print(f"  ROC-AUC: {lr_auc.mean():.3f} ± {lr_auc.std():.3f}")
+    lr.fit(X_scaled, y)
+    print("  Feature coefficients:")
+    for name, coef in zip(FEATURE_NAMES, lr.coef_[0], strict=True):
+        print(f"    {FEATURE_LABELS[name]:35s}: {coef:+.3f}")
 
-    model.fit(X_scaled, y)
-    print("\nFeature coefficients:")
-    for name, coef in zip(FEATURE_NAMES, model.coef_[0], strict=True):
-        print(f"  {FEATURE_LABELS[name]:35s}: {coef:+.3f}")
+    print("\nXGBoost (5-fold CV)")
+    print(f"  ROC-AUC: {xgb_auc.mean():.3f} ± {xgb_auc.std():.3f}")
+    xgb.fit(X, y)
+    print("  Feature importances:")
+    for name, imp in zip(FEATURE_NAMES, xgb.feature_importances_, strict=True):
+        print(f"    {FEATURE_LABELS[name]:35s}: {imp:.3f}")
 
-    return model, scaler, auc_scores
+    return lr, scaler, xgb
 
 
-def topk_table(
-    records, model, scaler
-):  # model/scaler unused — kept for signature compatibility
+def topk_table(records, lr, scaler, xgb):
     """
     For each scene, rank grasps by model score vs random.
     Report: % of scenes with at least one success in top-k, for k = 1,3,5,10,20.
@@ -203,11 +215,24 @@ def topk_table(
     scene_keys = list(scenes.keys())
 
     K_VALUES = [1, 3, 5, 10, 20]
-    results = {k: {"random": [], "learned": []} for k in K_VALUES}
-    learned_attempts, discriminator_attempts = [], []
-    learned_times, discriminator_times = [], []
+    results = {k: {"disc": [], "lr": [], "xgb": []} for k in K_VALUES}
+    disc_attempts, lr_attempts, xgb_attempts = [], [], []
+    disc_times, lr_times, xgb_times = [], [], []
 
-    np.random.seed(42)
+    def first_success(gs):
+        for i, g in enumerate(gs):
+            if g["success"]:
+                return i + 1
+        return len(gs) + 1
+
+    def time_to_first_success(gs):
+        total = 0.0
+        for g in gs:
+            total += g["motion_plan_time"]
+            if g["success"]:
+                return total
+        return total
+
     # Leave-one-scene-out: train on 14 scenes, evaluate on held-out scene
     for held_out_key in scene_keys:
         train_records = [
@@ -217,140 +242,108 @@ def topk_table(
 
         X_train = np.array([[r[f] for f in FEATURE_NAMES] for r in train_records])
         y_train = np.array([r["success"] for r in train_records])
+        X_test = np.array([[r[f] for f in FEATURE_NAMES] for r in test_grasps])
+
+        # Logistic regression (needs scaling)
         scaler_cv = StandardScaler().fit(X_train)
         X_train_s = scaler_cv.transform(X_train)
-
+        X_test_s = scaler_cv.transform(X_test)
         cw = compute_class_weight("balanced", classes=np.array([0, 1]), y=y_train)
-        clf = LogisticRegression(
+        clf_lr = LogisticRegression(
             class_weight={0: cw[0], 1: cw[1]}, max_iter=1000, random_state=42
         )
-        clf.fit(X_train_s, y_train)
+        clf_lr.fit(X_train_s, y_train)
+        lr_scores = clf_lr.predict_proba(X_test_s)[:, 1]
 
-        X_test = np.array([[r[f] for f in FEATURE_NAMES] for r in test_grasps])
-        X_test_s = scaler_cv.transform(X_test)
-        scores = clf.predict_proba(X_test_s)[:, 1]
+        # XGBoost (no scaling needed)
+        spw = cw[1] / cw[0]
+        clf_xgb = XGBClassifier(
+            n_estimators=100, max_depth=3, scale_pos_weight=spw,
+            random_state=42, eval_metric="logloss", verbosity=0,
+        )
+        clf_xgb.fit(X_train, y_train)
+        xgb_scores = clf_xgb.predict_proba(X_test)[:, 1]
 
         grasps = test_grasps
-        grasps_learned = [
-            g for _, g in sorted(zip(scores, grasps, strict=True), key=lambda x: -x[0])
-        ]
-        grasps_random = sorted(grasps, key=lambda g: -g["discriminator_score"])
+        grasps_disc = sorted(grasps, key=lambda g: -g["discriminator_score"])
+        grasps_lr = [g for _, g in sorted(zip(lr_scores, grasps, strict=True), key=lambda x: -x[0])]
+        grasps_xgb = [g for _, g in sorted(zip(xgb_scores, grasps, strict=True), key=lambda x: -x[0])]
 
         for k in K_VALUES:
-            results[k]["learned"].append(
-                int(any(g["success"] for g in grasps_learned[:k]))
-            )
-            results[k]["random"].append(
-                int(any(g["success"] for g in grasps_random[:k]))
-            )
+            results[k]["disc"].append(int(any(g["success"] for g in grasps_disc[:k])))
+            results[k]["lr"].append(int(any(g["success"] for g in grasps_lr[:k])))
+            results[k]["xgb"].append(int(any(g["success"] for g in grasps_xgb[:k])))
 
-        def first_success(gs):
-            for i, g in enumerate(gs):
-                if g["success"]:
-                    return i + 1
-            return len(gs) + 1
+        disc_attempts.append(first_success(grasps_disc))
+        lr_attempts.append(first_success(grasps_lr))
+        xgb_attempts.append(first_success(grasps_xgb))
+        disc_times.append(time_to_first_success(grasps_disc))
+        lr_times.append(time_to_first_success(grasps_lr))
+        xgb_times.append(time_to_first_success(grasps_xgb))
 
-        def time_to_first_success(gs):
-            total = 0.0
-            for g in gs:
-                total += g["motion_plan_time"]
-                if g["success"]:
-                    return total
-            return total
-
-        learned_attempts.append(first_success(grasps_learned))
-        discriminator_attempts.append(first_success(grasps_random))
-        learned_times.append(time_to_first_success(grasps_learned))
-        discriminator_times.append(time_to_first_success(grasps_random))
+    COLORS = {"disc": "#2196F3", "lr": "#FF9800", "xgb": "#4CAF50"}
+    LABELS = {"disc": "Discriminator", "lr": "Logistic Reg.", "xgb": "XGBoost"}
 
     print("\n--- Top-K Success Rate Table ---")
-    print(f"{'k':<6} {'Discriminator (baseline)':>25} {'Learned re-ranking':>20}")
-    print("-" * 53)
+    print(f"{'k':<6} {'Discriminator':>15} {'Logistic Reg.':>15} {'XGBoost':>10}")
+    print("-" * 48)
     for k in K_VALUES:
-        r_rate = 100 * np.mean(results[k]["random"])
-        l_rate = 100 * np.mean(results[k]["learned"])
-        print(f"{k:<6} {r_rate:>24.1f}% {l_rate:>19.1f}%")
+        d = 100 * np.mean(results[k]["disc"])
+        l = 100 * np.mean(results[k]["lr"])
+        x = 100 * np.mean(results[k]["xgb"])
+        print(f"{k:<6} {d:>14.1f}% {l:>14.1f}% {x:>9.1f}%")
 
     print("\nMean attempts to first success:")
-    print(f"  Discriminator baseline : {np.mean(discriminator_attempts):.1f}")
-    print(f"  Learned re-rank        : {np.mean(learned_attempts):.1f}")
+    print(f"  Discriminator : {np.mean(disc_attempts):.1f}")
+    print(f"  Logistic Reg. : {np.mean(lr_attempts):.1f}")
+    print(f"  XGBoost       : {np.mean(xgb_attempts):.1f}")
 
     print("\nMean time to first success (s):")
-    print(f"  Discriminator baseline : {np.mean(discriminator_times):.2f}")
-    print(f"  Learned re-rank        : {np.mean(learned_times):.2f}")
+    print(f"  Discriminator : {np.mean(disc_times):.2f}")
+    print(f"  Logistic Reg. : {np.mean(lr_times):.2f}")
+    print(f"  XGBoost       : {np.mean(xgb_times):.2f}")
 
     # Plot
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    fig, axes = plt.subplots(1, 3, figsize=(20, 5))
     fig.suptitle(
-        "Grasp Selection: Random Baseline vs Learned Re-ranking",
+        "Grasp Selection: Discriminator vs Logistic Regression vs XGBoost",
         fontsize=13,
         fontweight="bold",
     )
 
+    # Subplot 1: Top-K success rate
     ax = axes[0]
-    r_rates = [100 * np.mean(results[k]["random"]) for k in K_VALUES]
-    l_rates = [100 * np.mean(results[k]["learned"]) for k in K_VALUES]
     x = np.arange(len(K_VALUES))
-    width = 0.35
-    ax.bar(
-        x - width / 2,
-        r_rates,
-        width,
-        label="Discriminator Score Order",
-        color="#2196F3",
-        alpha=0.8,
-    )
-    ax.bar(
-        x + width / 2,
-        l_rates,
-        width,
-        label="Learned Re-ranking",
-        color="#FF9800",
-        alpha=0.8,
-    )
+    width = 0.25
+    for i, key in enumerate(["disc", "lr", "xgb"]):
+        rates = [100 * np.mean(results[k][key]) for k in K_VALUES]
+        bars = ax.bar(x + (i - 1) * width, rates, width, label=LABELS[key], color=COLORS[key], alpha=0.8)
+        for xi, v in enumerate(rates):
+            ax.text(xi + (i - 1) * width, v + 0.5, f"{v:.0f}%", ha="center", fontsize=6)
     ax.set_xticks(x)
     ax.set_xticklabels([f"Top-{k}" for k in K_VALUES])
     ax.set_ylabel("% Scenes with ≥1 Success")
     ax.set_title("Success Rate in Top-K Attempts")
     ax.legend()
-    for xi, (r, learned_rate) in enumerate(zip(r_rates, l_rates, strict=True)):
-        ax.text(xi - width / 2, r + 0.5, f"{r:.0f}%", ha="center", fontsize=7)
-        ax.text(
-            xi + width / 2,
-            learned_rate + 0.5,
-            f"{learned_rate:.0f}%",
-            ha="center",
-            fontsize=7,
-        )
 
+    # Subplot 2: Mean attempts to first success
     ax2 = axes[1]
-    means = [np.mean(discriminator_attempts), np.mean(learned_attempts)]
-    bars = ax2.bar(
-        ["Discriminator\nScore Order", "Learned\nRe-ranking"],
-        means,
-        color=["#2196F3", "#FF9800"],
-        alpha=0.8,
-        edgecolor="black",
+    attempt_means = [np.mean(disc_attempts), np.mean(lr_attempts), np.mean(xgb_attempts)]
+    bars2 = ax2.bar(
+        list(LABELS.values()), attempt_means,
+        color=list(COLORS.values()), alpha=0.8, edgecolor="black",
     )
     ax2.set_ylabel("Mean Attempts to First Success")
     ax2.set_title("Efficiency: Attempts to First Success")
-    for bar, v in zip(bars, means, strict=True):
-        ax2.text(
-            bar.get_x() + bar.get_width() / 2,
-            v + 0.3,
-            f"{v:.1f}",
-            ha="center",
-            fontweight="bold",
-        )
+    for bar, v in zip(bars2, attempt_means, strict=True):
+        ax2.text(bar.get_x() + bar.get_width() / 2, v + 0.3, f"{v:.1f}", ha="center", fontweight="bold")
 
+    # Subplot 3: Mean time to first success
     ax3 = axes[2]
-    time_means = [np.mean(discriminator_times), np.mean(learned_times)]
+    time_means = [np.mean(disc_times), np.mean(lr_times), np.mean(xgb_times)]
     bars3 = ax3.bar(
-        ["Discriminator\nScore Order", "Learned\nRe-ranking"],
-        time_means,
-        color=["#2196F3", "#FF9800"],
-        alpha=0.8,
-        edgecolor="black",
+        list(LABELS.values()), time_means,
+        color=list(COLORS.values()), alpha=0.8, edgecolor="black",
     )
     ax3.set_ylabel("Mean Time to First Success (s)")
     ax3.set_title("Efficiency: Time to First Success")
@@ -389,11 +382,11 @@ def main():
     print("\nPlotting success rate by bin...")
     plot_success_rate_by_bin(records)
 
-    print("\nTraining model...")
-    model, scaler, auc_scores = train_and_evaluate(records)
+    print("\nTraining models...")
+    lr, scaler, xgb = train_and_evaluate(records)
 
     print("\nGenerating top-k table...")
-    topk_table(records, model, scaler)
+    topk_table(records, lr, scaler, xgb)
 
     print("\nDone. Figures saved to:", OUTPUT_DIR)
 

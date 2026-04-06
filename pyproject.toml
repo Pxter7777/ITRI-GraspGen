@@ -108,6 +108,7 @@ dependencies = [
     "pyside6>=6.10.1",
     "pyserial>=3.5",
     "spconv-cu121>=2.3.8",
+    "xgboost>=3.2.0",
 ]
 
 [tool.uv]
