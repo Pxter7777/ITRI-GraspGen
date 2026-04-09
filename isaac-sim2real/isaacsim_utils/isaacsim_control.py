@@ -361,7 +361,6 @@ class IsaacSimController:
                         self.last_joint_states = graspgen_move.sequence_joint_rad_goals[
                             -1
                         ]
-                        print("no curobo, directly set last_joint_states to")
                         continue
                     joints_goal = JointState(
                         position=self.tensor_args.to_device(
