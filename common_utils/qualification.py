@@ -25,7 +25,7 @@ def cup_qualifier(grasp: np.array, min_point: np.ndarray, max_point: np.ndarray)
     angle_diff = np.abs(angle_front - angle_position)
     if angle_diff > np.pi:
         angle_diff = 2 * np.pi - angle_diff
-    if angle_diff > np.deg2rad(90):
+    if angle_diff > np.deg2rad(30):
         return False
 
     if position[2] < 0.05:  # for safety
