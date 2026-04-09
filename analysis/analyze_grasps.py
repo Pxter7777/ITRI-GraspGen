@@ -184,6 +184,11 @@ def train_and_evaluate(records):
     lr_auc = cross_val_score(lr, X_scaled, y, cv=cv, scoring="roc_auc")
     xgb_auc = cross_val_score(xgb, X, y, cv=cv, scoring="roc_auc")
 
+    from sklearn.metrics import roc_auc_score
+    disc_auc = roc_auc_score(y, X[:, FEATURE_NAMES.index("discriminator_score")])
+    print(f"\nDiscriminator Score (no model)")
+    print(f"  ROC-AUC: {disc_auc:.3f}")
+
     print("\nLogistic Regression (5-fold CV)")
     print(f"  ROC-AUC: {lr_auc.mean():.3f} ± {lr_auc.std():.3f}")
     lr.fit(X_scaled, y)
