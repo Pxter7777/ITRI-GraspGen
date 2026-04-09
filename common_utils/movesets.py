@@ -303,33 +303,20 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
         q_z_rotation, q_base_tilt
     ).tolist()
     if angle_diff < 0:  # Clockwise
-        pour_angle = np.deg2rad(45)
+        pour_angle = np.deg2rad(160)
     else:  # Counter-clockwise
-        pour_angle = -np.deg2rad(45)
+        pour_angle = -np.deg2rad(160)
     # apply pour_angle on ready_pour_rotation using vector[mass_center[0], mass_center[1], 0] as axis:
-    pour_axis = np.array([ready_pour_position[0], ready_pour_position[1], 0])
-    axis_norm = np.linalg.norm(pour_axis)
-    if axis_norm > 1e-6:  # Avoid division by zero
-        pour_axis /= axis_norm
-        q_pour = trimesh.transformations.quaternion_about_axis(pour_angle, pour_axis)
-        pour_rotation1 = trimesh.transformations.quaternion_multiply(
-            q_pour, np.array(ready_pour_rotation)
-        ).tolist()
-        pour_rotation2 = trimesh.transformations.quaternion_multiply(
-            q_pour, np.array(pour_rotation1)
-        ).tolist()
-        pour_rotation3 = trimesh.transformations.quaternion_multiply(
-            q_pour, np.array(pour_rotation2)
-        ).tolist()
-    else:
-        # Axis is zero, cannot determine pour direction. Fallback to a default pour.
-        raise ValueError(f"axis_norm={axis_norm}")
-        # pour_rotation = [-0.271, 0.653, -0.271, 0.653]
-
+    local_rotation_axis = [0, 0, 1] 
+    
+    q_pour = trimesh.transformations.quaternion_about_axis(pour_angle, local_rotation_axis)
     ready_pour_pose = ready_pour_position + ready_pour_rotation
-    # pour_pose1 = ready_pour_position + pour_rotation1
-    # pour_pose2 = ready_pour_position + pour_rotation2
-    pour_pose3 = ready_pour_position + pour_rotation3
+
+    pour_rotation = trimesh.transformations.quaternion_multiply(
+        np.array(ready_pour_rotation), q_pour
+    ).tolist()
+
+    pour_pose3 = ready_pour_position + pour_rotation
 
     # after_grasp_position = grasp_position[:2] + [grasp_position[2] + 0.250]
 
@@ -343,22 +330,30 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
             + quaternion_orientation,
         )
     )
-    moves.append(
-        # {
-        #     "type": "arm",
-        #     "goal": grasp_position + quaternion_orientation,
-        #     "wait_time": 0.0,
-        #     "no_obstacles": "yesyesyes",
-        #     "no_curobo": True,
-        #     "ignore_obstacles": [target_name],
-        # }
-        SingleRobotMove(
-            type="single_pose_meter_quaternion",
-            single_pose_meter_quaternion_goal=grasp_position + quaternion_orientation,
-            no_curobo=True,
-            no_obstacles=True,
+    steps = 10
+    for i in range(1, steps + 1):
+        interp_pos = [
+            before_grasp_position[0] + (grasp_position[0] - before_grasp_position[0]) * (i / steps),
+            before_grasp_position[1] + (grasp_position[1] - before_grasp_position[1]) * (i / steps),
+            before_grasp_position[2] + (grasp_position[2] - before_grasp_position[2]) * (i / steps),
+        ]
+        moves.append(
+            # {
+            #     "type": "arm",
+            #     "goal": grasp_position + quaternion_orientation,
+            #     "wait_time": 0.0,
+            #     "no_obstacles": "yesyesyes",
+            #     "no_curobo": True,
+            #     "ignore_obstacles": [target_name],
+            # }
+            SingleRobotMove(
+                type="single_pose_meter_quaternion",
+                single_pose_meter_quaternion_goal=interp_pos + quaternion_orientation,
+                no_curobo=True,
+                no_obstacles=True,
+                wait_time=0.1
+            )
         )
-    )
     moves.append(SingleRobotMove(type="gripper", grip_type="close", wait_time=1.0))
     moves.append(
         SingleRobotMove(
@@ -499,7 +494,7 @@ def joints_rad_move_to_curobo(args: list, scene_data: dict) -> dict:
             type="single_pose_joint_rad", single_pose_joint_rad_goal=joints_goal
         )
     )
-    moves.append(SingleRobotMove(type="gripper"))
+    # moves.append(SingleRobotMove(type="gripper"))
     full_act = {"moves": [asdict(move) for move in moves], "obstacles": obstacles}
     return full_act
 

@@ -70,7 +70,7 @@
             "qualifier": "cup_qualifier",
             "move_type": "grab_and_pour_and_place_back_curobo",
             "args": [
-                [-0.07139691,  0.59580627,  0.35614688]
+                [0.00839691,  0.75580627,  0.25614688]
             ]
         },
         {

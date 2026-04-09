@@ -13,6 +13,7 @@ import argparse
 import logging
 import os
 import sys
+import threading
 from send_traj_socket import send_traj
 
 # Because this script isn't using itri-graspgen venv, we need to manually add the project root to sys.path
@@ -163,7 +164,8 @@ class TMRobotController(Node):
                 raise ValueError(f"Unknown grip type: {move}")
             commands_to_sim = [self.current_joints_states + self.goal_gripper]
             if self.real2sim:
-                self._real2sim(commands_to_sim)
+                threading.Thread(target=self._real2sim, args=(commands_to_sim,), daemon=True).start()
+                # self._real2sim(commands_to_sim)
             self.append_gripper_states(self.goal_gripper)
         else:
             raise ValueError(f"Unknown move type: {move.type}")

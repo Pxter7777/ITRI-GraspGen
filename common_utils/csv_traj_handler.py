@@ -100,14 +100,14 @@ def load_trajectory_from_csv(command: str) -> list[Movement]:
 @dataclass
 class SpeedParam:
     vel: int = 60
-    acc: int = 20
+    acc: int = 200
     blend: int = 100
 
 
 # A defaultdict automatically returns SpeedParam() (the defaults: 40, 20, 100) if a key is missing!
 SPEED_PARAM_DICT = defaultdict(SpeedParam)
 # Specific overrides
-SPEED_PARAM_DICT["spoon_peanuts"] = SpeedParam(vel=60, acc=500)
+SPEED_PARAM_DICT["spoon_peanuts_down"] = SpeedParam(vel=60, acc=200)
 # SPEED_PARAM_DICT["open_1st_lid"] = SpeedParam(vel=100, acc=500)
 # SPEED_PARAM_DICT["open_2nd_lid"] = SpeedParam(vel=100, acc=500)
 # SPEED_PARAM_DICT["close_1st_lid"] = SpeedParam(vel=100, acc=500)
@@ -166,11 +166,11 @@ def run_trajectory(command: str, obstacles: list | None = None, no_need_curobo: 
         print("mode:", node.mode, "joint_value:", node.joint_value)
         if node.mode == Mode.OPEN:
             movements.append(
-                SingleRobotMove(type="gripper", grip_type="open", wait_time=1.5)
+                SingleRobotMove(type="gripper", grip_type="open", wait_time=0.0)
             )
         elif node.mode == Mode.CLOSE:
             movements.append(
-                SingleRobotMove(type="gripper", grip_type="close", wait_time=0.9)
+                SingleRobotMove(type="gripper", grip_type="close", wait_time=0.5)
             )
         elif node.mode == Mode.HALF_OPEN:
             movements.append(
