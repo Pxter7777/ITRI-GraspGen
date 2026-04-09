@@ -175,8 +175,12 @@ def train_and_evaluate(records):
 
     lr = LogisticRegression(class_weight=cw_dict, max_iter=1000, random_state=42)
     xgb = XGBClassifier(
-        n_estimators=100, max_depth=3, scale_pos_weight=scale_pos_weight,
-        random_state=42, eval_metric="logloss", verbosity=0,
+        n_estimators=100,
+        max_depth=3,
+        scale_pos_weight=scale_pos_weight,
+        random_state=42,
+        eval_metric="logloss",
+        verbosity=0,
     )
 
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
@@ -185,8 +189,9 @@ def train_and_evaluate(records):
     xgb_auc = cross_val_score(xgb, X, y, cv=cv, scoring="roc_auc")
 
     from sklearn.metrics import roc_auc_score
+
     disc_auc = roc_auc_score(y, X[:, FEATURE_NAMES.index("discriminator_score")])
-    print(f"\nDiscriminator Score (no model)")
+    print("\nDiscriminator Score (no model)")
     print(f"  ROC-AUC: {disc_auc:.3f}")
 
     print("\nLogistic Regression (5-fold CV)")
@@ -263,16 +268,28 @@ def topk_table(records, lr, scaler, xgb):
         # XGBoost (no scaling needed)
         spw = cw[1] / cw[0]
         clf_xgb = XGBClassifier(
-            n_estimators=100, max_depth=3, scale_pos_weight=spw,
-            random_state=42, eval_metric="logloss", verbosity=0,
+            n_estimators=100,
+            max_depth=3,
+            scale_pos_weight=spw,
+            random_state=42,
+            eval_metric="logloss",
+            verbosity=0,
         )
         clf_xgb.fit(X_train, y_train)
         xgb_scores = clf_xgb.predict_proba(X_test)[:, 1]
 
         grasps = test_grasps
         grasps_disc = sorted(grasps, key=lambda g: -g["discriminator_score"])
-        grasps_lr = [g for _, g in sorted(zip(lr_scores, grasps, strict=True), key=lambda x: -x[0])]
-        grasps_xgb = [g for _, g in sorted(zip(xgb_scores, grasps, strict=True), key=lambda x: -x[0])]
+        grasps_lr = [
+            g
+            for _, g in sorted(zip(lr_scores, grasps, strict=True), key=lambda x: -x[0])
+        ]
+        grasps_xgb = [
+            g
+            for _, g in sorted(
+                zip(xgb_scores, grasps, strict=True), key=lambda x: -x[0]
+            )
+        ]
 
         for k in K_VALUES:
             results[k]["disc"].append(int(any(g["success"] for g in grasps_disc[:k])))
@@ -294,9 +311,9 @@ def topk_table(records, lr, scaler, xgb):
     print("-" * 48)
     for k in K_VALUES:
         d = 100 * np.mean(results[k]["disc"])
-        l = 100 * np.mean(results[k]["lr"])
+        logestic_regression = 100 * np.mean(results[k]["lr"])
         x = 100 * np.mean(results[k]["xgb"])
-        print(f"{k:<6} {d:>14.1f}% {l:>14.1f}% {x:>9.1f}%")
+        print(f"{k:<6} {d:>14.1f}% {logestic_regression:>14.1f}% {x:>9.1f}%")
 
     print("\nMean attempts to first success:")
     print(f"  Discriminator : {np.mean(disc_attempts):.1f}")
@@ -322,7 +339,14 @@ def topk_table(records, lr, scaler, xgb):
     width = 0.25
     for i, key in enumerate(["disc", "lr", "xgb"]):
         rates = [100 * np.mean(results[k][key]) for k in K_VALUES]
-        bars = ax.bar(x + (i - 1) * width, rates, width, label=LABELS[key], color=COLORS[key], alpha=0.8)
+        _bars = ax.bar(
+            x + (i - 1) * width,
+            rates,
+            width,
+            label=LABELS[key],
+            color=COLORS[key],
+            alpha=0.8,
+        )
         for xi, v in enumerate(rates):
             ax.text(xi + (i - 1) * width, v + 0.5, f"{v:.0f}%", ha="center", fontsize=6)
     ax.set_xticks(x)
@@ -333,22 +357,38 @@ def topk_table(records, lr, scaler, xgb):
 
     # Subplot 2: Mean attempts to first success
     ax2 = axes[1]
-    attempt_means = [np.mean(disc_attempts), np.mean(lr_attempts), np.mean(xgb_attempts)]
+    attempt_means = [
+        np.mean(disc_attempts),
+        np.mean(lr_attempts),
+        np.mean(xgb_attempts),
+    ]
     bars2 = ax2.bar(
-        list(LABELS.values()), attempt_means,
-        color=list(COLORS.values()), alpha=0.8, edgecolor="black",
+        list(LABELS.values()),
+        attempt_means,
+        color=list(COLORS.values()),
+        alpha=0.8,
+        edgecolor="black",
     )
     ax2.set_ylabel("Mean Attempts to First Success")
     ax2.set_title("Efficiency: Attempts to First Success")
     for bar, v in zip(bars2, attempt_means, strict=True):
-        ax2.text(bar.get_x() + bar.get_width() / 2, v + 0.3, f"{v:.1f}", ha="center", fontweight="bold")
+        ax2.text(
+            bar.get_x() + bar.get_width() / 2,
+            v + 0.3,
+            f"{v:.1f}",
+            ha="center",
+            fontweight="bold",
+        )
 
     # Subplot 3: Mean time to first success
     ax3 = axes[2]
     time_means = [np.mean(disc_times), np.mean(lr_times), np.mean(xgb_times)]
     bars3 = ax3.bar(
-        list(LABELS.values()), time_means,
-        color=list(COLORS.values()), alpha=0.8, edgecolor="black",
+        list(LABELS.values()),
+        time_means,
+        color=list(COLORS.values()),
+        alpha=0.8,
+        edgecolor="black",
     )
     ax3.set_ylabel("Mean Time to First Success (s)")
     ax3.set_title("Efficiency: Time to First Success")
