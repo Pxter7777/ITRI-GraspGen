@@ -17,7 +17,7 @@ def cup_qualifier(grasp: np.array, min_point: np.ndarray, max_point: np.ndarray)
     position += front * 0.20  # offset
     if abs(left[2]) > 0.2:
         return False
-    if up[2] < 0.85:
+    if up[2] < 0.875:
         return False
     # Rule: planar 2D angle between grasp approach (front) vector and grasp position vector should be small
     angle_front = np.arctan2(front[1], front[0])
@@ -30,7 +30,7 @@ def cup_qualifier(grasp: np.array, min_point: np.ndarray, max_point: np.ndarray)
 
     if position[2] < 0.05:  # for safety
         return False
-    if position[2] > min_point[2] + (max_point[2] - min_point[2]) * 0.75:  # too high
+    if position[2] > min_point[2] + (max_point[2] - min_point[2]) * 0.9:  # too high
         return False
     if position[2] < min_point[2] + (max_point[2] - min_point[2]) * 0.3:  # too low
         return False
