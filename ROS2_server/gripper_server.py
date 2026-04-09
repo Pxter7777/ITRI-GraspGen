@@ -94,7 +94,9 @@ class TMRobotController(Node):
         self.current_IO_states = [0, 0, 1]
         self.current_joints_states = [0.0] * 6
         self.real2sim = real2sim
+        self.real2sim_response_time:float = 0.0
     def _real2sim(self, commands_to_sim):
+        start = time.time()
         try:
             send_traj(commands_to_sim)
         except (
@@ -105,6 +107,7 @@ class TMRobotController(Node):
             TimeoutError
         ) as e:  # maybe when the isaac-sim display pc is not listening
             logger.error(f"TimeoutError, send_traj failed, not listening: {e}")
+        self.real2sim_response_time = time.time() - start
     def _capture_command(self):
         if self.moving:
             return
@@ -164,8 +167,8 @@ class TMRobotController(Node):
                 raise ValueError(f"Unknown grip type: {move}")
             commands_to_sim = [self.current_joints_states + self.goal_gripper]
             if self.real2sim:
-                threading.Thread(target=self._real2sim, args=(commands_to_sim,), daemon=True).start()
-                # self._real2sim(commands_to_sim)
+                #threading.Thread(target=self._real2sim, args=(commands_to_sim,), daemon=True).start()
+                self._real2sim(commands_to_sim)
             self.append_gripper_states(self.goal_gripper)
         else:
             raise ValueError(f"Unknown move type: {move.type}")
@@ -205,7 +208,7 @@ class TMRobotController(Node):
         # reach detection
         if (
             self.reached_time > current_time
-            and current_time - self.start_command_time > 1.0
+            and current_time - self.start_command_time > 1.0 + self.real2sim_response_time
         ):  # hasn't reached yet
             if self.current_moving_type == "sequence_joint_rad" and is_pose_identical(
                 msg.joint_pos, self.goal_joints

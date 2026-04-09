@@ -107,7 +107,7 @@ class SpeedParam:
 # A defaultdict automatically returns SpeedParam() (the defaults: 40, 20, 100) if a key is missing!
 SPEED_PARAM_DICT = defaultdict(SpeedParam)
 # Specific overrides
-SPEED_PARAM_DICT["spoon_peanuts_down"] = SpeedParam(vel=60, acc=200)
+# SPEED_PARAM_DICT["spoon_peanuts_down"] = SpeedParam(vel=60, acc=200)
 # SPEED_PARAM_DICT["open_1st_lid"] = SpeedParam(vel=100, acc=500)
 # SPEED_PARAM_DICT["open_2nd_lid"] = SpeedParam(vel=100, acc=500)
 # SPEED_PARAM_DICT["close_1st_lid"] = SpeedParam(vel=100, acc=500)
@@ -166,7 +166,7 @@ def run_trajectory(command: str, obstacles: list | None = None, no_need_curobo: 
         print("mode:", node.mode, "joint_value:", node.joint_value)
         if node.mode == Mode.OPEN:
             movements.append(
-                SingleRobotMove(type="gripper", grip_type="open", wait_time=0.0)
+                SingleRobotMove(type="gripper", grip_type="open", wait_time=1.5)
             )
         elif node.mode == Mode.CLOSE:
             movements.append(

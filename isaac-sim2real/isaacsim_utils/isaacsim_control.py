@@ -428,6 +428,7 @@ class IsaacSimController:
             message = ros2_response.get("message")
             if message == "Success":
                 self.ros2state = "Ready"
+                logger.warning("Received Success message from ROS2, ready for next action.")
             elif message == "Fail":
                 self.ros2state = "Error"
             else:
@@ -459,6 +460,7 @@ class IsaacSimController:
             # Continue to handle Success message
             if len(self.planned_action_moves) > 0:
                 move: SingleRobotMove = self.planned_action_moves.pop(0)
+                logger.warning("appending new move to ROS2, waiting for response...")
                 self.ros2_sender.send_data(asdict(move))
                 # For isaac sim animation
                 self.cmd_idx = 0
