@@ -152,7 +152,7 @@ class CLIWorkflowController(BaseWorkflowController):
 
     def _grab_command(self):
         print("Please provide the command, or type 'end' to end.")
-        return input("Command: ")
+        return input("Command: "), False
 
 
 def main():

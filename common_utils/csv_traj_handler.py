@@ -133,7 +133,7 @@ SPEED_PARAM_DICT["drop_waffle"] = SpeedParam(vel=40, acc=500)
 SPEED_PARAM_DICT["go_to_default"] = SpeedParam(vel=100, acc=500)
 
 
-def run_trajectory(command: str, obstacles: list | None = None) -> list[dict]:
+def run_trajectory(command: str, obstacles: list | None = None, no_need_curobo: bool = False) -> list[dict]:
     if obstacles is None:
         obstacles = []
     nodes = load_trajectory_from_csv(command)
@@ -181,7 +181,7 @@ def run_trajectory(command: str, obstacles: list | None = None) -> list[dict]:
                 SingleRobotMove(type="gripper", grip_type="close_tight", wait_time=0.9)
             )
         elif node.mode == Mode.MOVE:
-            if not move_at_least_once:
+            if not move_at_least_once and not no_need_curobo:
                 move_at_least_once = True
                 movements.append(
                     SingleRobotMove(
@@ -207,13 +207,13 @@ def run_trajectory(command: str, obstacles: list | None = None) -> list[dict]:
 
 
 def csv_act(
-    command: str, obstacles: dict[str, ObstacleBound] | None = None
+    command: str, obstacles: dict[str, ObstacleBound] | None = None, no_need_curobo: bool = False
 ) -> list[dict]:
     if obstacles is None:
         obstacles = {}
     return [
         {
-            "moves": run_trajectory(command),
+            "moves": run_trajectory(command, no_need_curobo=no_need_curobo),
             "obstacles": {k: v.model_dump() for k, v in obstacles.items()},
         }
     ]
