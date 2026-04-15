@@ -1,0 +1,104 @@
+{
+  "robot_jointstate": [
+    1.37296326,
+    0.08553859,
+    1.05554023,
+    2.76803983,
+    -1.48792809,
+    3.09947786
+  ],
+  "target": {
+    "instance_id": "Bottle_0",
+    "category": "Bottle",
+    "obj_id": "d9aee510fd5e8afb93fb5c975e8de2b7",
+    "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Bottle/d9aee510fd5e8afb93fb5c975e8de2b7",
+    "obj_type": "mesh",
+    "x": 0.5,
+    "y": 0.1,
+    "z": 0.29,
+    "roll": 0.0,
+    "pitch": 0.0,
+    "yaw": 0.0,
+    "scale": 0.55,
+    "pose_meter_quat": [
+      0.5,
+      0.1,
+      0.29,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  },
+  "obstacles": [
+    {
+      "instance_id": "Stool_0",
+      "category": "Stool",
+      "obj_id": "1b0626e5a8bf92b3945a77b945b7b70f",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Stool/1b0626e5a8bf92b3945a77b945b7b70f",
+      "obj_type": "mesh",
+      "x": -0.13,
+      "y": -0.12,
+      "z": -0.55,
+      "roll": 0.0,
+      "pitch": 0.0,
+      "yaw": 0.0,
+      "scale": 3.0,
+      "pose_meter_quat": [
+        -0.13,
+        -0.12,
+        -0.55,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "instance_id": "4Shelves_0",
+      "category": "4Shelves",
+      "obj_id": "750ba8feafceba921933ffef19678834",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/4Shelves/750ba8feafceba921933ffef19678834",
+      "obj_type": "mesh",
+      "x": 1.22,
+      "y": 0.51,
+      "z": -0.1,
+      "roll": 0.0,
+      "pitch": 0.0,
+      "yaw": -180.0,
+      "scale": 2.5,
+      "pose_meter_quat": [
+        1.22,
+        0.51,
+        -0.1,
+        0.0,
+        0.0,
+        -1.0,
+        6.123233995736766e-17
+      ]
+    },
+    {
+      "instance_id": "Book_0",
+      "category": "Book",
+      "obj_id": "2d3598f0e0a07de7ff8a6b1ceab25ae8",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Book/2d3598f0e0a07de7ff8a6b1ceab25ae8",
+      "obj_type": "mesh",
+      "x": 0.46,
+      "y": 0.04,
+      "z": 0.29,
+      "roll": 90.0,
+      "pitch": 0.0,
+      "yaw": 0.0,
+      "scale": 1.3,
+      "pose_meter_quat": [
+        0.46,
+        0.04,
+        0.29,
+        0.7071067811865475,
+        0.0,
+        0.0,
+        0.7071067811865476
+      ]
+    }
+  ]
+}

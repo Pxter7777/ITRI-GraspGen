@@ -1,0 +1,127 @@
+{
+  "robot_jointstate": [
+    1.37296326,
+    0.08553859,
+    1.05554023,
+    2.76803983,
+    -1.48792809,
+    3.09947786
+  ],
+  "target": {
+    "instance_id": "Shampoo_0",
+    "category": "Shampoo",
+    "obj_id": "f919431276935ea05d8eba92952b9366",
+    "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Shampoo/f919431276935ea05d8eba92952b9366",
+    "obj_type": "mesh",
+    "x": 0.66,
+    "y": 0.24,
+    "z": 0.12,
+    "roll": 0.0,
+    "pitch": 0.0,
+    "yaw": 0.0,
+    "scale": 1.0,
+    "pose_meter_quat": [
+      0.66,
+      0.24,
+      0.12,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  },
+  "obstacles": [
+    {
+      "instance_id": "Table_0",
+      "category": "Table",
+      "obj_id": "d9c11381adf0cf48f1783a44a88d6274",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Table/d9c11381adf0cf48f1783a44a88d6274",
+      "obj_type": "mesh",
+      "x": 0.4,
+      "y": -0.7,
+      "z": -0.78,
+      "roll": 0.0,
+      "pitch": 0.0,
+      "yaw": 0.0,
+      "scale": 10.0,
+      "pose_meter_quat": [
+        0.4,
+        -0.7,
+        -0.78,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "instance_id": "Stool_0",
+      "category": "Stool",
+      "obj_id": "1b0626e5a8bf92b3945a77b945b7b70f",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Stool/1b0626e5a8bf92b3945a77b945b7b70f",
+      "obj_type": "mesh",
+      "x": -0.13,
+      "y": -0.12,
+      "z": -0.55,
+      "roll": 0.0,
+      "pitch": 0.0,
+      "yaw": 0.0,
+      "scale": 3.0,
+      "pose_meter_quat": [
+        -0.13,
+        -0.12,
+        -0.55,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "instance_id": "Bucket_0",
+      "category": "Bucket",
+      "obj_id": "997f1218df2b1909ce0e7190fd762087",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Bucket/997f1218df2b1909ce0e7190fd762087",
+      "obj_type": "mesh",
+      "x": 0.83,
+      "y": 0.0,
+      "z": 0.0,
+      "roll": 0.0,
+      "pitch": 0.0,
+      "yaw": 90.0,
+      "scale": 1.75,
+      "pose_meter_quat": [
+        0.83,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.7071067811865475,
+        0.7071067811865476
+      ]
+    },
+    {
+      "instance_id": "Suitcase_0",
+      "category": "Suitcase",
+      "obj_id": "8569a0c606bbba73d9985ad45fbb635e",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Suitcase/8569a0c606bbba73d9985ad45fbb635e",
+      "obj_type": "mesh",
+      "x": 0.55,
+      "y": 0.04,
+      "z": 0.16,
+      "roll": 0.0,
+      "pitch": 0.0,
+      "yaw": 0.0,
+      "scale": 1.0,
+      "pose_meter_quat": [
+        0.55,
+        0.04,
+        0.16,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    }
+  ]
+}
