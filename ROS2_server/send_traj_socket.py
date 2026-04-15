@@ -39,7 +39,7 @@ def send_traj(rows):
         "unit": "deg",
         "data": rows,
     }
-    msg = json.dumps(payload)
+    msg = json.dumps(payload)+ "\n"
     start = time.time()
     with socket.create_connection((HOST, PORT), timeout=3) as s:
         s.sendall(msg.encode("utf-8"))
@@ -47,7 +47,7 @@ def send_traj(rows):
         print("Server:", resp.strip())
     end = time.time()
     print(f"Time taken: {end - start:.3f} seconds")
-    time.sleep(1)
+    time.sleep(0.8)
 
 
 if __name__ == "__main__":

@@ -107,7 +107,9 @@ class SpeedParam:
 # A defaultdict automatically returns SpeedParam() (the defaults: 40, 20, 100) if a key is missing!
 SPEED_PARAM_DICT = defaultdict(SpeedParam)
 # Specific overrides
-# SPEED_PARAM_DICT["spoon_peanuts_down"] = SpeedParam(vel=60, acc=200)
+SPEED_PARAM_DICT["spoon_peanuts_down"] = SpeedParam(vel=60, acc=400)
+SPEED_PARAM_DICT["spoon_peanuts_up"] = SpeedParam(vel=60, acc=400)
+SPEED_PARAM_DICT["drop_peanuts"] = SpeedParam(vel=60, acc=450)
 # SPEED_PARAM_DICT["open_1st_lid"] = SpeedParam(vel=100, acc=500)
 # SPEED_PARAM_DICT["open_2nd_lid"] = SpeedParam(vel=100, acc=500)
 # SPEED_PARAM_DICT["close_1st_lid"] = SpeedParam(vel=100, acc=500)

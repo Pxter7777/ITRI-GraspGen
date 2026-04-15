@@ -167,9 +167,10 @@ class TMRobotController(Node):
                 raise ValueError(f"Unknown grip type: {move}")
             commands_to_sim = [self.current_joints_states + self.goal_gripper]
             if self.real2sim:
-                #threading.Thread(target=self._real2sim, args=(commands_to_sim,), daemon=True).start()
-                self._real2sim(commands_to_sim)
+                threading.Thread(target=self._real2sim, args=(commands_to_sim,), daemon=True).start()
+                # self._real2sim(commands_to_sim)
             self.append_gripper_states(self.goal_gripper)
+            self.reached_time = time.time()
         else:
             raise ValueError(f"Unknown move type: {move.type}")
 
