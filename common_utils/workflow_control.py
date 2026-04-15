@@ -79,13 +79,20 @@ class BaseWorkflowController:
         else:
             raise ValueError(f"Unknown task_type {task_type}")
 
-    def _process_csv_command(self, command: str, no_need_curobo:bool = False):
+    def _process_csv_command(self, command: str, no_need_curobo: bool = False):
         extra_obstacles: dict[str, ObstacleBound] = load_extra_obstacles()
         self._run_csv(command, extra_obstacles, no_need_curobo=no_need_curobo)
 
-    def _run_csv(self, command: str, extra_obstacles: dict[str, ObstacleBound], no_need_curobo:bool = False):
+    def _run_csv(
+        self,
+        command: str,
+        extra_obstacles: dict[str, ObstacleBound],
+        no_need_curobo: bool = False,
+    ):
         while True:
-            full_acts: list[dict] = csv_act(command, extra_obstacles, no_need_curobo=no_need_curobo)
+            full_acts: list[dict] = csv_act(
+                command, extra_obstacles, no_need_curobo=no_need_curobo
+            )
             success = self._run_isaacsim(full_acts)
             if success:
                 break

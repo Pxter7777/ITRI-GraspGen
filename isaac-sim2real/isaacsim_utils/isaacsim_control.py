@@ -428,7 +428,9 @@ class IsaacSimController:
             message = ros2_response.get("message")
             if message == "Success":
                 self.ros2state = "Ready"
-                logger.warning("Received Success message from ROS2, ready for next action.")
+                logger.warning(
+                    "Received Success message from ROS2, ready for next action."
+                )
             elif message == "Fail":
                 self.ros2state = "Error"
             else:

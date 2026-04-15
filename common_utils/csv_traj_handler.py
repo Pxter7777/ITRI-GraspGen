@@ -135,7 +135,9 @@ SPEED_PARAM_DICT["get_2nd_waffle_top_lid"] = SpeedParam(
 # SPEED_PARAM_DICT["go_to_default"] = SpeedParam(vel=100, acc=500)
 
 
-def run_trajectory(command: str, obstacles: list | None = None, no_need_curobo: bool = False) -> list[dict]:
+def run_trajectory(
+    command: str, obstacles: list | None = None, no_need_curobo: bool = False
+) -> list[dict]:
     if obstacles is None:
         obstacles = []
     nodes = load_trajectory_from_csv(command)
@@ -209,7 +211,9 @@ def run_trajectory(command: str, obstacles: list | None = None, no_need_curobo: 
 
 
 def csv_act(
-    command: str, obstacles: dict[str, ObstacleBound] | None = None, no_need_curobo: bool = False
+    command: str,
+    obstacles: dict[str, ObstacleBound] | None = None,
+    no_need_curobo: bool = False,
 ) -> list[dict]:
     if obstacles is None:
         obstacles = {}

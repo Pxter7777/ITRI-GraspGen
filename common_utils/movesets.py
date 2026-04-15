@@ -307,9 +307,11 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
     else:  # Counter-clockwise
         pour_angle = -np.deg2rad(160)
     # apply pour_angle on ready_pour_rotation using vector[mass_center[0], mass_center[1], 0] as axis:
-    local_rotation_axis = [0, 0, 1] 
-    
-    q_pour = trimesh.transformations.quaternion_about_axis(pour_angle, local_rotation_axis)
+    local_rotation_axis = [0, 0, 1]
+
+    q_pour = trimesh.transformations.quaternion_about_axis(
+        pour_angle, local_rotation_axis
+    )
     ready_pour_pose = ready_pour_position + ready_pour_rotation
 
     pour_rotation = trimesh.transformations.quaternion_multiply(
@@ -333,9 +335,12 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
     steps = 10
     for i in range(1, steps + 1):
         interp_pos = [
-            before_grasp_position[0] + (grasp_position[0] - before_grasp_position[0]) * (i / steps),
-            before_grasp_position[1] + (grasp_position[1] - before_grasp_position[1]) * (i / steps),
-            before_grasp_position[2] + (grasp_position[2] - before_grasp_position[2]) * (i / steps),
+            before_grasp_position[0]
+            + (grasp_position[0] - before_grasp_position[0]) * (i / steps),
+            before_grasp_position[1]
+            + (grasp_position[1] - before_grasp_position[1]) * (i / steps),
+            before_grasp_position[2]
+            + (grasp_position[2] - before_grasp_position[2]) * (i / steps),
         ]
         moves.append(
             # {
@@ -351,7 +356,7 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
                 single_pose_meter_quaternion_goal=interp_pos + quaternion_orientation,
                 no_curobo=True,
                 no_obstacles=True,
-                wait_time=0.1
+                wait_time=0.1,
             )
         )
     moves.append(SingleRobotMove(type="gripper", grip_type="close", wait_time=1.0))

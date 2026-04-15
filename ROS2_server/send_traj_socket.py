@@ -39,7 +39,7 @@ def send_traj(rows):
         "unit": "deg",
         "data": rows,
     }
-    msg = json.dumps(payload)+ "\n"
+    msg = json.dumps(payload) + "\n"
     start = time.time()
     with socket.create_connection((HOST, PORT), timeout=3) as s:
         s.sendall(msg.encode("utf-8"))
