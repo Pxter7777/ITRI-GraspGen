@@ -1,0 +1,127 @@
+{
+  "robot_jointstate": [
+    1.37296326,
+    0.08553859,
+    1.05554023,
+    2.76803983,
+    -1.48792809,
+    3.09947786
+  ],
+  "target": {
+    "instance_id": "Bowl_0",
+    "category": "Bowl",
+    "obj_id": "fa23aa60ec51c8e4c40fe5637f0a27e1",
+    "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Bowl/fa23aa60ec51c8e4c40fe5637f0a27e1",
+    "obj_type": "mesh",
+    "x": -0.16,
+    "y": 0.69,
+    "z": 0.0,
+    "roll": 0.0,
+    "pitch": 0.0,
+    "yaw": 0.0,
+    "scale": 0.58,
+    "pose_meter_quat": [
+      -0.16,
+      0.69,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  },
+  "obstacles": [
+    {
+      "instance_id": "Stool_0",
+      "category": "Stool",
+      "obj_id": "1b0626e5a8bf92b3945a77b945b7b70f",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Stool/1b0626e5a8bf92b3945a77b945b7b70f",
+      "obj_type": "mesh",
+      "x": -0.13,
+      "y": -0.12,
+      "z": -0.55,
+      "roll": 0.0,
+      "pitch": 0.0,
+      "yaw": 0.0,
+      "scale": 3.0,
+      "pose_meter_quat": [
+        -0.13,
+        -0.12,
+        -0.55,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "instance_id": "2Shelves_0",
+      "category": "2Shelves",
+      "obj_id": "1ab8202a944a6ff1de650492e45fb14f",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/2Shelves/1ab8202a944a6ff1de650492e45fb14f",
+      "obj_type": "mesh",
+      "x": -0.24,
+      "y": 0.43,
+      "z": 0.0,
+      "roll": 0.0,
+      "pitch": 0.0,
+      "yaw": 52.0,
+      "scale": 2.39,
+      "pose_meter_quat": [
+        -0.24,
+        0.43,
+        0.0,
+        0.0,
+        0.0,
+        0.4383711467890774,
+        0.898794046299167
+      ]
+    },
+    {
+      "instance_id": "Backpack_0",
+      "category": "Backpack",
+      "obj_id": "54cd45b275f551b276bb31db0358e9c6",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Backpack/54cd45b275f551b276bb31db0358e9c6",
+      "obj_type": "mesh",
+      "x": -0.09,
+      "y": 0.48,
+      "z": 0.57,
+      "roll": -90.0,
+      "pitch": 0.0,
+      "yaw": 85.0,
+      "scale": 1.0,
+      "pose_meter_quat": [
+        -0.09,
+        0.48,
+        0.57,
+        -0.5213338044735968,
+        -0.47771441710826085,
+        0.4777144171082609,
+        0.5213338044735969
+      ]
+    },
+    {
+      "instance_id": "Bottle_1",
+      "category": "Bottle",
+      "obj_id": "20b7adb178ea2c71d8892a9c05c4aa0e",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Bottle/20b7adb178ea2c71d8892a9c05c4aa0e",
+      "obj_type": "mesh",
+      "x": -0.24,
+      "y": 0.62,
+      "z": 0.01,
+      "roll": 0.0,
+      "pitch": 0.0,
+      "yaw": 0.0,
+      "scale": 1.0,
+      "pose_meter_quat": [
+        -0.24,
+        0.62,
+        0.01,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    }
+  ]
+}

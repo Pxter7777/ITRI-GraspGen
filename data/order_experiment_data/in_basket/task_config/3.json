@@ -1,0 +1,104 @@
+{
+  "robot_jointstate": [
+    1.37296326,
+    0.08553859,
+    1.05554023,
+    2.76803983,
+    -1.48792809,
+    3.09947786
+  ],
+  "target": {
+    "instance_id": "Mug_0",
+    "category": "Mug",
+    "obj_id": "d75af64aa166c24eacbe2257d0988c9c",
+    "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Mug/d75af64aa166c24eacbe2257d0988c9c",
+    "obj_type": "mesh",
+    "x": 0.71,
+    "y": 0.2,
+    "z": 0.08,
+    "roll": 0.0,
+    "pitch": 0.0,
+    "yaw": 0.0,
+    "scale": 1.0,
+    "pose_meter_quat": [
+      0.71,
+      0.2,
+      0.08,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  },
+  "obstacles": [
+    {
+      "instance_id": "Table_0",
+      "category": "Table",
+      "obj_id": "d9c11381adf0cf48f1783a44a88d6274",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Table/d9c11381adf0cf48f1783a44a88d6274",
+      "obj_type": "mesh",
+      "x": 0.4,
+      "y": -0.7,
+      "z": -0.78,
+      "roll": 0.0,
+      "pitch": 0.0,
+      "yaw": 0.0,
+      "scale": 10.0,
+      "pose_meter_quat": [
+        0.4,
+        -0.7,
+        -0.78,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "instance_id": "Stool_0",
+      "category": "Stool",
+      "obj_id": "1b0626e5a8bf92b3945a77b945b7b70f",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Stool/1b0626e5a8bf92b3945a77b945b7b70f",
+      "obj_type": "mesh",
+      "x": -0.13,
+      "y": -0.12,
+      "z": -0.55,
+      "roll": 0.0,
+      "pitch": 0.0,
+      "yaw": 0.0,
+      "scale": 3.0,
+      "pose_meter_quat": [
+        -0.13,
+        -0.12,
+        -0.55,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "instance_id": "Bucket_0",
+      "category": "Bucket",
+      "obj_id": "997f1218df2b1909ce0e7190fd762087",
+      "obj_dir": "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects/Bucket/997f1218df2b1909ce0e7190fd762087",
+      "obj_type": "mesh",
+      "x": 0.83,
+      "y": 0.0,
+      "z": 0.0,
+      "roll": 0.0,
+      "pitch": 0.0,
+      "yaw": 90.0,
+      "scale": 1.75,
+      "pose_meter_quat": [
+        0.83,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.7071067811865475,
+        0.7071067811865476
+      ]
+    }
+  ]
+}

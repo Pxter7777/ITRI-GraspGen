@@ -14,3 +14,10 @@ data_for_test/obstacle/*
 !models/Download_models_guide.md
 # PointCloud_Generation/transform_config/sim1.json
 # sample_data/
+
+data/order_experiment_data/in_basket/grasp_data/
+data/order_experiment_data/in_basket/result_data/
+data/order_experiment_data/on_shelf/grasp_data/
+data/order_experiment_data/on_shelf/result_data/
+data/order_experiment_data/on_table/grasp_data/
+data/order_experiment_data/on_table/result_data/
