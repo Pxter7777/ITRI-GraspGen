@@ -385,6 +385,12 @@ def parse_args():
         default=None,
         help="Maximum depth in meters.",
     )
+    parser.add_argument(
+        "--use-png",
+        type=str,
+        default="",
+        help="Use exisiting images at sample_data/zed_images instead of the real zed camera",
+    )
     return parser.parse_args()
 
 
@@ -403,7 +409,7 @@ def main():
         )
 
     # ---------- ZED Init ----------
-    zed = ZedCamera()
+    zed = ZedCamera(use_png=args.use_png)
 
     # ---------- Window and Mouse Callback Setup ----------
     win_name = "RGB + Mask | Depth"
