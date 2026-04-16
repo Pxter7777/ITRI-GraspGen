@@ -62,7 +62,9 @@ def create_obstacle_info(
 
 def load_extra_obstacles() -> dict[str, ObstacleBound]:
     extra_obstacles: dict = {}
-    extra_obstacles_path = PROJECT_ROOT_DIR / "actions" / "extra_obstacles.json"
+    extra_obstacles_path = (
+        PROJECT_ROOT_DIR / "configs" / "actions" / "extra_obstacles.json"
+    )
     with open(extra_obstacles_path, "rb") as f:
         obstacles_dict = json.load(f)
         for name, obstacle in obstacles_dict.items():

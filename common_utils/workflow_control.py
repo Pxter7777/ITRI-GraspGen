@@ -101,7 +101,9 @@ class BaseWorkflowController:
         self._send_EOF()
 
     def _process_graspgen_command(self):
-        graspgen_filepath = PROJECT_ROOT_DIR / "actions" / "Grasp_and_Dump.json"
+        graspgen_filepath = (
+            PROJECT_ROOT_DIR / "configs" / "actions" / "Grasp_and_Dump.json"
+        )
         task: TaskConfig
         with open(graspgen_filepath, "rb") as f:
             task_json = json.load(f)
