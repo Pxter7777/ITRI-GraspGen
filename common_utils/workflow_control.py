@@ -109,9 +109,7 @@ class BaseWorkflowController:
         extra_obstacles: dict = load_extra_obstacles()
         scene_data: dict = self._generate_scene_data(task=task)
         # transform
-        scene_data = silent_transform_multiple_obj_with_name_dict(
-            scene_data, self.args.transform_config
-        )
+        scene_data = silent_transform_multiple_obj_with_name_dict(scene_data)
         scene_data = create_obstacle_info(scene_data, extra_obstacles)
         self._run_graspgen(task, scene_data)
 

@@ -9,6 +9,7 @@ import webbrowser
 import atexit
 import tkinter as tk
 from threading import Thread
+from pathlib import Path
 import glob
 
 import numpy as np
@@ -19,6 +20,8 @@ from grasp_gen.utils.meshcat_utils import (
     visualize_pointcloud,
 )
 from scipy.spatial.transform import Rotation as R
+
+PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 
 
 class AppState:
@@ -630,13 +633,8 @@ def silent_transform_multiple_obj_with_name(
     return scene_data
 
 
-def silent_transform_multiple_obj_with_name_dict(
-    scene_data: dict, config_filename: str
-) -> dict:
-    current_file_dir = os.path.dirname(os.path.abspath(__file__))
-    config_filepath = os.path.join(
-        current_file_dir, "transform_config", config_filename
-    )
+def silent_transform_multiple_obj_with_name_dict(scene_data: dict) -> dict:
+    config_filepath = PROJECT_ROOT_DIR / "configs" / "transform_config.json"
     with open(config_filepath, "rb") as f:
         transform_data = json.load(f)
     # Build Transformation matrix

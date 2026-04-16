@@ -1,3 +1,10 @@
+"""
+IMPORTANT!
+This script won't work, because the transform config logic and path changed a bit.
+also the task format was changed, so I will need to rewrite this anyway.
+move it to scripts/legacy later.
+"""
+
 # use the zed camera to get the object's 3D bounding box
 import logging
 import argparse
@@ -57,12 +64,6 @@ def parse_args():
         type=float,
         default=3.0,
         help="max depth for generating pointcloud",
-    )
-    parser.add_argument(
-        "--transform-config",
-        type=str,
-        default="sim2.json",
-        help="transform-config",
     )
     return parser.parse_args()
 

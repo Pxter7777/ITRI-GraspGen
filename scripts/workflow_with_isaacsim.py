@@ -71,12 +71,6 @@ def parse_args():
         help="max depth for generating pointcloud",
     )
     parser.add_argument(
-        "--transform-config",
-        type=str,
-        default="sim2.json",
-        help="transform-config",
-    )
-    parser.add_argument(
         "--gripper_config",
         type=str,
         default=str(config.GRIPPER_CFG),

@@ -23,3 +23,5 @@ data/order_experiment_data/on_table/grasp_data/
 data/order_experiment_data/on_table/result_data/
 
 notes
+
+configs/transform_config.json
