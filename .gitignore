@@ -22,6 +22,8 @@ data/order_experiment_data/on_shelf/result_data/
 data/order_experiment_data/on_table/grasp_data/
 data/order_experiment_data/on_table/result_data/
 
+data/calibrate/output_pointcloud
+
 notes
 
 configs/transform_config.json
