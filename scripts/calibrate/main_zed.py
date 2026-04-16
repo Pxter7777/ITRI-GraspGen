@@ -355,7 +355,7 @@ def parse_args():
         help="number of flow-field updates during forward pass",
     )
     parser.add_argument(
-        "--out_dir", default="./output/", type=str, help="the directory to save results"
+        "--out_dir", default="./data/calibrate/output_pointcloud/", type=str, help="the directory to save results"
     )
     parser.add_argument(
         "--output-tag",

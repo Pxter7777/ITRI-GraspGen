@@ -230,9 +230,9 @@ class ControlPanel:
         base_name = os.path.basename(input_filename)
         name, ext = os.path.splitext(base_name)
         output_filename = f"{name}_transformed.json"
-        output_path = os.path.join("output", output_filename)
+        output_path = os.path.join("data/calibrate/output_pointcloud", output_filename)
 
-        os.makedirs("output", exist_ok=True)
+        os.makedirs("data/calibrate/output_pointcloud", exist_ok=True)
 
         data_to_save = {
             "transformation_matrix": app_state.transformation.tolist(),
@@ -268,7 +268,9 @@ class ControlPanel:
         base_name = os.path.basename(input_filename)
         name, ext = os.path.splitext(base_name)
         output_filename = f"{name}_transform_config.json"
-        output_path = os.path.join("transform_config", output_filename)
+        output_path = os.path.join("data/calibrate/output_transform_config", output_filename)
+
+        os.makedirs("data/calibrate/output_transform_config", exist_ok=True)
 
         tx = self.trans_x_var.get()
         ty = self.trans_y_var.get()
@@ -291,9 +293,9 @@ class ControlPanel:
         base_name = os.path.basename(input_filename)
         name, ext = os.path.splitext(base_name)
         output_filename = f"{name}_transformed.e57"
-        output_path = os.path.join("output", output_filename)
+        output_path = os.path.join("data/calibrate/output_pointcloud", output_filename)
 
-        os.makedirs("output", exist_ok=True)
+        os.makedirs("data/calibrate/output_pointcloud", exist_ok=True)
 
         pc_list = []
         pc_color_list = []
@@ -329,7 +331,7 @@ def parse_args():
     parser.add_argument(
         "--sample_data_dir",
         type=str,
-        default="output",
+        default="data/calibrate/output_pointcloud",
         help="Directory containing JSON files with point cloud data",
     )
     parser.add_argument(
@@ -473,7 +475,7 @@ def quick_transform(args):
     if args.transform_config == "":
         print("Please provide transform config")
         exit(1)
-    transform_filename = os.path.join("transform_config", args.transform_config)
+    transform_filename = os.path.join("data/calibrate/output_transform_config", args.transform_config)
     with open(transform_filename, "rb") as f:
         transform_data = json.load(f)
 
@@ -512,8 +514,9 @@ def quick_transform(args):
     base_name = os.path.basename(input_filename)
     name, ext_ = os.path.splitext(base_name)
     output_filename = f"{name}_transformed.json"
-    output_path = os.path.join("output", output_filename)
+    output_path = os.path.join("data/calibrate/output_pointcloud", output_filename)
 
+    os.makedirs("data/calibrate/output_pointcloud", exist_ok=True)
     save_pointcloud(info, output_path)
 
 
