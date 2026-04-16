@@ -113,7 +113,7 @@ def parse_args():
         "--use-png",
         type=str,
         default="",
-        help="Use exisiting images at sample_data/zed_images instead of the real zed camera",
+        help="Use exisiting images at data/zed_images instead of the real zed camera",
     )
     return parser.parse_args()
 

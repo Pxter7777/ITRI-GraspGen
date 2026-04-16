@@ -90,9 +90,7 @@ class ZedCamera:
         self.ext_ir1_to_color = np.identity(4)
 
     def initialize_zed_using_existing_png(self, use_png) -> None:
-        self.png_dir = os.path.join(
-            project_root_dir, "sample_data/zed_images/", use_png
-        )
+        self.png_dir = os.path.join(project_root_dir, "data/zed_images/", use_png)
         self.baseline = 0
         self.K_left = 0
         left_image_path = os.path.join(self.png_dir, "left.png")
