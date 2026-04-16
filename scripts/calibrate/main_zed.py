@@ -1,4 +1,3 @@
-import os
 import argparse
 import logging
 import numpy as np
@@ -9,9 +8,7 @@ import open3d as o3d
 import json
 import datetime
 import pye57
-import sys
-
-sys.path.insert(0, os.path.expanduser("~/Third_Party"))
+from pathlib import Path
 
 from src.stereo_utils2 import FoundationStereoModel
 from src.yolo_inference import YOLOv5Detector
@@ -82,7 +79,7 @@ def save_json_object_and_scene(
     json_filename = f"scene_{timestamp}.json"
     if output_tag != "":
         json_filename = f"scene_{output_tag}.json"
-    json_filepath = os.path.join(out_dir, json_filename)
+    json_filepath = Path(out_dir) / json_filename
 
     with open(json_filepath, "w") as f:
         json.dump(scene_data, f, indent=4)
@@ -102,7 +99,7 @@ def save_e57_object_and_scene(
     e57_object_filename = f"object_{timestamp}.e57"
     if output_tag != "":
         e57_object_filename = f"object_{output_tag}.e57"
-    e57_object_filepath = os.path.join(out_dir, e57_object_filename)
+    e57_object_filepath = Path(out_dir) / e57_object_filename
 
     object_points = np.array(object_points)
     object_colors = np.array(object_colors)
@@ -121,7 +118,7 @@ def save_e57_object_and_scene(
     e57_scene_filename = f"scene_{timestamp}.e57"
     if output_tag != "":
         e57_scene_filename = f"scene_{output_tag}.e57"
-    e57_scene_filepath = os.path.join(out_dir, e57_scene_filename)
+    e57_scene_filepath = Path(out_dir) / e57_scene_filename
 
     scene_points = np.array(scene_points)
     scene_colors = np.array(scene_colors)
@@ -184,15 +181,13 @@ def save_mesh(
         ]
         mesh.vertex_colors = o3d.utility.Vector3dVector(mesh_colors)
 
-        mesh_filename = f"segmented_{name}_{timestamp}.obj"
-        mesh_filepath = os.path.join(out_dir, mesh_filename)
+        mesh_filepath = Path(out_dir) / f"segmented_{name}_{timestamp}.obj"
 
-        o3d.io.write_triangle_mesh(mesh_filepath, mesh, write_vertex_colors=True)
+        o3d.io.write_triangle_mesh(str(mesh_filepath), mesh, write_vertex_colors=True)
         logging.info(f"Reconstructed mesh saved to {mesh_filepath}")
 
-        vis_filename = f"segmented_vis_{timestamp}.png"
-        vis_filepath = os.path.join(out_dir, vis_filename)
-        cv2.imwrite(vis_filepath, captured_vis)
+        vis_filepath = Path(out_dir) / f"segmented_vis_{timestamp}.png"
+        cv2.imwrite(str(vis_filepath), captured_vis)
         logging.info(f"Combined visualization saved to {vis_filepath}")
 
     except Exception as e:
@@ -203,8 +198,8 @@ def save_capture_view(captured_vis, out_dir, output_tag, timestamp):
     vis_filename = f"segmented_vis_{timestamp}.png"
     if output_tag != "":
         vis_filename = f"segmented_vis_{output_tag}.png"
-    vis_filepath = os.path.join(out_dir, vis_filename)
-    cv2.imwrite(vis_filepath, captured_vis)
+    vis_filepath = Path(out_dir) / vis_filename
+    cv2.imwrite(str(vis_filepath), captured_vis)
     logging.info(f"Combined visualization saved to {vis_filepath}")
 
 
@@ -397,7 +392,7 @@ def main():
     args = parse_args()
     set_seed(0)
     torch.autograd.set_grad_enabled(False)
-    os.makedirs(args.out_dir, exist_ok=True)
+    Path(args.out_dir).mkdir(parents=True, exist_ok=True)
 
     # ---------- Load Models ----------
     stereo_model = FoundationStereoModel(args)

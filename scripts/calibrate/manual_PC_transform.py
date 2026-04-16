@@ -9,7 +9,7 @@ import webbrowser
 import atexit
 import tkinter as tk
 from threading import Thread
-import glob
+from pathlib import Path
 
 import numpy as np
 import pye57
@@ -19,6 +19,9 @@ from grasp_gen.utils.meshcat_utils import (
     visualize_pointcloud,
 )
 from scipy.spatial.transform import Rotation as R
+
+OUTPUT_PC_DIR = Path("data/calibrate/output_pointcloud")
+OUTPUT_TC_DIR = Path("data/calibrate/output_transform_config")
 
 
 class AppState:
@@ -43,7 +46,7 @@ class PCInfo:
 app_state = AppState()
 
 
-def save_pointcloud(info: PCInfo, output_path: os.path):
+def save_pointcloud(info: PCInfo, output_path: Path):
     data_to_save = {
         "object_info": {
             "pc": info.object_pc.tolist() if info.object_pc is not None else [],
@@ -226,13 +229,11 @@ class ControlPanel:
             print("No point cloud to save.")
             return
 
-        input_filename = self.selected_file.get()
-        base_name = os.path.basename(input_filename)
-        name, ext = os.path.splitext(base_name)
-        output_filename = f"{name}_transformed.json"
-        output_path = os.path.join("data/calibrate/output_pointcloud", output_filename)
+        input_path = Path(self.selected_file.get())
+        output_filename = f"{input_path.stem}_transformed.json"
+        output_path = OUTPUT_PC_DIR / output_filename
 
-        os.makedirs("data/calibrate/output_pointcloud", exist_ok=True)
+        OUTPUT_PC_DIR.mkdir(parents=True, exist_ok=True)
 
         data_to_save = {
             "transformation_matrix": app_state.transformation.tolist(),
@@ -264,13 +265,11 @@ class ControlPanel:
             print("No point cloud to save.")
             return
 
-        input_filename = self.selected_file.get()
-        base_name = os.path.basename(input_filename)
-        name, ext = os.path.splitext(base_name)
-        output_filename = f"{name}_transform_config.json"
-        output_path = os.path.join("data/calibrate/output_transform_config", output_filename)
+        input_path = Path(self.selected_file.get())
+        output_filename = f"{input_path.stem}_transform_config.json"
+        output_path = OUTPUT_TC_DIR / output_filename
 
-        os.makedirs("data/calibrate/output_transform_config", exist_ok=True)
+        OUTPUT_TC_DIR.mkdir(parents=True, exist_ok=True)
 
         tx = self.trans_x_var.get()
         ty = self.trans_y_var.get()
@@ -289,13 +288,11 @@ class ControlPanel:
             print("No point cloud to save.")
             return
 
-        input_filename = self.selected_file.get()
-        base_name = os.path.basename(input_filename)
-        name, ext = os.path.splitext(base_name)
-        output_filename = f"{name}_transformed.e57"
-        output_path = os.path.join("data/calibrate/output_pointcloud", output_filename)
+        input_path = Path(self.selected_file.get())
+        output_filename = f"{input_path.stem}_transformed.e57"
+        output_path = OUTPUT_PC_DIR / output_filename
 
-        os.makedirs("data/calibrate/output_pointcloud", exist_ok=True)
+        OUTPUT_PC_DIR.mkdir(parents=True, exist_ok=True)
 
         pc_list = []
         pc_color_list = []
@@ -317,7 +314,7 @@ class ControlPanel:
         e57_data["colorGreen"] = combined_colors[:, 1]
         e57_data["colorBlue"] = combined_colors[:, 2]
 
-        with pye57.E57(output_path, mode="w") as e57_write:
+        with pye57.E57(str(output_path), mode="w") as e57_write:
             e57_write.write_scan_raw(e57_data)
 
         print(f"Saved combined transformed point cloud to {output_path}")
@@ -331,7 +328,7 @@ def parse_args():
     parser.add_argument(
         "--sample_data_dir",
         type=str,
-        default="data/calibrate/output_pointcloud",
+        default=str(OUTPUT_PC_DIR),
         help="Directory containing JSON files with point cloud data",
     )
     parser.add_argument(
@@ -475,8 +472,8 @@ def quick_transform(args):
     if args.transform_config == "":
         print("Please provide transform config")
         exit(1)
-    transform_filename = os.path.join("data/calibrate/output_transform_config", args.transform_config)
-    with open(transform_filename, "rb") as f:
+    transform_filepath = OUTPUT_TC_DIR / args.transform_config
+    with open(transform_filepath, "rb") as f:
         transform_data = json.load(f)
 
     # Build Transformation matrix
@@ -504,19 +501,16 @@ def quick_transform(args):
     if args.filename == "":
         print("Please provide poincloud filename")
         exit(1)
-    pointcloud_filename = os.path.join(args.sample_data_dir, args.filename)
-    info = load_scene(pointcloud_filename)
+    pointcloud_filepath = Path(args.sample_data_dir) / args.filename
+    info = load_scene(pointcloud_filepath)
     info.object_pc = transform(info.object_pc, transformation)
     info.scene_pc = transform(info.scene_pc, transformation)
 
     # save
-    input_filename = pointcloud_filename
-    base_name = os.path.basename(input_filename)
-    name, ext_ = os.path.splitext(base_name)
-    output_filename = f"{name}_transformed.json"
-    output_path = os.path.join("data/calibrate/output_pointcloud", output_filename)
+    output_filename = f"{pointcloud_filepath.stem}_transformed.json"
+    output_path = OUTPUT_PC_DIR / output_filename
 
-    os.makedirs("data/calibrate/output_pointcloud", exist_ok=True)
+    OUTPUT_PC_DIR.mkdir(parents=True, exist_ok=True)
     save_pointcloud(info, output_path)
 
 
@@ -529,9 +523,10 @@ def main():
     start_meshcat_server()
     open_meshcat_url("http://127.0.0.1:7000/static/")
 
-    json_files = glob.glob(os.path.join(args.sample_data_dir, "*.json"))
+    sample_dir = Path(args.sample_data_dir)
+    json_files = sorted(str(p) for p in sample_dir.glob("*.json"))
     if not json_files:
-        print(f"No JSON files found in {args.sample_data_dir}")
+        print(f"No JSON files found in {sample_dir}")
         return
 
     vis = create_visualizer()
@@ -544,8 +539,9 @@ def main():
     gui_thread.start()
 
     if args.filename:
-        if os.path.exists(args.filename):
-            load_and_process_scene(vis, args.filename)
+        filename_path = Path(args.filename)
+        if filename_path.exists():
+            load_and_process_scene(vis, str(filename_path))
         else:
             print(f"File not found: {args.filename}")
 
