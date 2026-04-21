@@ -44,6 +44,23 @@ Since each part needs different python environments(GraspGen, IsaacSim, ROS2), c
         cd ~/ITRI-GraspGen && \
         uv run scripts/workflow_with_isaacsim.py  --no-confirm --use-png demo6
         ```
+## Calibration
+1. generate a pointcloud
+    - `uv run main_zed.py`
+    - draw a rectangle around the cup
+    - hit keyboard space
+    - wait till terminal is moving again
+    - hit esc to exit
+2. manual transform
+    - `uv run manual_PC_transform.py`
+    - load the pointcloud scene we just created
+    - transform it.
+    - when done, hit **Save Transform Config (JSON)**
+    - ctrl+c to exit the process
+3. copy and paste
+    - config is saved as **~/ITRI-GraspGen/transform_config/scene_\<datetime\>_transform_config.json**
+    - copy the content, and paste into **~/ITRI-GraspGen/PointCloud_Generation/transform_config/sim2.json**
+
 
 ## General Development Reminder
 - Do not push anything onto main branch. main branch only allows GitHub pull requests' merge and squash commit.
