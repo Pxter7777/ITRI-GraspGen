@@ -10,6 +10,7 @@ from geometry_msgs.msg import PoseStamped
 from collections import deque
 import json
 import os
+from pathlib import Path
 import argparse
 
 HOME_SIGNAL = [326.8, -140.2, 212.6, 90.0, 0, 90.0]
@@ -293,7 +294,7 @@ def parse_args():
 def main():
     args = parse_args()
     print(args.input, "HEEE")
-    json_file = os.path.join("output", args.input)
+    json_file = Path("output") / args.input
     with open(json_file, "rb") as f:
         data = json.load(f)
     print("data", data)

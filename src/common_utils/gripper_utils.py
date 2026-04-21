@@ -2,9 +2,9 @@ import tempfile
 import trimesh
 import json
 import logging
-import os
 import subprocess
 import numpy as np
+from pathlib import Path
 from common_utils.graspgen_utils import get_left_up_and_front
 
 logger = logging.getLogger(__name__)
@@ -43,9 +43,7 @@ def send_cup_grasp_to_robot(grasp: np.array):
     temp_grasp_file = pack_grasp_euler(grasp)
     # Construct the absolute path to quick_grip.py
     # Assuming quick_grip.py is in the project root, one level up from common_utils
-    quick_grip_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "quick_grip.py"
-    )
+    quick_grip_path = str(Path(__file__).resolve().parent / "quick_grip.py")
     command = [
         "/usr/bin/python3",
         quick_grip_path,
@@ -54,15 +52,13 @@ def send_cup_grasp_to_robot(grasp: np.array):
     ]
     logging.info(f"Executing: {' '.join(command)}")
     subprocess.run(command, check=True)
-    os.remove(temp_grasp_file)
+    Path(temp_grasp_file).unlink()
     logging.info("quick_grip.py executed successfully and temp file removed.")
 
 
 def send_moves_to_robot(moves: list[dict]):
     temp_moves_file = pack_moves(moves)
-    quick_grip2_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "quick_grip2.py"
-    )
+    quick_grip2_path = str(Path(__file__).resolve().parent / "quick_grip2.py")
     command = [
         "/usr/bin/python3",
         quick_grip2_path,
@@ -71,5 +67,5 @@ def send_moves_to_robot(moves: list[dict]):
     ]
     logger.info(f"Executing: {' '.join(command)}")
     subprocess.run(command, check=True)
-    os.remove(temp_moves_file)
+    Path(temp_moves_file).unlink()
     logger.info("quick_grip.py executed successfully and temp file removed.")
