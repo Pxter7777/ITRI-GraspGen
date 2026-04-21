@@ -168,25 +168,25 @@ class TMRobotController(Node):
                     ## append the middle point between prev_joints and current joints to make the trajectory smoother, only if the difference is large
                     commands_to_sim_upscaled.append(
                         [
-                            p + d * 1 / 3
+                            p + d * 1 / 2
                             for d, p in zip(joints_diff, prev_joints, strict=False)
                         ]
                         + self.current_IO_states
                     )
                     commands_to_sim_upscaled.append(
                         [
-                            p + d * 2 / 3
+                            p + d * 2 / 2
                             for d, p in zip(joints_diff, prev_joints, strict=False)
                         ]
                         + self.current_IO_states
                     )
-                    commands_to_sim_upscaled.append(
-                        [
-                            p + d * 3 / 3
-                            for d, p in zip(joints_diff, prev_joints, strict=False)
-                        ]
-                        + self.current_IO_states
-                    )
+                    # commands_to_sim_upscaled.append(
+                    #     [
+                    #         p + d * 3 / 3
+                    #         for d, p in zip(joints_diff, prev_joints, strict=False)
+                    #     ]
+                    #     + self.current_IO_states
+                    # )
 
             if self.real2sim:
                 self._real2sim(commands_to_sim_upscaled)
