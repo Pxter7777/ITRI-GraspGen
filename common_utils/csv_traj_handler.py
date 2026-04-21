@@ -192,7 +192,7 @@ def run_trajectory(
                         type="single_pose_joint_rad",
                         single_pose_joint_rad_goal=node.joints_values[0],
                         vel=60,
-                        acc=200,
+                        acc=300,
                         blend=100,
                     )
                 )

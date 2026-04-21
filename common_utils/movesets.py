@@ -41,7 +41,7 @@ class SingleRobotMove:
     wait_time: float = 0.0
     # vel, acc, blend will only have effect under "sequence_joint_rad"
     vel: int = 60
-    acc: int = 200
+    acc: int = 300
     blend: int = 100
     no_curobo: bool = False
     no_obstacles: bool = False
