@@ -69,12 +69,12 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-where = [".", "Third_Party"]
-include = ["PointCloud_Generation", "common_utils", "src", "ROS2_server", "FoundationStereo"]
+where = ["src", "Third_Party"]
+include = ["PointCloud_Generation", "common_utils", "FoundationStereo"]
 
 # Without this [tool.pyright] section, pylance will red-line the import even though it works well in runtime.
 [tool.pyright]
-extraPaths = ["Third_Party"]
+extraPaths = ["src", "Third_Party"]
 
 [tool.uv]
 override-dependencies = [
