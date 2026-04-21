@@ -357,6 +357,7 @@ class IsaacSimController:
                             f"Can't accept {graspgen_move.sequence_joint_rad_goals} as sequence_joint_rad_goals."
                         )
                     if graspgen_move.no_curobo:
+                        graspgen_move.sequence_joint_rad_goals.insert(0, self.last_joint_states)
                         processed_moves.append(graspgen_move)
                         self.last_joint_states = graspgen_move.sequence_joint_rad_goals[
                             -1
