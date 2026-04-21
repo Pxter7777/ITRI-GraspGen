@@ -47,7 +47,7 @@ def send_traj(rows):
         print("Server:", resp.strip())
     end = time.time()
     print(f"Time taken: {end - start:.3f} seconds")
-    time.sleep(0.8)
+    time.sleep(0.3)
 
 
 if __name__ == "__main__":
