@@ -11,12 +11,12 @@ from common_utils.actions_format_checker import ObstacleBound
 logger = logging.getLogger(__name__)
 
 # Project root dir
-PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
+PROJECT_ROOT_DIR = Path(__file__).resolve().parents[2]
 
 
 def save_json(dir: str, prefix: str, data) -> True:  # save json data for test
     current_file_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root_dir = os.path.dirname(current_file_dir)
+    project_root_dir = os.path.dirname(os.path.dirname(current_file_dir))
     current_time_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     filepath = os.path.join(
         project_root_dir, "data_for_test", dir, prefix + current_time_str + ".json"

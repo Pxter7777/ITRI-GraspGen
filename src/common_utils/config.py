@@ -2,7 +2,7 @@ import torch
 import os
 
 current_file_dir = os.path.dirname(os.path.abspath(__file__))
-project_root_dir = os.path.dirname(current_file_dir)
+project_root_dir = os.path.dirname(os.path.dirname(current_file_dir))
 # ------------------- Path Config -------------------
 # mostly can be override with args
 MODELS_DIR = os.path.join(project_root_dir, "models")

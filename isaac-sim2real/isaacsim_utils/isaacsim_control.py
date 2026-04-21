@@ -34,7 +34,7 @@ from curobo.wrap.reacher.motion_gen import (
 
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT_DIR))
+    sys.path.insert(0, str(PROJECT_ROOT_DIR / "src"))
 
 from common_utils.movesets import SingleRobotMove  # noqa: E402
 from common_utils.socket_communication import (  # noqa: E402

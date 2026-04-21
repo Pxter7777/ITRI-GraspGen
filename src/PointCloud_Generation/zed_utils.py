@@ -15,7 +15,7 @@ except ModuleNotFoundError:
 logger = logging.getLogger(__name__)
 
 current_file_dir = os.path.dirname(os.path.abspath(__file__))
-project_root_dir = os.path.dirname(current_file_dir)
+project_root_dir = os.path.dirname(os.path.dirname(current_file_dir))
 
 
 class ZedCamera:

@@ -19,7 +19,7 @@ from common_utils.csv_traj_handler import csv_act
 
 logger = logging.getLogger(__name__)
 
-PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
+PROJECT_ROOT_DIR = Path(__file__).resolve().parents[2]
 
 
 class BaseWorkflowController:

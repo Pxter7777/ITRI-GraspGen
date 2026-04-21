@@ -21,7 +21,7 @@ from grasp_gen.utils.meshcat_utils import (
 )
 from scipy.spatial.transform import Rotation as R
 
-PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
+PROJECT_ROOT_DIR = Path(__file__).resolve().parents[2]
 
 
 class AppState:
