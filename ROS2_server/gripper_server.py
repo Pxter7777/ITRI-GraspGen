@@ -170,7 +170,7 @@ class TMRobotController(Node):
                     for i in range(interpolate_iter):
                         commands_to_sim_upscaled.append(
                             [
-                                p + d * (i+1) / interpolate_iter
+                                p + d * (i + 1) / interpolate_iter
                                 for d, p in zip(joints_diff, prev_joints, strict=False)
                             ]
                             + self.current_IO_states
