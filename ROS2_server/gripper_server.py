@@ -129,28 +129,60 @@ class TMRobotController(Node):
         self.current_moving_type = move.type
 
         commands_to_sim = []
+        commands_to_sim_upscaled = []
         if move.type == "sequence_joint_rad":
             self.goal_joints = move.sequence_joint_rad_goals[-1]
             joints_values_degree = [
                 np.rad2deg(joints) for joints in move.sequence_joint_rad_goals
             ]
-            commands_to_sim = [
-                list(joint) + self.current_IO_states for joint in joints_values_degree
-            ]
-            if self.real2sim:
-                self._real2sim(commands_to_sim)
+            # commands_to_sim = [
+            #     list(joint) + self.current_IO_states for joint in joints_values_degree
+            # ]
+
             goal_degree = joints_values_degree.pop()  # remove the goal
             accepted_joints = []
             for joints in joints_values_degree:
                 if len(accepted_joints) == 0:
                     accepted_joints.append(joints)
+                    commands_to_sim.append(list(joints) + self.current_IO_states)
+                    commands_to_sim_upscaled.append(
+                        list(joints) + self.current_IO_states
+                    )
                     continue
                 if any(
                     abs(j1 - j2) > 4
                     for j1, j2 in zip(joints, accepted_joints[-1], strict=False)
                 ):
                     accepted_joints.append(joints)
+                    commands_to_sim.append(list(joints) + self.current_IO_states)
             accepted_joints.append(goal_degree)
+            commands_to_sim.append(list(goal_degree) + self.current_IO_states)
+            if len(commands_to_sim) > 1:
+                # for loop index 1 to end
+                for i in range(1, len(commands_to_sim)):
+                    prev_joints = commands_to_sim[i - 1][:6]
+                    current_joints = commands_to_sim[i][:6]
+                    joints_diff = [
+                        c - p for c, p in zip(current_joints, prev_joints, strict=False)
+                    ]
+                    ## append the middle point between prev_joints and current joints to make the trajectory smoother, only if the difference is large
+                    commands_to_sim_upscaled.append(
+                        [
+                            c + d * 1 / 3
+                            for d, c in zip(joints_diff, current_joints, strict=False)
+                        ]
+                        + self.current_IO_states
+                    )
+                    commands_to_sim_upscaled.append(
+                        [
+                            c + d * 2 / 3
+                            for d, c in zip(joints_diff, current_joints, strict=False)
+                        ]
+                        + self.current_IO_states
+                    )
+
+            if self.real2sim:
+                self._real2sim(commands_to_sim_upscaled)
             for joints in accepted_joints:
                 self.append_jpp(joints, vel=move.vel, acc=move.acc, blend=move.blend)
         elif move.type == "gripper":
