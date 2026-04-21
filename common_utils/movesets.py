@@ -40,8 +40,8 @@ class SingleRobotMove:
     )
     wait_time: float = 0.0
     # vel, acc, blend will only have effect under "sequence_joint_rad"
-    vel: int = 40
-    acc: int = 20
+    vel: int = 60
+    acc: int = 200
     blend: int = 100
     no_curobo: bool = False
     no_obstacles: bool = False
@@ -332,33 +332,22 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
             + quaternion_orientation,
         )
     )
-    steps = 10
-    for i in range(1, steps + 1):
-        interp_pos = [
-            before_grasp_position[0]
-            + (grasp_position[0] - before_grasp_position[0]) * (i / steps),
-            before_grasp_position[1]
-            + (grasp_position[1] - before_grasp_position[1]) * (i / steps),
-            before_grasp_position[2]
-            + (grasp_position[2] - before_grasp_position[2]) * (i / steps),
-        ]
-        moves.append(
-            # {
-            #     "type": "arm",
-            #     "goal": grasp_position + quaternion_orientation,
-            #     "wait_time": 0.0,
-            #     "no_obstacles": "yesyesyes",
-            #     "no_curobo": True,
-            #     "ignore_obstacles": [target_name],
-            # }
-            SingleRobotMove(
-                type="single_pose_meter_quaternion",
-                single_pose_meter_quaternion_goal=interp_pos + quaternion_orientation,
-                no_curobo=True,
-                no_obstacles=True,
-                wait_time=0.1,
-            )
+    moves.append(
+        # {
+        #     "type": "arm",
+        #     "goal": grasp_position + quaternion_orientation,
+        #     "wait_time": 0.0,
+        #     "no_obstacles": "yesyesyes",
+        #     "no_curobo": True,
+        #     "ignore_obstacles": [target_name],
+        # }
+        SingleRobotMove(
+            type="single_pose_meter_quaternion",
+            single_pose_meter_quaternion_goal=grasp_position + quaternion_orientation,
+            no_curobo=True,
+            no_obstacles=True,
         )
+    )
     moves.append(SingleRobotMove(type="gripper", grip_type="close", wait_time=1.0))
     moves.append(
         SingleRobotMove(
