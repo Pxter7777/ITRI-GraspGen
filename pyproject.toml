@@ -1,55 +1,5 @@
 # referenced from https://github.com/AUTOMATIC1111/stable-diffusion-webui/blob/82a973c04367123ae98bd9abdf80d9eda9b910e2/pyproject.toml
-[tool.ruff]
-exclude = [
-    "Third_Party",
-    "isaac-sim2real/isaacsim_utils/helper.py"
-]
-target-version = "py311"
 
-[tool.ruff.lint]
-
-extend-select = [
-  "B",
-  "C",
-  "I",
-  "W",
-]
-
-ignore = [
-	"E501", # Line too long
-	"E721", # Do not compare types, use `isinstance`
-	"E731", # Do not assign a `lambda` expression, use a `def`
-	
-	"I001", # Import block is un-sorted or un-formatted
-	"C901", # Function is too complex
-	"C408", # Rewrite as a literal
-	"W605", # invalid escape sequence, messes with some docstrings
-]
-
-# Not really sure what this is.
-[tool.ruff.lint.flake8-bugbear]
-# Allow default arguments like, e.g., `data: List[str] = fastapi.Query(None)`.
-extend-immutable-calls = ["fastapi.Depends", "fastapi.security.HTTPBasic"]
-
-
-
-[tool.setuptools.packages.find]
-include = ["PointCloud_Generation", "common_utils", "src", "ROS2_server", "Third_Party"]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-filterwarnings = [
-    "ignore:Importing from timm.models.layers is deprecated:FutureWarning",
-    "ignore:zmq.eventloop.ioloop is deprecated in pyzmq 17:Warning:meshcat.servers.zmqserver",
-    "ignore:'locale.getdefaultlocale' is deprecated:Warning:ccimport.buildtools.writer",
-]
-
-[build-system]
-requires = [
-    "setuptools>=61.0",
-    "wheel"
-]
-build-backend = "setuptools.build_meta"
 
 [project]
 name = "ITRI-GraspGen"
@@ -111,6 +61,16 @@ dependencies = [
     "xgboost>=3.2.0",
 ]
 
+[build-system]
+requires = [
+    "setuptools>=61.0",
+    "wheel"
+]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["PointCloud_Generation", "common_utils", "src", "ROS2_server", "Third_Party"]
+
 [tool.uv]
 override-dependencies = [
     "torch==2.5.1",
@@ -131,7 +91,6 @@ torchaudio = [
 torchvision = [
     { index = "pytorch-cu121", marker = "sys_platform == 'linux'" },
 ]
-
 sam-2 = { path = "./Third_Party/sam2", editable = false }
 groundingdino = { path = "./Third_Party/GroundingDINO", editable = true }
 grasp_gen = { path = "./Third_Party/GraspGen", editable = true }
@@ -142,8 +101,6 @@ name = "pytorch-cu121"
 url = "https://download.pytorch.org/whl/cu121"
 explicit = true
 
-
-
 [tool.uv.extra-build-dependencies]
 flash-attn = ["torch==2.5.1"]
 groundingdino = ["torch==2.5.1"]
@@ -153,3 +110,41 @@ torch-cluster = ["torch==2.5.1"]
 
 [project.optional-dependencies]
 localextras = ["pyzed"] # this doesn't work at all.
+
+[tool.ruff]
+exclude = [
+    "Third_Party",
+    "isaac-sim2real/isaacsim_utils/helper.py"
+]
+target-version = "py311"
+
+[tool.ruff.lint]
+extend-select = [
+  "B",
+  "C",
+  "I",
+  "W",
+]
+ignore = [
+	"E501", # Line too long
+	"E721", # Do not compare types, use `isinstance`
+	"E731", # Do not assign a `lambda` expression, use a `def`
+	
+	"I001", # Import block is un-sorted or un-formatted
+	"C901", # Function is too complex
+	"C408", # Rewrite as a literal
+	"W605", # invalid escape sequence, messes with some docstrings
+]
+
+# Not really sure what this is.
+[tool.ruff.lint.flake8-bugbear]
+# Allow default arguments like, e.g., `data: List[str] = fastapi.Query(None)`.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.security.HTTPBasic"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore:Importing from timm.models.layers is deprecated:FutureWarning",
+    "ignore:zmq.eventloop.ioloop is deprecated in pyzmq 17:Warning:meshcat.servers.zmqserver",
+    "ignore:'locale.getdefaultlocale' is deprecated:Warning:ccimport.buildtools.writer",
+]
