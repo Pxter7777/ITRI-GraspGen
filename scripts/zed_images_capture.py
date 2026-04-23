@@ -2,7 +2,10 @@ import os
 import cv2
 import logging
 import json
+from pathlib import Path
 from pointcloud_generation.zed_utils import ZedCamera
+
+PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -22,16 +25,14 @@ def main():
                 break
             zed_status, left_image, right_image = zed.capture_images()
             # mkdir and save the two images
-            current_file_dir = os.path.dirname(os.path.abspath(__file__))
-            project_root_dir = os.path.dirname(current_file_dir)
-            save_dir = os.path.join(project_root_dir, "data/zed_images/", text)
-            os.makedirs(save_dir, exist_ok=True)
-            cv2.imwrite(os.path.join(save_dir, "left.png"), left_image.get_data())
-            cv2.imwrite(os.path.join(save_dir, "right.png"), right_image.get_data())
+            save_dir = PROJECT_ROOT_DIR / "data/zed_images/" / text
+            os.makedirs(str(save_dir), exist_ok=True)
+            cv2.imwrite(str(save_dir / "left.png"), left_image.get_data())
+            cv2.imwrite(str(save_dir / "right.png"), right_image.get_data())
 
             # ZED INFO
             camera_data = {"K_left": zed.K_left.tolist(), "baseline": zed.baseline}
-            json_path = os.path.join(save_dir, "zed_info.json")
+            json_path = save_dir / "zed_info.json"
 
             with open(json_path, "w") as f:
                 json.dump(camera_data, f, indent=4)

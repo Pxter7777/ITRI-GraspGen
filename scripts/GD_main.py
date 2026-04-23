@@ -1,7 +1,7 @@
-import os
 import argparse
 import logging
 import json
+from pathlib import Path
 from pointcloud_generation.pointcloud_generation import PointCloudGenerator
 from pointcloud_generation.PC_transform import (
     silent_transform_multiple_obj_with_name_dict,
@@ -11,6 +11,8 @@ from common_utils.graspgen_utils import GraspGenerator
 from common_utils.gripper_utils import send_moves_to_robot
 from common_utils.actions_format_checker import is_actions_format_valid_v1028
 from common_utils.movesets import act
+
+PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -104,9 +106,6 @@ def parse_args():
 def main():
     logger.info("starting the program")
     args = parse_args()
-    # Directory path handle
-    current_file_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root_dir = os.path.dirname(current_file_dir)
     try:
         pc_generator = PointCloudGenerator(args)
         grasp_generator = GraspGenerator(
@@ -120,7 +119,7 @@ def main():
             text = input("./actions/<name>.json: ")
             if text == "end":
                 break
-            actions_filepath = os.path.join(project_root_dir, "actions", text + ".json")
+            actions_filepath = PROJECT_ROOT_DIR / "actions" / f"{text}.json"
             actions = []
             try:
                 with open(actions_filepath, "rb") as f:
