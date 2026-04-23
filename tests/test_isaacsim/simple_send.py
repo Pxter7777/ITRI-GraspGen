@@ -1,35 +1,32 @@
 # send one single full act like scripts/workflow_with_isaacsim.py does
+# This is deprecated due to I already removed data_for_test
 
+
+import json
+import logging
+from pathlib import Path
 from common_utils.socket_communication import (
     NonBlockingJSONSender,
     BlockingJSONReceiver,
 )
-import json
-import os
-import logging
+
+PROJECT_ROOT_DIR = PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 
 logger = logging.getLogger(__name__)
 
 sender = NonBlockingJSONSender(port=9878)
 receiever = BlockingJSONReceiver(port=9879)
 try:
-    current_file_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root_dir = os.path.dirname(current_file_dir)
-    filepath = os.path.join(
-        project_root_dir, "data_for_test", "fullact", "fullact_20251201_210042.json"
-    )
+
+    filepath = PROJECT_ROOT_DIR / "data_for_test" / "fullact" / "fullact_20251201_210042.json"
     with open(filepath, "rb") as f:
         data1 = json.load(f)
 
-    filepath = os.path.join(
-        project_root_dir, "data_for_test", "fullact", "fullact_20251201_210050.json"
-    )
+    filepath = PROJECT_ROOT_DIR / "data_for_test" / "fullact" / "fullact_20251201_210050.json"
     with open(filepath, "rb") as f:
         data2 = json.load(f)
 
-    filepath = os.path.join(
-        project_root_dir, "data_for_test", "fullact", "fullact20251201_210052.json"
-    )
+    filepath = PROJECT_ROOT_DIR / "data_for_test" / "fullact" / "fullact20251201_210052.json"
     with open(filepath, "rb") as f:
         data3 = json.load(f)
 
