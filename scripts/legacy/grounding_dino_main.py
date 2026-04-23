@@ -10,7 +10,7 @@ from common_utils.gripper_utils import send_moves_to_robot
 from common_utils.actions_format_checker import is_actions_format_valid
 from common_utils.movesets import act
 
-PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
+PROJECT_ROOT_DIR = Path(__file__).resolve().parents[2]
 
 logging.basicConfig(
     level=logging.DEBUG,
