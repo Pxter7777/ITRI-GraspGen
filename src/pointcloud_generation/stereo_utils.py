@@ -1,6 +1,6 @@
-import os
 import torch
 import logging
+from pathlib import Path
 from omegaconf import OmegaConf
 from FoundationStereo.core.foundation_stereo import FoundationStereo
 from FoundationStereo.core.utils.utils import InputPadder
@@ -19,7 +19,7 @@ class FoundationStereoModel:
         """
         logging.info("Loading FoundationStereo model...")
         ckpt_dir = args.ckpt_dir
-        cfg = OmegaConf.load(f"{os.path.dirname(ckpt_dir)}/cfg.yaml")
+        cfg = OmegaConf.load(Path(ckpt_dir).parent / "cfg.yaml")
         if "vit_size" not in cfg:
             cfg["vit_size"] = "vitl"
         for key in args.__dict__:

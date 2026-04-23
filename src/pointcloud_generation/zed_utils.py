@@ -1,10 +1,10 @@
 import pyzed.sl as sl
 import numpy as np
-import os
 import cv2
 import json
 import zmq
 import logging
+from pathlib import Path
 
 try:
     from common_utils import network_config
@@ -14,8 +14,7 @@ except ModuleNotFoundError:
     STREAM_TO_ZED_PORT = 9091
 logger = logging.getLogger(__name__)
 
-current_file_dir = os.path.dirname(os.path.abspath(__file__))
-project_root_dir = os.path.dirname(os.path.dirname(current_file_dir))
+PROJECT_ROOT_DIR = Path(__file__).resolve().parents[2]
 
 
 class ZedCamera:
@@ -90,20 +89,18 @@ class ZedCamera:
         self.ext_ir1_to_color = np.identity(4)
 
     def initialize_zed_using_existing_png(self, use_png) -> None:
-        self.png_dir = os.path.join(project_root_dir, "data/zed_images/", use_png)
+        self.png_dir = PROJECT_ROOT_DIR / "data" / "zed_images" / use_png
         self.baseline = 0
         self.K_left = 0
-        left_image_path = os.path.join(self.png_dir, "left.png")
-        right_image_path = os.path.join(self.png_dir, "right.png")
-        left_image_np = cv2.imread(left_image_path)
-        right_image_np = cv2.imread(right_image_path)
+        left_image_np = cv2.imread(str(self.png_dir / "left.png"))
+        right_image_np = cv2.imread(str(self.png_dir / "right.png"))
         h, w = left_image_np.shape[:2]
         self.left_image = sl.Mat(w, h, sl.MAT_TYPE.U8_C3, sl.MEM.CPU)
         self.right_image = sl.Mat(w, h, sl.MAT_TYPE.U8_C3, sl.MEM.CPU)
         np.copyto(self.left_image.get_data(), left_image_np)
         np.copyto(self.right_image.get_data(), right_image_np)
         # ZED INFO
-        with open(os.path.join(self.png_dir, "zed_info.json"), "rb") as f:
+        with open(self.png_dir / "zed_info.json", "rb") as f:
             camera_data = json.load(f)
         self.K_left = np.array(camera_data["K_left"])
         self.baseline = camera_data["baseline"]

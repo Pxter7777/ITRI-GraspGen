@@ -9,15 +9,6 @@ import pyzed.sl as sl
 from pointcloud_generation.mouse_handlerv2 import MouseHandler
 from pointcloud_generation.grounding_dino_utils import GroundindDinoPredictor
 from pointcloud_generation.visualization import visualize_named_box, visualize_mask
-
-# Add the project root to sys.path to enable relative imports when run as a script
-# current_file_dir = os.path.dirname(os.path.abspath(__file__))
-# project_root_dir = os.path.dirname(current_file_dir)
-# if project_root_dir not in sys.path:
-#     sys.path.insert(0, project_root_dir)
-# THIRD_PARTY_DIR = os.path.expanduser("~/Third_Party")
-# if THIRD_PARTY_DIR not in sys.path:
-#     sys.path.insert(0, THIRD_PARTY_DIR)
 from pointcloud_generation import mouse_handler  # noqa: E402
 from pointcloud_generation import visualization  # noqa: E402
 from pointcloud_generation import sam_utils  # noqa: E402
