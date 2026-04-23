@@ -74,7 +74,7 @@ include = ["pointcloud_generation", "common_utils", "FoundationStereo"]
 
 # Without this [tool.pyright] section, pylance will red-line the import even though it works well in runtime.
 [tool.pyright]
-extraPaths = ["src", "Third_Party"]
+extraPaths = ["src", "Third_Party", "Third_Party/GraspGen", "Third_Party/GroundingDINO"]
 
 [tool.uv]
 override-dependencies = [
