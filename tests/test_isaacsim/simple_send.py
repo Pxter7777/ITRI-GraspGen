@@ -17,16 +17,21 @@ logger = logging.getLogger(__name__)
 sender = NonBlockingJSONSender(port=9878)
 receiever = BlockingJSONReceiver(port=9879)
 try:
-
-    filepath = PROJECT_ROOT_DIR / "data_for_test" / "fullact" / "fullact_20251201_210042.json"
+    filepath = (
+        PROJECT_ROOT_DIR / "data_for_test" / "fullact" / "fullact_20251201_210042.json"
+    )
     with open(filepath, "rb") as f:
         data1 = json.load(f)
 
-    filepath = PROJECT_ROOT_DIR / "data_for_test" / "fullact" / "fullact_20251201_210050.json"
+    filepath = (
+        PROJECT_ROOT_DIR / "data_for_test" / "fullact" / "fullact_20251201_210050.json"
+    )
     with open(filepath, "rb") as f:
         data2 = json.load(f)
 
-    filepath = PROJECT_ROOT_DIR / "data_for_test" / "fullact" / "fullact20251201_210052.json"
+    filepath = (
+        PROJECT_ROOT_DIR / "data_for_test" / "fullact" / "fullact20251201_210052.json"
+    )
     with open(filepath, "rb") as f:
         data3 = json.load(f)
 

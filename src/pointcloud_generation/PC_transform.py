@@ -1,26 +1,12 @@
-import argparse
 import json
-import os
-import platform
-import signal
-import subprocess
-import time
-import webbrowser
-import atexit
-import tkinter as tk
-from threading import Thread
 from pathlib import Path
 
 import numpy as np
-import pye57
 
-from grasp_gen.utils.meshcat_utils import (
-    create_visualizer,
-    visualize_pointcloud,
-)
 from scipy.spatial.transform import Rotation as R
 
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[2]
+
 
 def transform(original_pointcloud, transformation_matrix):
     original_pc_homogeneous = np.hstack(
@@ -67,4 +53,3 @@ def silent_transform_multiple_obj_with_name_dict(scene_data: dict) -> dict:
         transform(np.array(scene_data["scene_info"]["pc_color"][0]), transformation)
     ]
     return scene_data
-
