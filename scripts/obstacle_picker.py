@@ -12,8 +12,8 @@ import numpy as np
 from common_utils.common_utils import save_json
 from common_utils.custom_logger import CustomFormatter
 from common_utils import config
-from PointCloud_Generation.pointcloud_generation import PointCloudGenerator
-from PointCloud_Generation.PC_transform import silent_transform
+from pointcloud_generation.pointcloud_generation import PointCloudGenerator
+from pointcloud_generation.PC_transform import silent_transform
 
 # root logger setup
 handler = logging.StreamHandler()

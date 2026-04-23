@@ -10,14 +10,14 @@ import datetime
 import pye57
 from pathlib import Path
 
-from PointCloud_Generation.stereo_utils import FoundationStereoModel
-from PointCloud_Generation.yolo_inference import YOLOv5Detector
-from PointCloud_Generation import (
+from pointcloud_generation.stereo_utils import FoundationStereoModel
+from pointcloud_generation.yolo_inference import YOLOv5Detector
+from pointcloud_generation import (
     mouse_handler,
     visualization,
     sam_utils,
 )
-from PointCloud_Generation.zed_utils import ZedCamera
+from pointcloud_generation.zed_utils import ZedCamera
 from common_utils import config
 
 

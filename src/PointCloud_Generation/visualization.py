@@ -1,7 +1,7 @@
 import cv2
 from common_utils import config
 import numpy as np
-from PointCloud_Generation.grounding_dino_utils import DetectedBoxInfo
+from pointcloud_generation.grounding_dino_utils import DetectedBoxInfo
 
 
 def overlay_mask_on_frame(frame, mask):

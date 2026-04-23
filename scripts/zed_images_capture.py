@@ -2,7 +2,7 @@ import os
 import cv2
 import logging
 import json
-from PointCloud_Generation.zed_utils import ZedCamera
+from pointcloud_generation.zed_utils import ZedCamera
 
 logging.basicConfig(
     level=logging.DEBUG,

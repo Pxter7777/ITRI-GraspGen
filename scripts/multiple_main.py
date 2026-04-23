@@ -1,7 +1,7 @@
 import argparse
 
-from PointCloud_Generation.pointcloud_generation import PointCloudGenerator
-from PointCloud_Generation.PC_transform import silent_transform_multiple
+from pointcloud_generation.pointcloud_generation import PointCloudGenerator
+from pointcloud_generation.PC_transform import silent_transform_multiple
 from common_utils import config
 from common_utils.graspgen_utils import GraspGenerator
 from common_utils.gripper_utils import send_cup_grasp_to_robot

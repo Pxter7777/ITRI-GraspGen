@@ -106,7 +106,7 @@ The pipeline is intentionally decoupled into distinct processes that communicate
    - Handles simulation environments, collision detection, and motion planning.
    - Requires NVIDIA Omniverse Python (`omni_python`).
 
-3. **GraspGen Core (`PointCloud_Generation/`, `scripts/`)**
+3. **GraspGen Core (`pointcloud_generation/`, `scripts/`)**
    - The primary data processing workflow.
    - Converts 2D images to 3D pointclouds, runs segmentation (SAM2, GroundingDINO), and estimates grasp poses.
 

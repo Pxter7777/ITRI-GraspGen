@@ -1,5 +1,5 @@
 import argparse
-from PointCloud_Generation.pointcloud_generation import PointCloudGenerator
+from pointcloud_generation.pointcloud_generation import PointCloudGenerator
 from common_utils import config
 
 

@@ -6,9 +6,9 @@ import open3d as o3d
 import numpy as np
 import pyzed.sl as sl
 
-from PointCloud_Generation.mouse_handlerv2 import MouseHandler
-from PointCloud_Generation.grounding_dino_utils import GroundindDinoPredictor
-from PointCloud_Generation.visualization import visualize_named_box, visualize_mask
+from pointcloud_generation.mouse_handlerv2 import MouseHandler
+from pointcloud_generation.grounding_dino_utils import GroundindDinoPredictor
+from pointcloud_generation.visualization import visualize_named_box, visualize_mask
 
 # Add the project root to sys.path to enable relative imports when run as a script
 # current_file_dir = os.path.dirname(os.path.abspath(__file__))
@@ -18,12 +18,12 @@ from PointCloud_Generation.visualization import visualize_named_box, visualize_m
 # THIRD_PARTY_DIR = os.path.expanduser("~/Third_Party")
 # if THIRD_PARTY_DIR not in sys.path:
 #     sys.path.insert(0, THIRD_PARTY_DIR)
-from PointCloud_Generation import mouse_handler  # noqa: E402
-from PointCloud_Generation import visualization  # noqa: E402
-from PointCloud_Generation import sam_utils  # noqa: E402
-from PointCloud_Generation.stereo_utils import FoundationStereoModel  # noqa: E402
-from PointCloud_Generation.zed_utils import ZedCamera  # noqa: E402
-# from PointCloud_Generation.yolo_inference import YOLOv5Detector  # noqa: E402
+from pointcloud_generation import mouse_handler  # noqa: E402
+from pointcloud_generation import visualization  # noqa: E402
+from pointcloud_generation import sam_utils  # noqa: E402
+from pointcloud_generation.stereo_utils import FoundationStereoModel  # noqa: E402
+from pointcloud_generation.zed_utils import ZedCamera  # noqa: E402
+# from pointcloud_generation.yolo_inference import YOLOv5Detector  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

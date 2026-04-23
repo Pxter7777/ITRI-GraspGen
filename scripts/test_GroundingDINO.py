@@ -1,7 +1,7 @@
 import logging
 import argparse
 from common_utils import config
-from PointCloud_Generation.pointcloud_generation import PointCloudGenerator
+from pointcloud_generation.pointcloud_generation import PointCloudGenerator
 
 logging.basicConfig(
     level=logging.DEBUG,

@@ -2,8 +2,8 @@ import logging
 import json
 import time
 from pathlib import Path
-from PointCloud_Generation.pointcloud_generation import PointCloudGenerator
-from PointCloud_Generation.PC_transform import (
+from pointcloud_generation.pointcloud_generation import PointCloudGenerator
+from pointcloud_generation.PC_transform import (
     silent_transform_multiple_obj_with_name_dict,
 )
 

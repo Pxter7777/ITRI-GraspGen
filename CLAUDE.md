@@ -32,13 +32,13 @@ The grasping pipeline is intentionally split across **three separate processes**
 
 1. **ROS2 server** (`ROS2_server/`) — drives the physical TM arm via `tm_driver`, or a dummy stand-in (`dummy_gripper_server.py`). Runs on system Python with ROS2.
 2. **Isaac Sim + cuRobo** (`isaac-sim2real/`) — simulation, collision checking, motion planning. Requires `omni_python` (NVIDIA Omniverse). Entry point: `sync_with_ROS2.py`.
-3. **GraspGen workflow** (`scripts/`, `PointCloud_Generation/`, `common_utils/`) — 2D→3D pointcloud, SAM2 + GroundingDINO segmentation, grasp pose estimation. Runs under `uv`. Top-level entry: `scripts/workflow_with_isaacsim.py`.
+3. **GraspGen workflow** (`scripts/`, `pointcloud_generation/`, `common_utils/`) — 2D→3D pointcloud, SAM2 + GroundingDINO segmentation, grasp pose estimation. Runs under `uv`. Top-level entry: `scripts/workflow_with_isaacsim.py`.
 
 **Inter-process communication** goes through a custom socket module — `common_utils/socket_communication.py` and `isaac-sim2real/isaacsim_utils/socket_communication.py`. Changing a payload or message type has downstream effects across all three processes; audit all sides before editing.
 
 ### Package layout
 
-Installed packages (per `pyproject.toml` `[tool.setuptools.packages.find]`): `PointCloud_Generation`, `common_utils`, `src`, `ROS2_server`, `Third_Party`. Note that `src/` and `PointCloud_Generation/` contain overlapping utilities — treat `PointCloud_Generation/` as the current path and `src/` as legacy unless the task says otherwise.
+Installed packages (per `pyproject.toml` `[tool.setuptools.packages.find]`): `pointcloud_generation`, `common_utils`, `src`, `ROS2_server`, `Third_Party`. Note that `src/` and `pointcloud_generation/` contain overlapping utilities — treat `pointcloud_generation/` as the current path and `src/` as legacy unless the task says otherwise.
 
 ### Logging
 

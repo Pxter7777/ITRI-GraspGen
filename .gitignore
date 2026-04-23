@@ -2,17 +2,15 @@ output/*
 old_output/*
 picked/*
 transform_config/*
-# PointCloud_Generation/transform_config/*
 __pycache__/
 GenPointCloud.egg-info/
 ITRI_GraspGen.egg-info/
 Third_Party/pyzed-5.0-cp311-cp311-linux_x86_64.whl
 models/*
-src/PointCloud_Generation/transform_config/*
+src/pointcloud_generation/transform_config/*
 data_for_test/obstacle/*
 !.gitkeep
 !models/Download_models_guide.md
-# PointCloud_Generation/transform_config/sim1.json
 # sample_data/
 
 data/order_experiment_data/in_basket/grasp_data/
