@@ -11,15 +11,16 @@ from collections import deque
 import numpy as np
 import argparse
 import logging
-import os
 import sys
+from pathlib import Path
 from send_traj_socket import send_traj
 
 # Because this script isn't using itri-graspgen venv, we need to manually add the project root to sys.path
-current_file_dir = os.path.dirname(os.path.abspath(__file__))
-project_root_dir = os.path.dirname(current_file_dir)
-if project_root_dir not in sys.path:
-    sys.path.insert(0, project_root_dir)
+
+
+PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT_DIR))
 from common_utils import network_config  # noqa: E402
 from common_utils.socket_communication import (  # noqa: E402
     NonBlockingJSONReceiver,

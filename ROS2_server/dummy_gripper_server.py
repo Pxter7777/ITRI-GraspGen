@@ -7,13 +7,12 @@ This script aims to imitate that behavior, only that all signal will only proces
 
 import time
 import logging
-import os
 import sys
+from pathlib import Path
 
-current_file_dir = os.path.dirname(os.path.abspath(__file__))
-project_root_dir = os.path.dirname(current_file_dir)
-if project_root_dir not in sys.path:
-    sys.path.insert(0, project_root_dir)
+PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT_DIR))
 from common_utils.socket_communication import (  # noqa: E402
     NonBlockingJSONReceiver,
     NonBlockingJSONSender,

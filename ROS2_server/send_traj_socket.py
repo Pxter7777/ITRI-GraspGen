@@ -2,13 +2,12 @@ import socket
 import json
 import keyboard
 import time
-import os
 import sys
+from pathlib import Path
 
-current_file_dir = os.path.dirname(os.path.abspath(__file__))
-project_root_dir = os.path.dirname(current_file_dir)
-if project_root_dir not in sys.path:
-    sys.path.insert(0, project_root_dir)
+PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT_DIR))
 from common_utils import network_config  # noqa: E402
 
 HOST = network_config.REAL2SIM_IP  # 改成顯示電腦的 IP，例如 "192.168.1.123"
