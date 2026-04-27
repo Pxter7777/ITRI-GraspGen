@@ -1,50 +1,48 @@
 import cv2
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class BoundingBox:
+    x_min: int
+    y_min: int
+    x_max: int
+    y_max: int
 
 
 class MouseHandler:
     def __init__(self):
-        self.drawing_box = False
-        self.box_start_points = []
-        self.box_end_points = []
-        self.num_boxes = 0
+        self.boxes: list[BoundingBox] = []
+        self._current_start: tuple | None = None
+        self._current_end: tuple | None = None
 
-    def select_box(self, event, x, y, flags, param):
+    @property
+    def num_boxes(self) -> int:
+        return len(self.boxes)
+    
+    @property
+    def temp_box(self) -> BoundingBox | None:
+        if self._current_start is None or self._current_end is None:
+            return None
+        return BoundingBox(x_min=self._current_start[0], y_min=self._current_start[1], x_max=self._current_end[0], y_max=self._current_end[1])
+
+    def handle_event(self, event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
-            self.drawing_box = True
-            self.num_boxes += 1
-            self.box_start_points.append((x, y))
-            self.box_end_points.append((x, y))
+            self._current_start = (x, y)
+            self._current_end = (x, y)
         elif event == cv2.EVENT_MOUSEMOVE:
-            if self.drawing_box:
-                self.box_end_points[-1] = (x, y)
+            if self._current_start is not None:
+                self._current_end = (x, y)
         elif event == cv2.EVENT_LBUTTONUP:
-            self.drawing_box = False
-            if (
-                abs(self.box_start_points[-1][0] - x) > 1
-                and abs(self.box_start_points[-1][1] - y) > 1
-            ):
-                self.box_end_points[-1] = (x, y)
-            else:
-                # If the box is too small, reset it
-                self.num_boxes -= 1
-                self.box_start_points.pop()
-                self.box_end_points.pop()
+            if self._current_start is None:
+                raise RuntimeError("LBUTTONUP received without a preceding LBUTTONDOWN")
+            sx, sy = self._current_start
+            if abs(sx - x) > 1 and abs(sy - y) > 1:
+                self.boxes.append(BoundingBox(x_min=min(sx, x), y_min=min(sy, y), x_max=max(sx, x), y_max=max(sy, y)))
+            self._current_start = None
+            self._current_end = None
 
     def reset(self):
-        self.drawing_box = False
-        self.box_start_points = []
-        self.box_end_points = []
-        self.num_boxes = 0
+        self.boxes = []
+        self._current_start = None
+        self._current_end = None
 
-    def get_boxes(self):
-        boxes = []
-        for i in range(self.num_boxes):
-            boxes.append(
-                [
-                    min(self.box_start_points[i][0], self.box_end_points[i][0]),
-                    min(self.box_start_points[i][1], self.box_end_points[i][1]),
-                    max(self.box_start_points[i][0], self.box_end_points[i][0]),
-                    max(self.box_start_points[i][1], self.box_end_points[i][1]),
-                ]
-            )
-        return boxes
