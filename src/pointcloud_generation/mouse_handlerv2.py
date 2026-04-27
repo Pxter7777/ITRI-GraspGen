@@ -14,10 +14,6 @@ class MouseHandler:
         self.boxes: list[BoundingBox] = []
         self._current_start: tuple | None = None
         self._current_end: tuple | None = None
-
-    @property
-    def num_boxes(self) -> int:
-        return len(self.boxes)
     
     @property
     def temp_box(self) -> BoundingBox | None:
