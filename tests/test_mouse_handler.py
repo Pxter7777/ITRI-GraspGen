@@ -71,3 +71,9 @@ def test_temp_box_during_draw(handler: MouseHandler):
     assert handler.temp_box == BoundingBox(0, 0, 30, 40)
     handler.handle_event(cv2.EVENT_LBUTTONUP, 30, 40, 0, None)
     assert handler.temp_box is None
+
+def test_temp_box_during_draw_normallized(handler: MouseHandler):
+    """Drawn right-to-left and bottom-to-top — get_boxes should still return min/max."""
+    handler.handle_event(cv2.EVENT_LBUTTONDOWN, 50, 60, 0, None)
+    handler.handle_event(cv2.EVENT_MOUSEMOVE, 10, 20, 0, None)
+    assert handler.temp_box == BoundingBox(10, 20, 50, 60)

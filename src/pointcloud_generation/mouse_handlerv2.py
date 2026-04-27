@@ -23,7 +23,7 @@ class MouseHandler:
     def temp_box(self) -> BoundingBox | None:
         if self._current_start is None or self._current_end is None:
             return None
-        return BoundingBox(x_min=self._current_start[0], y_min=self._current_start[1], x_max=self._current_end[0], y_max=self._current_end[1])
+        return self._create_box(self._current_start[0], self._current_start[1], self._current_end[0], self._current_end[1])
 
     def handle_event(self, event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
@@ -35,9 +35,9 @@ class MouseHandler:
         elif event == cv2.EVENT_LBUTTONUP:
             if self._current_start is None:
                 raise RuntimeError("LBUTTONUP received without a preceding LBUTTONDOWN")
-            sx, sy = self._current_start
-            if abs(sx - x) > 1 and abs(sy - y) > 1:
-                self.boxes.append(BoundingBox(x_min=min(sx, x), y_min=min(sy, y), x_max=max(sx, x), y_max=max(sy, y)))
+            new_box = self._create_box(self._current_start[0], self._current_start[1], x, y)
+            if new_box is not None:
+                self.boxes.append(new_box)
             self._current_start = None
             self._current_end = None
 
@@ -46,3 +46,7 @@ class MouseHandler:
         self._current_start = None
         self._current_end = None
 
+    def _create_box(self, x1, y1, x2, y2) -> BoundingBox | None:
+        if abs(x1 - x2) <= 1 or abs(y1 - y2) <= 1:
+            return None
+        return BoundingBox(min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2))
