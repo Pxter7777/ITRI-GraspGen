@@ -158,19 +158,36 @@ class TMRobotController(Node):
             accepted_joints.append(goal_degree)
             commands_to_sim.append(list(goal_degree) + self.current_IO_states)
             if len(commands_to_sim) > 1:
-                # for loop index 1 to end
-                for i in range(1, len(commands_to_sim)):
-                    prev_joints = commands_to_sim[i - 1][:6]
-                    current_joints = commands_to_sim[i][:6]
+                # 1. 將外層迴圈變數改為 idx，避免與內層衝突
+                for idx in range(1, len(commands_to_sim)):
+                    prev_joints = commands_to_sim[idx - 1][:6]
+                    current_joints = commands_to_sim[idx][:6]
+                    
                     joints_diff = [
                         c - p for c, p in zip(current_joints, prev_joints, strict=False)
                     ]
-                    ## append the middle point between prev_joints and current joints to make the trajectory smoother, only if the difference is large
-                    interpolate_iter = 2 if len(commands_to_sim) != 2 else 12
-                    for i in range(interpolate_iter):
+                    
+                    # 2. 計算兩點之間最大的關節角度落差
+                    max_diff = max([abs(d) for d in joints_diff])
+                    
+                    # 3. 動態決定切割份數 (強制每步不超過 2 度)
+                    max_degree_step = 3.5
+                    if max_diff > max_degree_step:
+                        # 無條件進位，確保切得夠細
+                        import math
+                        interpolate_iter = math.ceil(max_diff / max_degree_step)
+                    else:
+                        interpolate_iter = 1  # 差距很小，切 1 份(等於直接移動)
+
+                    # 保留你原本針對只有兩個點的特殊邏輯
+                    if len(commands_to_sim) == 2 and interpolate_iter < 12:
+                        interpolate_iter = 12
+                        
+                    # 4. 內層迴圈變數改為 step
+                    for step in range(interpolate_iter):
                         commands_to_sim_upscaled.append(
                             [
-                                p + d * (i + 1) / interpolate_iter
+                                p + d * (step + 1) / interpolate_iter
                                 for d, p in zip(joints_diff, prev_joints, strict=False)
                             ]
                             + self.current_IO_states

@@ -389,16 +389,16 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
             no_obstacles=True,
         )
     )
-    moves.append(
-        SingleRobotMove(
-            type="single_pose_meter_quaternion",
-            single_pose_meter_quaternion_goal=after_release_position[:2]
-            + [after_release_position[2] + 0.1]
-            + quaternion_orientation,
-            no_curobo=True,
-            no_obstacles=True,
-        )
-    )
+    # moves.append(
+    #     SingleRobotMove(
+    #         type="single_pose_meter_quaternion",
+    #         single_pose_meter_quaternion_goal=after_release_position[:2]
+    #         + [after_release_position[2] + 0.1]
+    #         + quaternion_orientation,
+    #         no_curobo=True,
+    #         no_obstacles=True,
+    #     )
+    # )
 
     full_act = {"moves": [asdict(move) for move in moves], "obstacles": obstacles}
     return full_act
