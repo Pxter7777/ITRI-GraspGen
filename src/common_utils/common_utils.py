@@ -6,7 +6,7 @@ import numpy as np
 
 from pathlib import Path
 from common_utils.actions_format_checker import ObstacleBound
-from pointcloud_generation.pointcloud_generation import SceneData
+from common_utils.scene_data import SceneData
 
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,6 @@ def save_json(dir: str, prefix: str, data) -> True:  # save json data for test
 
 def create_obstacle_info(
     scene_data: SceneData,
-    ob: ObstacleBound,
     extra_obstacles: dict[str, ObstacleBound] | None = None,
 ) -> SceneData:
     # Copy from .json

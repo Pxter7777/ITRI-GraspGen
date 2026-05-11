@@ -12,27 +12,6 @@ dependencies = [
     "torchvision==0.20.1",
     "torchaudio==2.5.1",
     "pip",
-    "scikit-image",
-    "omegaconf",
-    "opencv-contrib-python",
-    "imgaug",
-    "ninja",
-    "timm",
-    "albumentations",
-    "jupyterlab",
-    "scipy",
-    "joblib",
-    "scikit-learn",
-    "ruamel.yaml",
-    "trimesh",
-    "pyyaml",
-    "imageio",
-    "open3d",
-    "transformations",
-    "einops",
-    "gdown",
-    "nodejs",
-    "huggingface-hub",
     "pyrealsense2",
     "ultralytics",
     "pye57",
@@ -49,32 +28,40 @@ dependencies = [
     "groundingdino",
     "grasp_gen",
     "pointnet2_ops",
+    "foundation_stereo",
     "cython>=3.2.0",
     "numpy>=2.3.4",
     "gitpython>=3.1.45",
     "PyOpenGL-accelerate",
-    "pytest",
-    "pytest-mock",
     "pyside6>=6.10.1",
     "pyserial>=3.5",
     "spconv-cu121>=2.3.8",
     "xgboost>=3.2.0",
+    "open3d>=0.19.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.8",
+    "pytest>=9.0.2",
+    "pytest-mock>=3.15.1",
+    "pydoclint>=0.8.3",
+    "pyright>=1.1.409",
+    ## pyyaml and lark will be needed if ros humble is installed
+    "pyyaml>=6.0.3",
+    "lark>=1.3.1",
 ]
 
 [build-system]
-requires = [
-    "setuptools>=61.0",
-    "wheel"
-]
-build-backend = "setuptools.build_meta"
+requires = ["uv_build>=0.11.12,<0.12.0"]
+build-backend = "uv_build"
 
-[tool.setuptools.packages.find]
-where = ["src", "Third_Party"]
-include = ["pointcloud_generation", "common_utils", "FoundationStereo"]
+[tool.uv.build-backend]
+module-name = ["pointcloud_generation", "common_utils"]
 
 # Without this [tool.pyright] section, pylance will red-line the import even though it works well in runtime.
 [tool.pyright]
-extraPaths = ["src", "Third_Party", "Third_Party/GraspGen", "Third_Party/GroundingDINO"]
+extraPaths = ["src", "third_party/GraspGen", "third_party/GroundingDINO", "third_party/FoundationStereo/src"]
 typeCheckingMode = "strict"
 
 [tool.uv]
@@ -97,10 +84,11 @@ torchaudio = [
 torchvision = [
     { index = "pytorch-cu121", marker = "sys_platform == 'linux'" },
 ]
-sam-2 = { path = "./Third_Party/sam2", editable = false }
-groundingdino = { path = "./Third_Party/GroundingDINO", editable = true }
-grasp_gen = { path = "./Third_Party/GraspGen", editable = true }
-pointnet2_ops = { path = "./Third_Party/GraspGen/pointnet2_ops", editable = true }
+sam-2 = { path = "./third_party/sam2", editable = false }
+groundingdino = { path = "./third_party/GroundingDINO", editable = true }
+grasp_gen = { path = "./third_party/GraspGen", editable = true }
+pointnet2_ops = { path = "./third_party/GraspGen/pointnet2_ops", editable = true }
+foundation_stereo = { path = "./third_party/FoundationStereo", editable = true }
 
 [[tool.uv.index]]
 name = "pytorch-cu121"
@@ -119,7 +107,7 @@ localextras = ["pyzed"] # this doesn't work at all.
 
 [tool.ruff]
 exclude = [
-    "Third_Party",
+    "third_party",
     "isaac-sim2real/isaacsim_utils/helper.py"
 ]
 target-version = "py311"

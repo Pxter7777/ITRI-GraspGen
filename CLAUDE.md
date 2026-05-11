@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 1. **Do NOT run `.py` scripts.** Scripts here are heavy (Isaac Sim, ROS2, large ML models) and require specific live environments. The user runs and terminates them manually.
 2. **Do NOT run non-read-only git operations** (`add`, `commit`, `push`, `checkout`, `reset`, `merge`, `rebase`, etc.). Version control is handled manually by the user. `main` only accepts squash-merges from GitHub PRs.
-3. **Do NOT edit `Third_Party/`.** These are upstream submodules (GraspGen, SAM2, FoundationStereo, GroundingDINO).
+3. **Do NOT edit `third_party/`.** These are upstream submodules (GraspGen, SAM2, FoundationStereo, GroundingDINO).
 4. **Do NOT attempt mass refactors.** The codebase has known legacy/unused scripts. Stay focused on the requested task.
 5. Notes live at `./notes/` (symlink to the user's Obsidian vault).
 
@@ -38,7 +38,7 @@ The grasping pipeline is intentionally split across **three separate processes**
 
 ### Package layout
 
-Installed packages (per `pyproject.toml` `[tool.setuptools.packages.find]`): `pointcloud_generation`, `common_utils`, `src`, `ROS2_server`, `Third_Party`. Note that `src/` and `pointcloud_generation/` contain overlapping utilities — treat `pointcloud_generation/` as the current path and `src/` as legacy unless the task says otherwise.
+Installed packages (per `pyproject.toml` `[tool.setuptools.packages.find]`): `pointcloud_generation`, `common_utils`, `src`, `ROS2_server`, `third_party`. Note that `src/` and `pointcloud_generation/` contain overlapping utilities — treat `pointcloud_generation/` as the current path and `src/` as legacy unless the task says otherwise.
 
 ### Logging
 
@@ -55,7 +55,7 @@ logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
 
 ## Ruff Configuration Notes
 
-`ruff` excludes `Third_Party` and `isaac-sim2real/isaacsim_utils/helper.py`. Ignored rules include `E501` (line length), `I001` (import sorting), `C901` (complexity), `E721`, `E731`, `C408`, `W605` — do not "fix" existing violations of these outside your task scope.
+`ruff` excludes `third_party` and `isaac-sim2real/isaacsim_utils/helper.py`. Ignored rules include `E501` (line length), `I001` (import sorting), `C901` (complexity), `E721`, `E731`, `C408`, `W605` — do not "fix" existing violations of these outside your task scope.
 
 ## Temporary Output
 

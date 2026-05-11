@@ -18,7 +18,7 @@ GRASPGEN_SCENE_DIR = Path("output")
 
 GROUNDINGDINO_CFG = (
     PROJECT_ROOT_DIR
-    / "Third_Party"
+    / "third_party"
     / "GroundingDINO"
     / "groundingdino"
     / "config"

@@ -112,7 +112,7 @@ class BaseWorkflowController:
         scene_data: SceneData = self._generate_scene_data(task=task)
         # transform
         scene_data = silent_transform_multiple_obj_with_name_dict(scene_data)
-        scene_data = create_obstacle_info(scene_data, extra_obstacles)
+        scene_data = create_obstacle_info(scene_data, extra_obstacles=extra_obstacles)
         self._run_graspgen(task, scene_data)
 
     def _run_graspgen(self, task: TaskConfig, scene_data: SceneData) -> None:

@@ -20,7 +20,7 @@ from grasp_gen.utils.meshcat_utils import (
 )
 from grasp_gen.utils.point_cloud_utils import filter_colliding_grasps
 from common_utils.actions_format_checker import MoveItem
-
+from common_utils.scene_data import SceneData
 logger = logging.getLogger(__name__)
 
 """
@@ -365,7 +365,7 @@ class GraspGeneratorUI:
         self.num_grasps: int = num_grasps
         self.topk_num_grasps: int = topk_num_grasps
         self.need_GUI: bool = need_GUI
-        self.scene_data: dict
+        self.scene_data: SceneData
         ## Main init starts here
         if self.need_GUI:
             start_meshcat_server()
@@ -374,7 +374,7 @@ class GraspGeneratorUI:
 
     def _generate_grasps(self) -> tuple[np.array, np.array]:
         obj_name = self.move.target_name
-        obj_pc = self.scene_data["object_infos"][obj_name]["points"]
+        obj_pc = self.scene_data.object_infos[obj_name].points
         qualifier_name = self.move.qualifier
         # mass_center = np.mean(obj_pc, axis=0)
         # std = np.std(obj_pc, axis=0)
@@ -404,15 +404,12 @@ class GraspGeneratorUI:
         gripper_collision_mesh = gripper_info.collision_mesh
 
         # extract xyz_scene
-        full_pc_key = (
-            "pc_color" if "pc_color" in self.scene_data["scene_info"] else "full_pc"
-        )
-        xyz_scene = np.array(self.scene_data["scene_info"][full_pc_key])[0]
-        for obj_name in self.scene_data["object_infos"]:
+        xyz_scene = np.array(self.scene_data.scene_info.pc_color)[0]
+        for obj_name in self.scene_data.object_infos:
             if obj_name != self.move.target_name:
                 logger.debug(f"Scene points before: {xyz_scene.shape[0]}")
                 xyz_scene = np.vstack(
-                    (xyz_scene, self.scene_data["object_infos"][obj_name]["points"])
+                    (xyz_scene, self.scene_data.object_infos[obj_name].points)
                 )
                 logger.debug(f"Scene points after: {xyz_scene.shape[0]}")
         # VIZ_BOUNDS

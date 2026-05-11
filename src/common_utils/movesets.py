@@ -4,6 +4,7 @@ import numpy as np
 from common_utils.qualification import get_left_up_and_front
 from dataclasses import dataclass, asdict, field
 from typing import Literal
+from common_utils.scene_data import SceneData
 
 HOME_SIGNAL = [326.8, -140.2, 212.6, 90.0, 0, 90.0]
 
@@ -240,9 +241,9 @@ def grab_and_pour_and_place_back_curobo(
 
 
 def grab_and_pour_and_place_back_curobo_by_rotation(
-    target_name: str, grasp: np.ndarray, args: list, scene_data: dict
+    target_name: str, grasp: np.ndarray, args: list, scene_data: SceneData
 ) -> dict:
-    obstacles = scene_data["obstacles"]
+    obstacles = scene_data.obstacle_infos
     moves: list[SingleRobotMove] = []
     # fetch basic infos
     position = grasp[:3, 3].tolist()
@@ -411,7 +412,7 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
         )
     )
 
-    full_act = {"moves": [asdict(move) for move in moves], "obstacles": obstacles}
+    full_act = {"moves": [asdict(move) for move in moves], "obstacles": {name: obs.model_dump() for name, obs in obstacles.items()}}
     return full_act
 
 
@@ -490,9 +491,9 @@ def move_to_curobo(
     return full_act
 
 
-def joints_rad_move_to_curobo(args: list, scene_data: dict) -> dict:
+def joints_rad_move_to_curobo(args: list, scene_data: SceneData) -> dict:
     joints_goal = args[0]
-    obstacles = scene_data["obstacles"]
+    obstacles = scene_data.obstacle_infos
     moves: list[SingleRobotMove] = []
     moves.append(
         SingleRobotMove(
@@ -500,7 +501,7 @@ def joints_rad_move_to_curobo(args: list, scene_data: dict) -> dict:
         )
     )
     moves.append(SingleRobotMove(type="gripper"))
-    full_act = {"moves": [asdict(move) for move in moves], "obstacles": obstacles}
+    full_act = {"moves": [asdict(move) for move in moves], "obstacles": {name: obs.model_dump() for name, obs in obstacles.items()}}
     return full_act
 
 

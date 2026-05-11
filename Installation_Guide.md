@@ -46,10 +46,10 @@ uv sync
 - This could take a while
 
 #### **Note on `groundingdino/version.py`:**
-After running `uv sync`, you might notice an untracked file: `Third_Party/GroundingDINO/groundingdino/version.py`. This file is generated during the installation process of the `groundingdino` submodule. To prevent this file from cluttering your `git status`, you can add it to your local Git exclude list:
+After running `uv sync`, you might notice an untracked file: `third_party/GroundingDINO/groundingdino/version.py`. This file is generated during the installation process of the `groundingdino` submodule. To prevent this file from cluttering your `git status`, you can add it to your local Git exclude list:
 
 ```bash
-echo "groundingdino/version.py" >> .git/modules/Third_Party/GroundingDINO/info/exclude
+echo "groundingdino/version.py" >> .git/modules/third_party/GroundingDINO/info/exclude
 ```
 This command only needs to be run once. It tells Git to ignore the file locally without modifying the submodule's `.gitignore` or the main project's `.gitignore`. This change is local to your repository and will not be committed.
 

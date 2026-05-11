@@ -76,7 +76,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args": [
-            
+                "--use-png", "demo6"
             ]
         },
         {

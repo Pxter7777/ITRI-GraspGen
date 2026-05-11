@@ -2,8 +2,8 @@ import torch
 import logging
 from pathlib import Path
 from omegaconf import OmegaConf
-from FoundationStereo.core.foundation_stereo import FoundationStereo
-from FoundationStereo.core.utils.utils import InputPadder
+from foundation_stereo.core.foundation_stereo import FoundationStereo
+from foundation_stereo.core.utils.utils import InputPadder
 import cv2
 import numpy as np
 
