@@ -215,7 +215,7 @@ def test_blocking_receiver_on_nonblocking_task():  # should fail
 
 def test_send_to_disconnected_nonblocking_receiver():
     """Reconnect and resume sending after the receiver process restarts."""
-    process, data_queue, error_queue = receiver_process(
+    process, data_queue, _error_queue = receiver_process(
         port=9876, task_type="non-blocking_task", receiver_type="non-blocking_receiver"
     )
     sender = NonBlockingJSONSender(port=9876)

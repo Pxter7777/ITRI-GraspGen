@@ -14,7 +14,7 @@ import numpy as np
 from common_utils import config
 from common_utils.common_utils import save_json
 from common_utils.log_formatter import CustomLoggingFormatter
-from pointcloud_generation.PC_transform import silent_transform
+from pointcloud_generation.pc_transform import silent_transform
 from pointcloud_generation.pointcloud_generation import PointCloudGenerator
 
 # root logger setup

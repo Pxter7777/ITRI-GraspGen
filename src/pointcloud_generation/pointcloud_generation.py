@@ -302,7 +302,7 @@ class PointCloudGenerator:
             )
             return None
     @staticmethod
-    def _generate_pointcloud(depth, color_np_org, mask, K_cam, scale, max_depth):
+    def _generate_pointcloud(depth, color_np_org, mask, K_cam, scale, max_depth) -> SceneData | None:
         logging.info("generating scene and object...")
 
         K_scaled_cam = K_cam.copy()
@@ -503,7 +503,7 @@ class PointCloudGenerator:
         )
 
     @staticmethod
-    def _depth2xyzmap(depth, K):
+    def _depth2xyzmap(depth, K) -> np.ndarray:
         vy, vx = np.meshgrid(
             np.arange(depth.shape[0]), np.arange(depth.shape[1]), indexing="ij"
         )

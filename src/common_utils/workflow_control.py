@@ -14,7 +14,7 @@ from common_utils.socket_communication import (
     NonBlockingJSONReceiver,
     NonBlockingJSONSender,
 )
-from pointcloud_generation.PC_transform import (
+from pointcloud_generation.pc_transform import (
     silent_transform_multiple_obj_with_name_dict,
 )
 from pointcloud_generation.pointcloud_generation import PointCloudGenerator, SceneData

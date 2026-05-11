@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 import numpy as np
-from scipy.spatial.transform import Rotation as R
+from scipy.spatial.transform import Rotation
 
 from common_utils.scene_data import SceneData
 
@@ -41,7 +41,7 @@ def silent_transform_multiple_obj_with_name_dict(scene_data: SceneData) -> Scene
             [0, 0, 0, 1],
         ]
     )
-    rotation = R.from_euler(
+    rotation = Rotation.from_euler(
         "xyz",
         [transform_data["rr"], transform_data["rp"], transform_data["ry"]],
         degrees=True,

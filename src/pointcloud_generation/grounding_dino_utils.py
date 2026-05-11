@@ -1,7 +1,7 @@
 """Grounding DINO detection utilities."""
 
 import cv2
-import groundingdino.datasets.transforms as T
+import groundingdino.datasets.transforms as transforms
 import numpy as np
 import torch
 from groundingdino.util.inference import load_model, predict
@@ -49,11 +49,11 @@ class GroundindDinoPredictor:
         self, image: np.array, text_prompt: str, box_threshold=0.4, text_threshold=0.4
     ) -> list[DetectedBoxInfo]:
         """Predict bounding boxes for the given text prompt in an image."""
-        transform = T.Compose(
+        transform = transforms.Compose(
             [
-                T.RandomResize([800], max_size=1333),
-                T.ToTensor(),
-                T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+                transforms.RandomResize([800], max_size=1333),
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
             ]
         )
         image_pillow = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))

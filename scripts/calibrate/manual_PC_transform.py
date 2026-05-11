@@ -19,7 +19,7 @@ from grasp_gen.utils.meshcat_utils import (
     create_visualizer,
     visualize_pointcloud,
 )
-from scipy.spatial.transform import Rotation as R
+from scipy.spatial.transform import Rotation
 
 OUTPUT_PC_DIR = Path("data/calibrate/output_pointcloud")
 OUTPUT_TC_DIR = Path("data/calibrate/output_transform_config")
@@ -165,7 +165,7 @@ class ControlPanel:
         tk.Entry(parent, textvariable=var, width=10).grid(row=row, column=2)
         return var
 
-    def on_transform_change(self, *args):
+    def on_transform_change(self, *args: object) -> None:
         """Handle slider or entry value change."""
         self.apply_transform()
 
@@ -193,7 +193,7 @@ class ControlPanel:
             [[1, 0, 0, tx], [0, 1, 0, ty], [0, 0, 1, tz], [0, 0, 0, 1]]
         )
 
-        rotation = R.from_euler("xyz", [rr, rp, ry], degrees=True)
+        rotation = Rotation.from_euler("xyz", [rr, rp, ry], degrees=True)
         rotation_matrix = np.identity(4)
         rotation_matrix[:3, :3] = rotation.as_matrix()
 
@@ -510,7 +510,7 @@ def quick_transform(args):
             [0, 0, 0, 1],
         ]
     )
-    rotation = R.from_euler(
+    rotation = Rotation.from_euler(
         "xyz",
         [transform_data["rr"], transform_data["rp"], transform_data["ry"]],
         degrees=True,

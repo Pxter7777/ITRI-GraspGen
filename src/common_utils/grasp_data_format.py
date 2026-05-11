@@ -20,7 +20,7 @@ class GraspData(BaseModel):
 
     @field_validator("grasp_pose", mode="before")
     @classmethod
-    def coerce_to_ndarray(cls, v):
+    def coerce_to_ndarray(cls, v: object) -> np.ndarray:
         """Convert input to numpy array before validation."""
         return np.array(v)
 
