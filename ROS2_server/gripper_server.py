@@ -25,7 +25,7 @@ PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT_DIR))
 from common_utils import network_config  # noqa: E402
-from common_utils.custom_logger import CustomFormatter  # noqa: E402
+from common_utils.log_formatter import CustomLoggingFormatter  # noqa: E402
 from common_utils.movesets import SingleRobotMove  # noqa: E402
 from common_utils.socket_communication import (  # noqa: E402
     NonBlockingJSONReceiver,
@@ -442,7 +442,7 @@ def main():
     """Start the TM robot controller ROS2 node."""
     args = parse_args()
     handler = logging.StreamHandler()
-    handler.setFormatter(CustomFormatter())
+    handler.setFormatter(CustomLoggingFormatter())
     if args.debug:
         logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
     else:

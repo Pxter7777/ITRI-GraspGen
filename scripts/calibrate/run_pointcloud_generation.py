@@ -7,12 +7,12 @@ import logging
 from pathlib import Path
 
 from common_utils import config
-from common_utils.custom_logger import CustomFormatter
+from common_utils.log_formatter import CustomLoggingFormatter
 from pointcloud_generation.pointcloud_generation import PointCloudGenerator
 
 # root logger setup
 handler = logging.StreamHandler()
-handler.setFormatter(CustomFormatter())
+handler.setFormatter(CustomLoggingFormatter())
 logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
 logger = logging.getLogger(__name__)
 

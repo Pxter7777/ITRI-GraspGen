@@ -14,7 +14,7 @@ from grasp_gen.robot import get_gripper_info
 from grasp_gen.utils.point_cloud_utils import filter_colliding_grasps
 
 from common_utils import config
-from common_utils.custom_logger import CustomFormatter
+from common_utils.log_formatter import CustomLoggingFormatter
 from common_utils.grasp_data_format import GraspData, GraspPack
 from common_utils.graspgen_utils import GraspGeneratorUI, flip_upside_down_grasps
 from common_utils.order_task_config import OrderTaskConfig
@@ -33,7 +33,7 @@ class NumpyEncoder(json.JSONEncoder):
 
 # root logger setup
 handler = logging.StreamHandler()
-handler.setFormatter(CustomFormatter())
+handler.setFormatter(CustomLoggingFormatter())
 logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
 logger = logging.getLogger(__name__)
 

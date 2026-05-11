@@ -81,10 +81,10 @@ Tests are managed using `pytest` and are located entirely within the `tests/` di
 - **Logging**: Use the standard `logging` module. Do not introduce new logging frameworks. For top-level scripts, set up the root logger using the custom formatter to get preferred color and format:
   ```python
   import logging
-  from common_utils.custom_logger import CustomFormatter
+  from common_utils.log_formatter import CustomLoggingFormatter
   
   handler = logging.StreamHandler()
-  handler.setFormatter(CustomFormatter())
+  handler.setFormatter(CustomLoggingFormatter())
   logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
   ```
 

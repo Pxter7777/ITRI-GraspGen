@@ -8,7 +8,7 @@ import numpy as np
 import torch
 
 from common_utils import config, network_config
-from common_utils.custom_logger import CustomFormatter
+from common_utils.log_formatter import CustomLoggingFormatter
 from common_utils.socket_communication import (
     NonBlockingJSONReceiver,
     NonBlockingJSONSender,
@@ -17,7 +17,7 @@ from common_utils.workflow_control import BaseWorkflowController
 
 # root logger setup
 handler = logging.StreamHandler()
-handler.setFormatter(CustomFormatter())
+handler.setFormatter(CustomLoggingFormatter())
 logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
 logger = logging.getLogger(__name__)
 

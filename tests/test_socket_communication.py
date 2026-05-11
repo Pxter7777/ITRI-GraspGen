@@ -6,7 +6,7 @@ from multiprocessing import Process, Queue
 
 import pytest
 
-from common_utils.custom_logger import CustomFormatter
+from common_utils.log_formatter import CustomLoggingFormatter
 from common_utils.socket_communication import (
     BlockingJSONReceiver,
     NonBlockingJSONReceiver,
@@ -19,7 +19,7 @@ SAMPLE_BIG_DATA = {"big_data": "x" * 1000000}
 TIMEOUT = 5
 
 handler = logging.StreamHandler()
-handler.setFormatter(CustomFormatter())
+handler.setFormatter(CustomLoggingFormatter())
 logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
 logger = logging.getLogger(__name__)
 

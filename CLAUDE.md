@@ -46,10 +46,10 @@ For top-level scripts, use the project's formatter for consistent color/format:
 
 ```python
 import logging
-from common_utils.custom_logger import CustomFormatter
+from common_utils.log_formatter import CustomLoggingFormatter
 
 handler = logging.StreamHandler()
-handler.setFormatter(CustomFormatter())
+handler.setFormatter(CustomLoggingFormatter())
 logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
 ```
 
