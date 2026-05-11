@@ -453,9 +453,7 @@ def load_scene(json_file: str | Path) -> PCInfo:
     return info
 
 
-def load_and_process_scene(
-    vis: object, json_file: str | Path
-) -> None:
+def load_and_process_scene(vis: object, json_file: str | Path) -> None:
     """Load a scene, reset app state, and update the visualizer."""
     # print(f"Loading scene from {json_file}")
     vis.delete()

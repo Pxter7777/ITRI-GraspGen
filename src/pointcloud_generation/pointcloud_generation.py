@@ -41,7 +41,6 @@ class NamedMask:
         self.mask = mask
 
 
-
 class PointCloudGenerator:
     """Generate point clouds from stereo camera input and segmentation.
 
@@ -301,6 +300,7 @@ class PointCloudGenerator:
                 f"An error occurred during mesh reconstruction or saving: {e}"
             )
             return None
+
     @staticmethod
     def _generate_pointcloud(
         depth: np.ndarray,
@@ -378,8 +378,7 @@ class PointCloudGenerator:
                 " from the point cloud. Nothing to save."
             )
             raise ValueError(
-                "The selected mask contains no points"
-                " from the point cloud."
+                "The selected mask contains no points from the point cloud."
             )
         scene_points = [[z, -x, -y] for x, y, z in scene_points]
         object_points = [[z, -x, -y] for x, y, z in object_points]
@@ -405,6 +404,7 @@ class PointCloudGenerator:
                 img_color=[scene_colors_arr],
             ),
         )
+
     @staticmethod
     def _generate_pointcloud_multiple_obj_with_name_dict(
         depth: np.ndarray,
@@ -516,7 +516,8 @@ class PointCloudGenerator:
 
     @staticmethod
     def _depth2xyzmap(
-        depth: np.ndarray, K: np.ndarray  # noqa: N803
+        depth: np.ndarray,
+        K: np.ndarray,  # noqa: N803
     ) -> np.ndarray:
         vy, vx = np.meshgrid(
             np.arange(depth.shape[0]), np.arange(depth.shape[1]), indexing="ij"
@@ -526,6 +527,7 @@ class PointCloudGenerator:
         z_map = depth
         xyz_map = np.stack([x_map, y_map, z_map], axis=-1)
         return xyz_map
+
     def close(self) -> None:
         """Release the camera and destroy all OpenCV windows."""
         self.zed.close()

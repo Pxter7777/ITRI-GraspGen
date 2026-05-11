@@ -23,9 +23,7 @@ PROJECT_ROOT_DIR = Path(__file__).resolve().parents[2]
 class ZedCamera:
     """A class to interface with a ZED camera."""
 
-    def __init__(
-        self, use_png: str = "", from_stream: bool = False
-    ) -> None:
+    def __init__(self, use_png: str = "", from_stream: bool = False) -> None:
         """Initializes the ZedCamera object."""
         self.baseline: float
         self.camera: sl.Camera
@@ -94,9 +92,7 @@ class ZedCamera:
 
         self.ext_ir1_to_color = np.identity(4)
 
-    def initialize_zed_using_existing_png(
-        self, use_png: str
-    ) -> None:
+    def initialize_zed_using_existing_png(self, use_png: str) -> None:
         """Initialize camera parameters from saved PNG images and calibration data."""
         self.png_dir = PROJECT_ROOT_DIR / "data" / "zed_images" / use_png
         self.baseline = 0

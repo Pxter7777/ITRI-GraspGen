@@ -282,8 +282,7 @@ def test_raise_occupying_socket():
     with pytest.raises(ConnectionAbortedError) as excinfo:
         _ = BlockingJSONReceiver(port=9890)
     assert (
-        str(excinfo.value)
-        == "An error occurred during connecting"
+        str(excinfo.value) == "An error occurred during connecting"
         " localhost:9890:"
         " [Errno 98] Address already in use"
     )
@@ -294,8 +293,7 @@ def test_raise_occupying_socket():
     with pytest.raises(ConnectionAbortedError) as excinfo:
         _ = NonBlockingJSONReceiver(port=9891)
     assert (
-        str(excinfo.value)
-        == "An error occurred during connecting"
+        str(excinfo.value) == "An error occurred during connecting"
         " localhost:9891:"
         " [Errno 98] Address already in use"
     )

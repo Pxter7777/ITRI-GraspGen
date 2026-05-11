@@ -40,9 +40,7 @@ class YOLOv5Detector:
         self.model.conf = conf  # confidence threshold setting
         print("✅ Model loaded successfully!")
 
-    def infer(
-        self, image: np.ndarray | str
-    ) -> pd.DataFrame:
+    def infer(self, image: np.ndarray | str) -> pd.DataFrame:
         """Run inference on an image path or numpy array.
 
         Return detection results as a pandas DataFrame.
@@ -55,9 +53,7 @@ class YOLOv5Detector:
         df = df[df["class"] == 41]
         return df
 
-    def infer_and_show(
-        self, image: np.ndarray | str
-    ) -> None:
+    def infer_and_show(self, image: np.ndarray | str) -> None:
         """Run inference and display results in an OpenCV window."""
         if isinstance(image, str):
             image = cv2.imread(image)

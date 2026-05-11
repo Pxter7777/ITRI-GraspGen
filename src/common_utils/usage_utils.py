@@ -9,9 +9,7 @@ import torch
 class UsageInspector:
     """Track elapsed time and peak VRAM for named code sections."""
 
-    def __init__(
-        self, enabled: bool = False, log_file: str = "usage_log.txt"
-    ) -> None:
+    def __init__(self, enabled: bool = False, log_file: str = "usage_log.txt") -> None:
         self.enabled = enabled
         if not self.enabled:
             return

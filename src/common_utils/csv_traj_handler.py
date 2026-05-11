@@ -34,9 +34,7 @@ status_close_tight = [1, 1, 0]
 class Movement:
     """A single movement step with a mode and optional joint values."""
 
-    def __init__(
-        self, mode: Mode, joint_value: list[float] | None = None
-    ) -> None:
+    def __init__(self, mode: Mode, joint_value: list[float] | None = None) -> None:
         self.mode = mode
         self.joints_values = []
         self.joint_value = joint_value

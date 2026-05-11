@@ -98,9 +98,7 @@ class BaseWorkflowController:
         else:
             raise ValueError(f"Unknown task_type {task_type}")
 
-    def _process_csv_command(
-        self, command: str, no_need_curobo: bool = False
-    ) -> None:
+    def _process_csv_command(self, command: str, no_need_curobo: bool = False) -> None:
         extra_obstacles: dict[str, ObstacleBound] = load_extra_obstacles()
         self._run_csv(command, extra_obstacles, no_need_curobo=no_need_curobo)
 
@@ -199,9 +197,7 @@ class BaseWorkflowController:
         else:
             raise ValueError(f"Can't recognize the response {response}")
 
-    def _generate_scene_data(
-        self, task: TaskConfig, num_try: int = 20
-    ) -> SceneData:
+    def _generate_scene_data(self, task: TaskConfig, num_try: int = 20) -> SceneData:
         # try 20 times
         while True:
             for _ in range(num_try):

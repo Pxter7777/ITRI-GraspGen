@@ -267,9 +267,7 @@ class ExperimentWorkflowController:
                     )
                 logger.info(f"Saved grasp data to {output_file}")
 
-    def _generate_grasp_datas(
-        self, json_path: Path
-    ) -> GraspPack | None:
+    def _generate_grasp_datas(self, json_path: Path) -> GraspPack | None:
         with open(json_path, "rb") as f:
             task_json = json.load(f)
         task = OrderTaskConfig(**task_json)

@@ -26,9 +26,7 @@ class DetectedBoxInfo:
         logits: Confidence score.
     """
 
-    def __init__(
-        self, box: BoundingBox, phrase: str, logits: float
-    ) -> None:
+    def __init__(self, box: BoundingBox, phrase: str, logits: float) -> None:
         self.box = box
         self.phrase = phrase
         self.logits = logits

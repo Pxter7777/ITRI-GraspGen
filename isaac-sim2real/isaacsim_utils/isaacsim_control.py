@@ -75,9 +75,7 @@ def init_pose_matric(
 def get_cuboid_list(move: SingleRobotMove, obstacles: dict) -> list:
     """Build a list of cuRobo Cuboid obstacles from move and obstacle data."""
     cuboids = []
-    cuboids.append(
-        Cuboid(name="table", pose=[0, 0, -1.97, 1, 0, 0, 0], dims=[4, 4, 4])
-    )
+    cuboids.append(Cuboid(name="table", pose=[0, 0, -1.97, 1, 0, 0, 0], dims=[4, 4, 4]))
     for i, obstacle_name in enumerate(obstacles):
         if obstacle_name not in move.ignore_obstacles:
             middle_point = np.mean(
@@ -337,9 +335,7 @@ class IsaacSimController:
             else:
                 raise ValueError("Unknown message")
 
-    def _process_graspgen_commands(
-        self, graspgen_datas: list[dict[str, Any]]
-    ) -> None:
+    def _process_graspgen_commands(self, graspgen_datas: list[dict[str, Any]]) -> None:
         for graspgen_data in graspgen_datas:
             before_move_joints = self.last_joint_states
             processed_moves: list[SingleRobotMove] = []
@@ -400,16 +396,13 @@ class IsaacSimController:
                     ):
                         goals = graspgen_move.sequence_joint_rad_goals
                         raise ValueError(
-                            f"Can't accept {goals}"
-                            " as sequence_joint_rad_goals."
+                            f"Can't accept {goals} as sequence_joint_rad_goals."
                         )
                     if graspgen_move.no_curobo:
                         processed_moves.append(graspgen_move)
-                        self.last_joint_states = (
-                            graspgen_move.sequence_joint_rad_goals[
-                                -1
-                            ]
-                        )
+                        self.last_joint_states = graspgen_move.sequence_joint_rad_goals[
+                            -1
+                        ]
                         continue
                     joints_goal = JointState(
                         position=self.tensor_args.to_device(

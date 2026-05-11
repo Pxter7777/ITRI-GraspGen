@@ -12,9 +12,7 @@ def handler() -> MouseHandler:
     return MouseHandler()
 
 
-def draw_box(
-    handler: MouseHandler, x1: int, y1: int, x2: int, y2: int
-) -> None:
+def draw_box(handler: MouseHandler, x1: int, y1: int, x2: int, y2: int) -> None:
     """Simulate a complete mouse drag from (x1,y1) to (x2,y2)."""
     handler.handle_event(cv2.EVENT_LBUTTONDOWN, x1, y1, 0, None)
     handler.handle_event(cv2.EVENT_MOUSEMOVE, x2, y2, 0, None)

@@ -39,7 +39,11 @@ class FoundationStereoModel:
         self.model.cuda().eval()
 
     def run_inference(
-        self, ir1_np: np.ndarray, ir2_np: np.ndarray, K: np.ndarray, baseline: float  # noqa: N803
+        self,
+        ir1_np: np.ndarray,
+        ir2_np: np.ndarray,
+        K: np.ndarray,  # noqa: N803
+        baseline: float,
     ) -> tuple[np.ndarray, tuple[int, int]]:
         """Runs stereo inference on a pair of images and returns a depth map.
 

@@ -71,9 +71,7 @@ class MouseHandler:
         self._current_start = None
         self._current_end = None
 
-    def _create_box(
-        self, x1: int, y1: int, x2: int, y2: int
-    ) -> BoundingBox | None:
+    def _create_box(self, x1: int, y1: int, x2: int, y2: int) -> BoundingBox | None:
         if abs(x1 - x2) <= 1 or abs(y1 - y2) <= 1:
             return None
         return BoundingBox(min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2))

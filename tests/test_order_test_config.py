@@ -4,10 +4,7 @@ import json
 
 from common_utils.order_task_config import OrderTaskConfig
 
-_ASSETS = (
-    "/home/j300/visualize-Fetchbench-assets"
-    "/assets/benchmark_objects"
-)
+_ASSETS = "/home/j300/visualize-Fetchbench-assets/assets/benchmark_objects"
 
 _CUP_ID = "dc1c220c8ef89a5d1a57566a9a7e5976"
 _TABLE_ID = "d9c11381adf0cf48f1783a44a88d6274"
@@ -122,9 +119,7 @@ STANDARD_VALID_JSON = json.dumps(
                 "instance_id": "Suitcase_0",
                 "category": "Suitcase",
                 "obj_id": _SUITCASE_ID,
-                "obj_dir": (
-                    f"{_ASSETS}/Suitcase/{_SUITCASE_ID}"
-                ),
+                "obj_dir": (f"{_ASSETS}/Suitcase/{_SUITCASE_ID}"),
                 "obj_type": "mesh",
                 "x": 0.48,
                 "y": -0.4,

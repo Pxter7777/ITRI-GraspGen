@@ -61,9 +61,6 @@ class SingleRobotMove:
     single_pose_joint_rad_goal: list[float] | None = None
 
 
-
-
-
 def grab_and_pour_and_place_back_curobo_by_rotation(
     target_name: str, grasp: np.ndarray, args: list, scene_data: SceneData
 ) -> dict:
@@ -236,18 +233,9 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
 
     full_act = {
         "moves": [asdict(move) for move in moves],
-        "obstacles": {
-            name: obs.model_dump()
-            for name, obs in obstacles.items()
-        },
+        "obstacles": {name: obs.model_dump() for name, obs in obstacles.items()},
     }
     return full_act
-
-
-
-
-
-
 
 
 def joints_rad_move_to_curobo(args: list, scene_data: SceneData) -> dict:
@@ -263,10 +251,7 @@ def joints_rad_move_to_curobo(args: list, scene_data: SceneData) -> dict:
     moves.append(SingleRobotMove(type="gripper"))
     full_act = {
         "moves": [asdict(move) for move in moves],
-        "obstacles": {
-            name: obs.model_dump()
-            for name, obs in obstacles.items()
-        },
+        "obstacles": {name: obs.model_dump() for name, obs in obstacles.items()},
     }
     return full_act
 
@@ -287,7 +272,6 @@ action_dict = {
     "joints_rad_move_to_curobo": joints_rad_move_to_curobo,
     "open_grip": open_grip,
 }
-
 
 
 def act_with_name(

@@ -24,6 +24,7 @@ def quat_to_euler_zyx_deg(
     qx: float, qy: float, qz: float, qw: float
 ) -> tuple[float, float, float]:
     """Convert a quaternion to ZYX Euler angles in degrees."""
+
     def _clamp(v: float, lo: float, hi: float) -> float:
         return max(lo, min(hi, v))
 
@@ -171,9 +172,7 @@ class TMRobotController(Node):
 
             future = self.io_cli.call_async(req)
 
-            def _done(
-                fut: object, pin: int = pin
-            ) -> None:
+            def _done(fut: object, pin: int = pin) -> None:
                 try:
                     result = fut.result()
                     if result.ok:
