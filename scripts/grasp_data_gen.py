@@ -305,7 +305,7 @@ class ExperimentWorkflowController:
         logger.info(
             f"Generated {len(grasps)} grasps "
             f"(scores {grasp_conf.min():.3f}"
-            f"–{grasp_conf.max():.3f})"
+            f"-{grasp_conf.max():.3f})"
         )
 
         # Transform grasps from centered mesh frame → target local frame → world frame

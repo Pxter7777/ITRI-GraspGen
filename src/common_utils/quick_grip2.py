@@ -106,7 +106,7 @@ class TMRobotController(Node):
         if self.waiting_for_gripper and self.target_ee_output is not None:
             if self.ee_digital_output[:3] == self.target_ee_output:
                 self.get_logger().info(
-                    f"🔄 夾爪狀態達成: {self.ee_digital_output}，開始等待 6 秒"
+                    f"🔄 夾爪狀態達成: {self.ee_digital_output},開始等待 6 秒"
                 )
                 self.waiting_for_gripper = False
                 self.target_ee_output = None
@@ -116,7 +116,7 @@ class TMRobotController(Node):
         """Handle tool-pose messages and trigger wait timers on arrival."""
         p = msg.pose.position
         q = msg.pose.orientation
-        # 2)  transform to CPP（x y z rx ry rz）
+        # 2)  transform to CPP(x y z rx ry rz)
         x_mm, y_mm, z_mm = p.x * 1000.0, p.y * 1000.0, p.z * 1000.0
         rx, ry, rz = quat_to_euler_zyx_deg(q.x, q.y, q.z, q.w)
 
@@ -125,13 +125,13 @@ class TMRobotController(Node):
                 [x_mm, y_mm, z_mm, rx, ry, rz], state["position"]
             ):
                 self.get_logger().info(
-                    f"🔄 夾爪狀態達成: {self.ee_digital_output}，開始等待 87 秒"
+                    f"🔄 夾爪狀態達成: {self.ee_digital_output},開始等待 87 秒"
                 )
                 self._start_arm_wait_timer(state["time_to_wait"])
                 self.states_need_to_wait.remove(state)
 
     def _start_gripper_wait_timer(self):
-        # 建立 Timer，並在執行 callback 時自行取消
+        # 建立 Timer,並在執行 callback 時自行取消
         self._wait_timer = self.create_timer(1.0, self._gripper_wait_done)
 
     def _gripper_wait_done(self):
@@ -143,7 +143,7 @@ class TMRobotController(Node):
             del self._wait_timer
 
     def _start_arm_wait_timer(self, time):
-        # 建立 Timer，並在執行 callback 時自行取消
+        # 建立 Timer,並在執行 callback 時自行取消
         self._wait_timer_arm = self.create_timer(time, self._arm_wait_done)
 
     def _arm_wait_done(self):
@@ -155,7 +155,7 @@ class TMRobotController(Node):
             del self._wait_timer_arm
 
     def set_io(self, states: list):
-        """設定 End_DO0, End_DO1, End_DO2 狀態，例如 [1, 0, 0]."""
+        """設定 End_DO0, End_DO1, End_DO2 狀態,例如 [1, 0, 0]."""
         for pin, state in enumerate(states):
             req = SetIO.Request()
             req.module = 1  # End Module 夾爪
@@ -170,14 +170,14 @@ class TMRobotController(Node):
                     result = fut.result()
                     if result.ok:
                         self.get_logger().info(
-                            f"✅ End_DO{pin} 設定成功，等待 feedback 確認"
+                            f"✅ End_DO{pin} 設定成功,等待 feedback 確認"
                         )
                         # 只設定一次 target 狀態即可
                         if pin == 2:  # 最後一個 pin 設定完成時
                             self.target_ee_output = states
                             self.waiting_for_gripper = True
                     else:
-                        self.get_logger().warn(f"⚠️ End_DO{pin} 設定失敗，略過等待")
+                        self.get_logger().warn(f"⚠️ End_DO{pin} 設定失敗,略過等待")
                         self._busy = False
                 except Exception as e:
                     self.get_logger().error(f"[SetIO 失敗] {e}")
@@ -188,7 +188,7 @@ class TMRobotController(Node):
     def append_gripper_states(self, states):
         """Enqueue a gripper IO command with the given 3-pin states."""
         if not (isinstance(states, (list, tuple)) and len(states) == 3):
-            self.get_logger().error("IO 狀態必須為長度 3 的 list，例如 [1,0,0]")
+            self.get_logger().error("IO 狀態必須為長度 3 的 list,例如 [1,0,0]")
             return
         self.tcp_queue.append(
             {"script": f"IO:{states[0]},{states[1]},{states[2]}", "wait_time": 0.0}
@@ -278,7 +278,7 @@ class TMRobotController(Node):
                 if ok:
                     self.get_logger().info("✅ successed")
                 else:
-                    self.get_logger().warn("⚠️ 執行失敗：跳過該指令")
+                    self.get_logger().warn("⚠️ 執行失敗:跳過該指令")
             except Exception as e:
                 self.get_logger().error(f"[SendScript 失敗] {e}")
             finally:
@@ -291,7 +291,7 @@ class TMRobotController(Node):
         """Remove all pending commands from the queue."""
         n = len(self.tcp_queue)
         self.tcp_queue.clear()
-        self.get_logger().info(f"已清空佇列，共 {n} 筆")
+        self.get_logger().info(f"已清空佇列,共 {n} 筆")
 
 
 def parse_args():

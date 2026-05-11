@@ -114,7 +114,7 @@ def plot_success_rate_by_bin(records):
             bins = np.percentile(vals, np.linspace(0, 100, 6))
             bins = np.unique(bins)
             bin_labels = [
-                f"{bins[i]:.2f}–{bins[i + 1]:.2f}" for i in range(len(bins) - 1)
+                f"{bins[i]:.2f}-{bins[i + 1]:.2f}" for i in range(len(bins) - 1)
             ]
 
         rates, counts = [], []

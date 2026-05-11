@@ -248,7 +248,7 @@ class TMRobotController(Node):
             self._handle_failure()
 
     def set_io(self, states: list):
-        """設定 End_DO0, End_DO1, End_DO2 狀態，例如 [1, 0, 0]."""
+        """設定 End_DO0, End_DO1, End_DO2 狀態,例如 [1, 0, 0]."""
         for pin, state in enumerate(states):
             req = SetIO.Request()
             req.module = 1  # End Module 夾爪
@@ -262,13 +262,13 @@ class TMRobotController(Node):
                 try:
                     result = fut.result()
                     if result.ok:
-                        logger.info(f"✅ End_DO{pin} 設定成功，等待 feedback 確認")
+                        logger.info(f"✅ End_DO{pin} 設定成功,等待 feedback 確認")
                         # 只設定一次 target 狀態即可
                         if pin == 2:  # 最後一個 pin 設定完成時
                             self.target_ee_output = states
                             self.waiting_for_gripper = True
                     else:
-                        logger.warn(f"⚠️ End_DO{pin} 設定失敗，略過等待")
+                        logger.warn(f"⚠️ End_DO{pin} 設定失敗,略過等待")
                         self._busy = False
                 except Exception as e:
                     logger.error(f"[SetIO 失敗] {e}")
@@ -284,7 +284,7 @@ class TMRobotController(Node):
             self._handle_success()
             return
         if not (isinstance(states, (list, tuple)) and len(states) == 3):
-            logger.error("IO 狀態必須為長度 3 的 list，例如 [1,0,0]")
+            logger.error("IO 狀態必須為長度 3 的 list,例如 [1,0,0]")
             return
         self.tcp_queue.append(
             {"script": f"IO:{states[0]},{states[1]},{states[2]}", "wait_time": 0.0}
@@ -396,7 +396,7 @@ class TMRobotController(Node):
         """Clear all pending commands from the TCP queue."""
         n = len(self.tcp_queue)
         self.tcp_queue.clear()
-        logger.info(f"已清空佇列，共 {n} 筆")
+        logger.info(f"已清空佇列,共 {n} 筆")
 
     def _handle_failure(self):
         if self.num_response_to_send_back == 0:
