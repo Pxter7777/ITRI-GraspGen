@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[2]
 
 
-def save_json(dir: str, prefix: str, data) -> True:
+def save_json(dir: str, prefix: str, data: object) -> None:
     """Save data as a timestamped JSON file for debugging."""
     current_time_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     filepath = (

@@ -25,13 +25,13 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 
 
-def set_seed(seed):
+def set_seed(seed: int) -> None:
     """Set random seeds for torch and numpy."""
     torch.manual_seed(seed)
     np.random.seed(seed)
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
     parser.add_argument(
@@ -133,7 +133,7 @@ class MiaWorkflowController(BaseWorkflowController):
         args (argparse.Namespace): Parsed command-line arguments.
     """
 
-    def __init__(self, args) -> None:
+    def __init__(self, args: argparse.Namespace) -> None:
         sender = NonBlockingJSONSender(port=network_config.GRASPGEN_TO_ISAACSIM_PORT)
         receiver = NonBlockingJSONReceiver(
             port=network_config.ISAACSIM_TO_GRASPGEN_PORT
@@ -146,7 +146,7 @@ class MiaWorkflowController(BaseWorkflowController):
             port=network_config.MIA_TO_GRASPGEN_PORT
         )
 
-    def _send_eof(self):
+    def _send_eof(self) -> None:
         # end of move
         self.sender.send_data(["EOF"])
         response = self.receiver.capture_data()
@@ -162,7 +162,7 @@ class MiaWorkflowController(BaseWorkflowController):
         else:
             raise ValueError(f"Unknown message {response['message']}")
 
-    def _handle_keyboard_interrupt(self):
+    def _handle_keyboard_interrupt(self) -> None:
         logger.info("Manual stopping current action.")
         self.sender.send_data(["Reset_to_default"])
         self.main_sender.send_data({"message": "Fail"})
@@ -181,7 +181,7 @@ class MiaWorkflowController(BaseWorkflowController):
             return text, no_need_curobo
 
 
-def main():
+def main() -> None:
     """Start the MIA workflow server loop."""
     args = parse_args()
     set_seed(42)

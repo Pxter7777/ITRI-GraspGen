@@ -43,12 +43,12 @@ def mrad_to_mmdeg(cartesian_pose: list) -> list:
     return position + euler_orientation_deg
 
 
-def is_joint_vel_near_zero(joint_vel: list):
+def is_joint_vel_near_zero(joint_vel: list) -> bool:
     """Check if all joint velocities are near zero."""
     return all(abs(v) < 0.001 for v in joint_vel)
 
 
-def is_pose_identical(joints1: list, joints2: list):
+def is_pose_identical(joints1: list, joints2: list) -> bool:
     """Check if two joint poses are identical within tolerance."""
     if joints1 is None or joints2 is None:
         return False
@@ -68,7 +68,7 @@ class TMRobotController(Node):
         real2sim (bool): Whether to send trajectory data to an Isaac Sim display.
     """
 
-    def __init__(self, real2sim: bool):
+    def __init__(self, real2sim: bool) -> None:
         super().__init__("tm_robot_controller")
         self.csv_receiver = NonBlockingJSONReceiver(
             port=network_config.MIA_TO_ROS2_PORT
@@ -109,7 +109,7 @@ class TMRobotController(Node):
         self.current_joints_states = [0.0] * 6
         self.real2sim = real2sim
 
-    def _capture_command(self):
+    def _capture_command(self) -> None:
         if self.moving:
             return
         isaacsim_data = self.isaacsim_receiver.capture_data()
@@ -181,7 +181,7 @@ class TMRobotController(Node):
             ) as e:  # maybe when the isaac-sim display pc is not listening
                 logger.error(f"TimeoutError, send_traj failed, not listening: {e}")
 
-    def setup_services(self):
+    def setup_services(self) -> None:
         """Initialize ROS2 service clients and subscribe to feedback states."""
         logger.info("等待 ROS 2 服務啟動...")
 
@@ -247,7 +247,7 @@ class TMRobotController(Node):
             logger.error("Stuck detected.")
             self._handle_failure()
 
-    def set_io(self, states: list):
+    def set_io(self, states: list) -> None:
         """設定 End_DO0, End_DO1, End_DO2 狀態,例如 [1, 0, 0]."""
         for pin, state in enumerate(states):
             req = SetIO.Request()
@@ -258,7 +258,7 @@ class TMRobotController(Node):
 
             future = self.io_cli.call_async(req)
 
-            def _done(fut, pin=pin):
+            def _done(fut: object, pin: int = pin) -> None:
                 try:
                     result = fut.result()
                     if result.ok:
@@ -276,7 +276,7 @@ class TMRobotController(Node):
 
             future.add_done_callback(_done)
 
-    def append_gripper_states(self, states):
+    def append_gripper_states(self, states: list) -> None:
         """Append a gripper IO command to the TCP queue."""
         logger.debug(f"{self.current_IO_states} -> {states}")
         if self.current_IO_states == states:
@@ -291,8 +291,14 @@ class TMRobotController(Node):
         )
 
     def append_ptp(
-        self, ptp_values: list, vel=20, acc=20, coord=80, fine=False, wait_time=0.0
-    ):
+        self,
+        ptp_values: list,
+        vel: int = 20,
+        acc: int = 20,
+        coord: int = 80,
+        fine: bool = False,
+        wait_time: float = 0.0,
+    ) -> None:
         """Append a point-to-point Cartesian move to the TCP queue."""
         if len(ptp_values) != 6:
             logger.error("TCP 必須 6 個數字")
@@ -312,13 +318,13 @@ class TMRobotController(Node):
     def append_jpp(
         self,
         joint_values: list,
-        vel,
-        acc,
-        coord=80,
-        fine=False,
-        wait_time=0.0,
+        vel: int,
+        acc: int,
+        coord: int = 80,
+        fine: bool = False,
+        wait_time: float = 0.0,
         blend: int = 100,
-    ):
+    ) -> None:
         """Append a joint point-to-point move to the TCP queue."""
         if len(joint_values) != 6:
             logger.error("TCP 必須 6 個數字")
@@ -336,7 +342,7 @@ class TMRobotController(Node):
                 {"position": joint_values, "time_to_wait": wait_time}
             )
 
-    def _process_queue(self):
+    def _process_queue(self) -> None:
         if self._busy:
             return
         if not self.tcp_queue:
@@ -365,7 +371,7 @@ class TMRobotController(Node):
         logger.debug(f"正在執行佇列中的腳本: {script_to_run} wait_time={wait_time}")
         self._send_script_async(script_to_run, wait_time)
 
-    def _send_script_async(self, script: str, wait_time):
+    def _send_script_async(self, script: str, wait_time: float) -> None:
         if not self.script_cli:
             logger.error("send_script 客戶端尚未初始化。")
             self._busy = False
@@ -375,7 +381,7 @@ class TMRobotController(Node):
         req.script = script
         future = self.script_cli.call_async(req)
 
-        def _done(_):
+        def _done(_: object) -> None:
             try:
                 res = future.result()
                 ok = bool(getattr(res, "ok", False))
@@ -392,13 +398,13 @@ class TMRobotController(Node):
 
         future.add_done_callback(_done)
 
-    def clear_queue(self):
+    def clear_queue(self) -> None:
         """Clear all pending commands from the TCP queue."""
         n = len(self.tcp_queue)
         self.tcp_queue.clear()
         logger.info(f"已清空佇列,共 {n} 筆")
 
-    def _handle_failure(self):
+    def _handle_failure(self) -> None:
         if self.num_response_to_send_back == 0:
             return
         self.num_response_to_send_back -= 1
@@ -409,7 +415,7 @@ class TMRobotController(Node):
         sender.send_data({"message": "Fail"})
         self.moving = False
 
-    def _handle_success(self):
+    def _handle_success(self) -> None:
         if self.num_response_to_send_back == 0:
             return
         self.num_response_to_send_back -= 1
@@ -424,7 +430,7 @@ class TMRobotController(Node):
         self.moving = False
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
         description=(
@@ -445,7 +451,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
     """Start the TM robot controller ROS2 node."""
     args = parse_args()
     handler = logging.StreamHandler()

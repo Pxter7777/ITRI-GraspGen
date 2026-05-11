@@ -25,7 +25,7 @@ from common_utils.qualification import get_left_up_and_front
 class NumpyEncoder(json.JSONEncoder):
     """JSON encoder that convert numpy arrays to lists."""
 
-    def default(self, obj):
+    def default(self, obj: object) -> object:
         """Serialize numpy arrays as Python lists."""
         if isinstance(obj, np.ndarray):
             return obj.tolist()
@@ -42,13 +42,13 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 
 
-def set_seed(seed):
+def set_seed(seed: int) -> None:
     """Set random seeds for torch and numpy."""
     torch.manual_seed(seed)
     np.random.seed(seed)
 
 
-def ndgrasp_to_pre_quat(grasp: np.ndarray):
+def ndgrasp_to_pre_quat(grasp: np.ndarray) -> list[float]:
     """Convert a grasp matrix to a pre-grasp position-quaternion list."""
     quaternion_orientation = list(trimesh.transformations.quaternion_from_matrix(grasp))
     _, _, front = get_left_up_and_front(grasp)
@@ -59,7 +59,7 @@ def ndgrasp_to_pre_quat(grasp: np.ndarray):
     return pre_grasp_position + quaternion_orientation
 
 
-def ndgrasp_to_quat(grasp: np.ndarray):
+def ndgrasp_to_quat(grasp: np.ndarray) -> list[float]:
     """Convert a grasp matrix to a grasp position-quaternion list."""
     quaternion_orientation = list(trimesh.transformations.quaternion_from_matrix(grasp))
     _, _, front = get_left_up_and_front(grasp)
@@ -70,7 +70,7 @@ def ndgrasp_to_quat(grasp: np.ndarray):
     return grasp_position + quaternion_orientation
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
     parser.add_argument(
@@ -198,7 +198,7 @@ class ExperimentWorkflowController:
         args (argparse.Namespace): Parsed command-line arguments.
     """
 
-    def __init__(self, args) -> None:
+    def __init__(self, args: argparse.Namespace) -> None:
         self.args = args
         self.grasp_generator = GraspGeneratorUI(
             args.gripper_config,
@@ -218,7 +218,12 @@ class ExperimentWorkflowController:
         """Allows the use of 'with GraspGenController(args) as controller:'."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object,
+    ) -> bool:
         """Automatically called when the 'with' block ends.
 
         Even if an exception occurs, this method runs.
@@ -231,14 +236,14 @@ class ExperimentWorkflowController:
         # so you still see the traceback after cleanup.
         return False
 
-    def _close(self):
+    def _close(self) -> None:
         logger.info("Cleaning up resources...")
         try:
             pass  # nothing to do, actually.
         except Exception as e:
             logger.exception(f"Error during pc_generator cleanup: {e}")
 
-    def run_experiment(self):
+    def run_experiment(self) -> None:
         """Generate and save grasp data for all experiment scenes."""
         for dir in ["in_basket", "on_shelf", "on_table"]:
             task_config_path = (
@@ -262,7 +267,9 @@ class ExperimentWorkflowController:
                     )
                 logger.info(f"Saved grasp data to {output_file}")
 
-    def _generate_grasp_datas(self, json_path: Path) -> GraspPack:
+    def _generate_grasp_datas(
+        self, json_path: Path
+    ) -> GraspPack | None:
         with open(json_path, "rb") as f:
             task_json = json.load(f)
         task = OrderTaskConfig(**task_json)
@@ -375,7 +382,7 @@ class ExperimentWorkflowController:
         )
 
 
-def main():
+def main() -> None:
     """Run the grasp data generation experiment."""
     args = parse_args()
     set_seed(42)

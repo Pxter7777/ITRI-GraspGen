@@ -22,7 +22,7 @@ class MouseHandler:
         boxes (list[BoundingBox]): Finalized bounding boxes.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.boxes: list[BoundingBox] = []
         self._current_start: tuple | None = None
         self._current_end: tuple | None = None
@@ -39,7 +39,14 @@ class MouseHandler:
             self._current_end[1],
         )
 
-    def handle_event(self, event, x, y, flags, param):
+    def handle_event(
+        self,
+        event: int,
+        x: int,
+        y: int,
+        flags: int,
+        param: object,
+    ) -> None:
         """Handle an OpenCV mouse callback event."""
         if event == cv2.EVENT_LBUTTONDOWN:
             self._current_start = (x, y)
@@ -58,13 +65,15 @@ class MouseHandler:
             self._current_start = None
             self._current_end = None
 
-    def reset(self):
+    def reset(self) -> None:
         """Clear all stored boxes and reset drag state."""
         self.boxes = []
         self._current_start = None
         self._current_end = None
 
-    def _create_box(self, x1, y1, x2, y2) -> BoundingBox | None:
+    def _create_box(
+        self, x1: int, y1: int, x2: int, y2: int
+    ) -> BoundingBox | None:
         if abs(x1 - x2) <= 1 or abs(y1 - y2) <= 1:
             return None
         return BoundingBox(min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2))

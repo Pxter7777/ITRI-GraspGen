@@ -20,12 +20,16 @@ READY_POUR_SIGNAL = [581.6, -251.8, 207.9, 90, 0, 90.0]
 POUR_SIGNAL = [581.6, -251.8, 207.9, -90, -55, -90]
 
 
-def quat_to_euler_zyx_deg(qx, qy, qz, qw):
+def quat_to_euler_zyx_deg(
+    qx: float, qy: float, qz: float, qw: float
+) -> tuple[float, float, float]:
     """Convert a quaternion to ZYX Euler angles in degrees."""
-    def _clamp(v, lo, hi):
+    def _clamp(v: float, lo: float, hi: float) -> float:
         return max(lo, min(hi, v))
 
-    def normalize_quat(x, y, z, w):
+    def normalize_quat(
+        x: float, y: float, z: float, w: float
+    ) -> tuple[float, float, float, float]:
         n = math.sqrt(x * x + y * y + z * z + w * w)
         return (0.0, 0.0, 0.0, 1.0) if n == 0 else (x / n, y / n, z / n, w / n)
 
@@ -45,7 +49,7 @@ def quat_to_euler_zyx_deg(qx, qy, qz, qw):
     return math.degrees(roll), math.degrees(pitch), math.degrees(yaw)  # rx, ry, rz
 
 
-def is_two_point_identical(point1: list, point2: list):
+def is_two_point_identical(point1: list, point2: list) -> bool:
     """Check whether two 6-DOF poses are approximately identical."""
     pos_identical = all(
         abs(p1 - p2) < 10 for p1, p2 in zip(point1[:3], point2[:3], strict=False)
@@ -59,7 +63,7 @@ def is_two_point_identical(point1: list, point2: list):
 class TMRobotController(Node):
     """ROS 2 node that queues and executes TM robot arm commands."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("tm_robot_controller")
         self.script_cli = None
         self.io_cli = None
@@ -76,7 +80,7 @@ class TMRobotController(Node):
 
         self.states_need_to_wait = []
 
-    def setup_services(self):
+    def setup_services(self) -> None:
         """Initialize ROS 2 service clients and subscriptions."""
         self.get_logger().info("等待 ROS 2 服務啟動...")
 
@@ -101,7 +105,7 @@ class TMRobotController(Node):
         self.sub = self.create_subscription(PoseStamped, "/tool_pose", self.cb, 10)
         self.get_logger().info(" subscribe /tool_pose")
 
-    def feedback_callback(self, msg):
+    def feedback_callback(self, msg: FeedbackState) -> None:
         """Handle feedback state messages and check gripper target."""
         self.ee_digital_output = list(msg.ee_digital_output)
 
@@ -114,7 +118,7 @@ class TMRobotController(Node):
                 self.target_ee_output = None
                 self._start_gripper_wait_timer()
 
-    def cb(self, msg: PoseStamped):
+    def cb(self, msg: PoseStamped) -> None:
         """Process tool pose updates and trigger arm wait timers."""
         p = msg.pose.position
         q = msg.pose.orientation
@@ -132,11 +136,11 @@ class TMRobotController(Node):
                 self._start_arm_wait_timer(state["time_to_wait"])
                 self.states_need_to_wait.remove(state)
 
-    def _start_gripper_wait_timer(self):
+    def _start_gripper_wait_timer(self) -> None:
         # 建立 Timer,並在執行 callback 時自行取消
         self._wait_timer = self.create_timer(1.0, self._gripper_wait_done)
 
-    def _gripper_wait_done(self):
+    def _gripper_wait_done(self) -> None:
         self.get_logger().info("✅ 夾爪動作等待完成")
         self._busy = False
 
@@ -144,11 +148,11 @@ class TMRobotController(Node):
             self._wait_timer.cancel()
             del self._wait_timer
 
-    def _start_arm_wait_timer(self, time):
+    def _start_arm_wait_timer(self, time: float) -> None:
         # 建立 Timer,並在執行 callback 時自行取消
         self._wait_timer_arm = self.create_timer(time, self._arm_wait_done)
 
-    def _arm_wait_done(self):
+    def _arm_wait_done(self) -> None:
         self.get_logger().info("✅ 夾爪動作等待完成")
         self._busy = False
 
@@ -156,7 +160,7 @@ class TMRobotController(Node):
             self._wait_timer_arm.cancel()
             del self._wait_timer_arm
 
-    def set_io(self, states: list):
+    def set_io(self, states: list) -> None:
         """設定 End_DO0, End_DO1, End_DO2 狀態,例如 [1, 0, 0]."""
         for pin, state in enumerate(states):
             req = SetIO.Request()
@@ -167,7 +171,9 @@ class TMRobotController(Node):
 
             future = self.io_cli.call_async(req)
 
-            def _done(fut, pin=pin):
+            def _done(
+                fut: object, pin: int = pin
+            ) -> None:
                 try:
                     result = fut.result()
                     if result.ok:
@@ -187,7 +193,7 @@ class TMRobotController(Node):
 
             future.add_done_callback(_done)
 
-    def append_gripper_states(self, states):
+    def append_gripper_states(self, states: list | tuple) -> None:
         """Enqueue a gripper IO command with three digital output states."""
         if not (isinstance(states, (list, tuple)) and len(states) == 3):
             self.get_logger().error("IO 狀態必須為長度 3 的 list,例如 [1,0,0]")
@@ -196,21 +202,27 @@ class TMRobotController(Node):
             {"script": f"IO:{states[0]},{states[1]},{states[2]}", "wait_time": 0.0}
         )
 
-    def append_gripper_close(self):
+    def append_gripper_close(self) -> None:
         """Enqueue a gripper close command."""
         self.append_gripper_states([1, 0, 0])
 
-    def append_gripper_half(self):
+    def append_gripper_half(self) -> None:
         """Enqueue a gripper half-open command."""
         self.append_gripper_states([0, 1, 0])
 
-    def append_gripper_open(self):
+    def append_gripper_open(self) -> None:
         """Enqueue a gripper open command."""
         self.append_gripper_states([0, 0, 1])
 
     def append_tcp(
-        self, tcp_values: list, vel=20, acc=20, coord=80, fine=False, wait_time=0.0
-    ):
+        self,
+        tcp_values: list,
+        vel: int = 20,
+        acc: int = 20,
+        coord: int = 80,
+        fine: bool = False,
+        wait_time: float = 0.0,
+    ) -> None:
         """Enqueue a PTP motion command to the given TCP pose."""
         if len(tcp_values) != 6:
             self.get_logger().error("TCP 必須 6 個數字")
@@ -227,7 +239,7 @@ class TMRobotController(Node):
                 {"position": tcp_values, "time_to_wait": wait_time}
             )
 
-    def _process_queue(self):
+    def _process_queue(self) -> None:
         if self._busy:
             return
         if not self.tcp_queue:
@@ -259,7 +271,7 @@ class TMRobotController(Node):
         self.get_logger().info(f"正在執行佇列中的腳本: {script_to_run}")
         self._send_script_async(script_to_run, wait_time)
 
-    def _send_script_async(self, script: str, wait_time):
+    def _send_script_async(self, script: str, wait_time: float) -> None:
         if not self.script_cli:
             self.get_logger().error("send_script 客戶端尚未初始化。")
             self._busy = False
@@ -269,7 +281,7 @@ class TMRobotController(Node):
         req.script = script
         future = self.script_cli.call_async(req)
 
-        def _done(_):
+        def _done(_: object) -> None:
             try:
                 res = future.result()
                 ok = bool(getattr(res, "ok", False))
@@ -285,14 +297,14 @@ class TMRobotController(Node):
 
         future.add_done_callback(_done)
 
-    def clear_queue(self):
+    def clear_queue(self) -> None:
         """Remove all pending commands from the queue."""
         n = len(self.tcp_queue)
         self.tcp_queue.clear()
         self.get_logger().info(f"已清空佇列,共 {n} 筆")
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     """Parse command-line arguments for the grasp execution script."""
     parser = argparse.ArgumentParser(
         description=(
@@ -309,7 +321,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
     """Load grasp data from JSON and execute the grasp-pour-return sequence."""
     args = parse_args()
     print(args.input, "HEEE")

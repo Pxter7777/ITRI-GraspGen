@@ -26,7 +26,9 @@ class DetectedBoxInfo:
         logits: Confidence score.
     """
 
-    def __init__(self, box: BoundingBox, phrase, logits):
+    def __init__(
+        self, box: BoundingBox, phrase: str, logits: float
+    ) -> None:
         self.box = box
         self.phrase = phrase
         self.logits = logits
@@ -39,14 +41,18 @@ class GroundindDinoPredictor:
         model: Loaded Grounding DINO model.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.model = load_model(
             config.GROUNDINGDINO_CFG,
             config.GROUNDINGDINO_CKPT,
         )
 
     def predict_boxes(
-        self, image: np.array, text_prompt: str, box_threshold=0.4, text_threshold=0.4
+        self,
+        image: np.ndarray,
+        text_prompt: str,
+        box_threshold: float = 0.4,
+        text_threshold: float = 0.4,
     ) -> list[DetectedBoxInfo]:
         """Predict bounding boxes for the given text prompt in an image."""
         transform = transforms.Compose(
@@ -90,7 +96,7 @@ class GroundindDinoPredictor:
         return results
 
 
-def main():
+def main() -> None:
     """Run a quick smoke test of the predictor."""
     predictor = GroundindDinoPredictor()
     predictor.predict_boxes("")

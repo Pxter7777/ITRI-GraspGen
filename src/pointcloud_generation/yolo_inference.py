@@ -1,9 +1,16 @@
 """YOLOv5 object detection inference."""
 
+from __future__ import annotations
+
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import cv2
+import numpy as np
 import torch
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 class YOLOv5Detector:
@@ -19,7 +26,12 @@ class YOLOv5Detector:
         model: Loaded YOLOv5 model.
     """
 
-    def __init__(self, model_path="yolov5s.pt", device="cuda", conf=0.6):
+    def __init__(
+        self,
+        model_path: str = "yolov5s.pt",
+        device: str = "cuda",
+        conf: float = 0.6,
+    ) -> None:
         print("🔹 Loading model, please wait...")
         self.device = torch.device(device if torch.cuda.is_available() else "cpu")
         self.model = torch.hub.load("ultralytics/yolov5", "custom", path=model_path)
@@ -28,7 +40,9 @@ class YOLOv5Detector:
         self.model.conf = conf  # confidence threshold setting
         print("✅ Model loaded successfully!")
 
-    def infer(self, image):
+    def infer(
+        self, image: np.ndarray | str
+    ) -> pd.DataFrame:
         """Run inference on an image path or numpy array.
 
         Return detection results as a pandas DataFrame.
@@ -41,7 +55,9 @@ class YOLOv5Detector:
         df = df[df["class"] == 41]
         return df
 
-    def infer_and_show(self, image):
+    def infer_and_show(
+        self, image: np.ndarray | str
+    ) -> None:
         """Run inference and display results in an OpenCV window."""
         if isinstance(image, str):
             image = cv2.imread(image)

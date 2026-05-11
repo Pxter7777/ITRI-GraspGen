@@ -12,7 +12,10 @@ from common_utils.scene_data import SceneData
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[2]
 
 
-def transform(original_pointcloud, transformation_matrix):
+def transform(
+    original_pointcloud: np.ndarray,
+    transformation_matrix: np.ndarray,
+) -> np.ndarray:
     """Apply a 4x4 transformation matrix to a point cloud."""
     original_pc_homogeneous = np.hstack(
         (

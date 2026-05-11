@@ -50,7 +50,9 @@ def cup_qualifier(
     return True
 
 
-def small_cup_qualifier(grasp: np.array, mass_center, obj_std) -> bool:
+def small_cup_qualifier(
+    grasp: np.array, mass_center: np.ndarray, obj_std: np.ndarray
+) -> bool:
     """Filter grasp poses suitable for grasping a small cup."""
     position = grasp[:3, 3].tolist()
     _left, up, front = get_left_up_and_front(grasp)
@@ -76,7 +78,9 @@ def small_cup_qualifier(grasp: np.array, mass_center, obj_std) -> bool:
 
 
 def small_cube_qualifier(
-    grasp: np.array, mass_center, obj_std
+    grasp: np.array,
+    mass_center: np.ndarray,
+    obj_std: np.ndarray,
 ) -> bool:
     """Filter grasp poses suitable for grasping a small cube from above."""
     position = grasp[:3, 3].tolist()

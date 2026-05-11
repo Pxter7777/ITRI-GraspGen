@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
 logger = logging.getLogger(__name__)
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
     parser.add_argument(
@@ -75,7 +75,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
     """Run the interactive point cloud generation pipeline and save the result."""
     args = parse_args()
     pc_generator = PointCloudGenerator(args)

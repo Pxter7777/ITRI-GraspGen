@@ -38,7 +38,7 @@ FEATURE_LABELS = {
 }
 
 
-def load_all_data():
+def load_all_data() -> list[dict]:
     """Load grasp records from all scenario JSON files."""
     records = []
     for scenario in SCENARIOS:
@@ -65,7 +65,7 @@ def load_all_data():
     return records
 
 
-def plot_feature_distributions(records):
+def plot_feature_distributions(records: list[dict]) -> None:
     """Box plots: feature distributions for success vs fail grasps."""
     success = [r for r in records if r["success"] == 1]
     fail = [r for r in records if r["success"] == 0]
@@ -96,7 +96,7 @@ def plot_feature_distributions(records):
     plt.close()
 
 
-def plot_success_rate_by_bin(records):
+def plot_success_rate_by_bin(records: list[dict]) -> None:
     """Success rate across binned feature values."""
     fig, axes = plt.subplots(1, len(FEATURE_NAMES), figsize=(18, 4))
     fig.suptitle(
@@ -163,7 +163,9 @@ def plot_success_rate_by_bin(records):
     plt.close()
 
 
-def train_and_evaluate(records):
+def train_and_evaluate(
+    records: list[dict],
+) -> tuple[LogisticRegression, StandardScaler, XGBClassifier]:
     """Train logistic regression and XGBoost, evaluate with cross-validation."""
     X = np.array([[r[f] for f in FEATURE_NAMES] for r in records])  # noqa: N806
     y = np.array([r["success"] for r in records])
@@ -213,7 +215,12 @@ def train_and_evaluate(records):
     return lr, scaler, xgb
 
 
-def topk_table(records, lr, scaler, xgb):
+def topk_table(
+    records: list[dict],
+    lr: LogisticRegression,
+    scaler: StandardScaler,
+    xgb: XGBClassifier,
+) -> None:
     """Rank grasps by model score and report top-k success rates.
 
     For each scene, rank grasps by model score vs random.
@@ -232,13 +239,13 @@ def topk_table(records, lr, scaler, xgb):
     disc_attempts, lr_attempts, xgb_attempts = [], [], []
     disc_times, lr_times, xgb_times = [], [], []
 
-    def first_success(gs):
+    def first_success(gs: list[dict]) -> int:
         for i, g in enumerate(gs):
             if g["success"]:
                 return i + 1
         return len(gs) + 1
 
-    def time_to_first_success(gs):
+    def time_to_first_success(gs: list[dict]) -> float:
         total = 0.0
         for g in gs:
             total += g["motion_plan_time"]
@@ -410,7 +417,7 @@ def topk_table(records, lr, scaler, xgb):
     plt.close()
 
 
-def main():
+def main() -> None:
     """Run the full grasp selection analysis pipeline."""
     print("Loading data...")
     records = load_all_data()

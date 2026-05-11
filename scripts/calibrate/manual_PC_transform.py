@@ -28,7 +28,7 @@ OUTPUT_TC_DIR = Path("data/calibrate/output_transform_config")
 class AppState:
     """Mutable global state for point clouds and the current transformation."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.object_pc = None
         self.object_pc_color = None
         self.original_object_pc = None
@@ -41,7 +41,7 @@ class AppState:
 class PCInfo:
     """Hold object and scene point cloud data."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.object_pc = None
         self.object_pc_color = None
         self.scene_pc = None
@@ -51,7 +51,7 @@ class PCInfo:
 app_state = AppState()
 
 
-def save_pointcloud(info: PCInfo, output_path: Path):
+def save_pointcloud(info: PCInfo, output_path: Path) -> None:
     """Save object and scene point clouds to a JSON file."""
     data_to_save = {
         "object_info": {
@@ -74,7 +74,10 @@ def save_pointcloud(info: PCInfo, output_path: Path):
     print(f"Saved transformed point cloud and matrix to {output_path}")
 
 
-def transform(original_pointcloud, transformation_matrix):
+def transform(
+    original_pointcloud: np.ndarray,
+    transformation_matrix: np.ndarray,
+) -> np.ndarray:
     """Apply a 4x4 transformation matrix to a point cloud."""
     original_pc_homogeneous = np.hstack(
         (
@@ -92,7 +95,13 @@ def transform(original_pointcloud, transformation_matrix):
 class ControlPanel:
     """Tkinter control panel for interactive point cloud transformation."""
 
-    def __init__(self, root, vis, json_files, args):
+    def __init__(
+        self,
+        root: tk.Tk,
+        vis: object,
+        json_files: list[str],
+        args: argparse.Namespace,
+    ) -> None:
         self.root = root
         self.vis = vis
         self.json_files = json_files
@@ -147,7 +156,15 @@ class ControlPanel:
         )
         self.save_transform_button.pack(padx=20, pady=5)
 
-    def create_control(self, parent, label, from_, to, resolution, row):
+    def create_control(
+        self,
+        parent: tk.Frame,
+        label: str,
+        from_: float,
+        to: float,
+        resolution: float,
+        row: int,
+    ) -> tk.DoubleVar:
         """Create a labeled slider control with an entry field."""
         var = tk.DoubleVar()
         var.trace_add("write", self.on_transform_change)
@@ -169,13 +186,13 @@ class ControlPanel:
         """Handle slider or entry value change."""
         self.apply_transform()
 
-    def load_scene(self):
+    def load_scene(self) -> None:
         """Load the selected JSON scene file into the visualizer."""
         selected = self.selected_file.get()
         if selected:
             load_and_process_scene(self.vis, selected)
 
-    def apply_transform(self):
+    def apply_transform(self) -> None:
         """Build and apply the current transformation to both point clouds."""
         if app_state.original_object_pc is None and app_state.original_scene_pc is None:
             return
@@ -237,7 +254,7 @@ class ControlPanel:
         # Update visualization
         update_visualization(self.vis)
 
-    def save_transformed_pc(self):
+    def save_transformed_pc(self) -> None:
         """Save the transformed point cloud to a JSON file."""
         if app_state.object_pc is None and app_state.scene_pc is None:
             print("No point cloud to save.")
@@ -274,7 +291,7 @@ class ControlPanel:
             json.dump(data_to_save, f, indent=4)
         print(f"Saved transformed point cloud and matrix to {output_path}")
 
-    def save_transform_config(self):
+    def save_transform_config(self) -> None:
         """Save the current translation and rotation values to a config JSON."""
         if app_state.object_pc is None and app_state.scene_pc is None:
             print("No point cloud to save.")
@@ -298,7 +315,7 @@ class ControlPanel:
             json.dump(data_to_save, f, indent=4)
         print(f"Saved transforme config {output_path}")
 
-    def save_as_e57(self):
+    def save_as_e57(self) -> None:
         """Save the combined transformed point cloud as an E57 file."""
         if app_state.object_pc is None and app_state.scene_pc is None:
             print("No point cloud to save.")
@@ -335,12 +352,12 @@ class ControlPanel:
 
         print(f"Saved combined transformed point cloud to {output_path}")
 
-    def run(self):
+    def run(self) -> None:
         """Start the tkinter main loop."""
         self.root.mainloop()
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
     parser.add_argument(
@@ -369,7 +386,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def start_meshcat_server():
+def start_meshcat_server() -> subprocess.Popen[bytes]:
     """Launch the meshcat-server subprocess."""
     print("Starting meshcat-server...")
     meshcat_server_process = subprocess.Popen(
@@ -377,7 +394,7 @@ def start_meshcat_server():
     )
 
     @atexit.register
-    def cleanup_meshcat_server():
+    def cleanup_meshcat_server() -> None:
         if meshcat_server_process.poll() is None:
             print("Terminating meshcat-server...")
             os.killpg(os.getpgid(meshcat_server_process.pid), signal.SIGTERM)
@@ -386,7 +403,7 @@ def start_meshcat_server():
     return meshcat_server_process
 
 
-def open_meshcat_url(url):
+def open_meshcat_url(url: str) -> None:
     """Open the meshcat visualizer URL in a browser."""
     print(f"\n--- Meshcat Visualizer ---\nURL: {url}\n--------------------------\n")
     try:
@@ -406,7 +423,7 @@ def open_meshcat_url(url):
         pass
 
 
-def load_scene(json_file) -> PCInfo:
+def load_scene(json_file: str | Path) -> PCInfo:
     """Load object and scene point clouds from a JSON file."""
     print(f"Loading scene from {json_file}")
     with open(json_file, "rb") as f:
@@ -436,7 +453,9 @@ def load_scene(json_file) -> PCInfo:
     return info
 
 
-def load_and_process_scene(vis, json_file):
+def load_and_process_scene(
+    vis: object, json_file: str | Path
+) -> None:
     """Load a scene, reset app state, and update the visualizer."""
     # print(f"Loading scene from {json_file}")
     vis.delete()
@@ -463,7 +482,7 @@ def load_and_process_scene(vis, json_file):
     update_visualization(vis)
 
 
-def update_visualization(vis):
+def update_visualization(vis: object) -> None:
     """Refresh the meshcat visualizer with the current point clouds."""
     pc_list = []
     pc_color_list = []
@@ -484,14 +503,18 @@ def update_visualization(vis):
         visualize_pointcloud(vis, "pointcloud", pc, pc_color, size=0.005)
 
 
-def create_control_panel(vis, json_files, args):
+def create_control_panel(
+    vis: object,
+    json_files: list[str],
+    args: argparse.Namespace,
+) -> None:
     """Create and run the tkinter control panel."""
     root = tk.Tk()
     panel = ControlPanel(root, vis, json_files, args)
     panel.run()
 
 
-def quick_transform(args):
+def quick_transform(args: argparse.Namespace) -> None:
     """Apply a saved transform config to a point cloud without GUI."""
     # check and load transform config
     if args.transform_config == "":
@@ -539,7 +562,7 @@ def quick_transform(args):
     save_pointcloud(info, output_path)
 
 
-def main():
+def main() -> None:
     """Launch the point cloud transform tool."""
     args = parse_args()
     if args.quick:

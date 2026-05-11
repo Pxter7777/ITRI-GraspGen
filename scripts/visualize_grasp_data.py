@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
         description="Visualize grasp data for a given scene."
@@ -56,7 +56,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
     """Load and visualize grasp poses for a scene in meshcat."""
     args = parse_args()
     scene_class = getattr(args, "class")

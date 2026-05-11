@@ -5,7 +5,7 @@ import argparse
 from omni.isaac.kit import SimulationApp
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -69,7 +69,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
     """Launch the Isaac Sim motion plan controller."""
     args = parse_args()
     simulation_app = SimulationApp(

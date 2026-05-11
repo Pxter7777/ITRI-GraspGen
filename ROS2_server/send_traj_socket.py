@@ -35,7 +35,7 @@ TEST_ROWS = [
 ]
 
 
-def send_traj(rows):
+def send_traj(rows: list) -> None:
     """Send trajectory rows to the remote Isaac Sim display server."""
     payload = {
         "type": "traj",

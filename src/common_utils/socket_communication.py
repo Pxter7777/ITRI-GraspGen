@@ -42,7 +42,7 @@ class NonBlockingJSONSender:
     Connects automatically upon instantiation.
     """
 
-    def __init__(self, port, host="localhost"):
+    def __init__(self, port: int, host: str = "localhost") -> None:
         self.host = host
         self.port = port
         self.socket = None
@@ -70,7 +70,7 @@ class NonBlockingJSONSender:
             self.socket = None
             return False
 
-    def disconnect(self):
+    def disconnect(self) -> None:
         """Close the connection to the receiver."""
         if self.socket:
             self.socket.close()
@@ -150,7 +150,7 @@ class NonBlockingJSONReceiver:
     Connects automatically upon instantiation.
     """
 
-    def __init__(self, port, host="localhost"):
+    def __init__(self, port: int, host: str = "localhost") -> None:
         self.host = host
         self.port = port
         self.socket = None
@@ -186,7 +186,7 @@ class NonBlockingJSONReceiver:
                 f"An error occurred during connecting {self.host}:{self.port}: {e}"
             ) from e
 
-    def disconnect(self):
+    def disconnect(self) -> None:
         """Close the listening socket and any active connection."""
         if self.socket:
             self.socket.close()
@@ -196,7 +196,7 @@ class NonBlockingJSONReceiver:
             self.conn = None
         logger.info("receiver disconnected")
 
-    def capture_data(self):
+    def capture_data(self) -> dict | list | None:
         """Poll for a complete JSON message, returning None if unavailable."""
         try:
             if self.conn is None:
@@ -253,7 +253,7 @@ class BlockingJSONReceiver:
     Connects automatically upon instantiation.
     """
 
-    def __init__(self, port, host="localhost"):
+    def __init__(self, port: int, host: str = "localhost") -> None:
         self.host = host
         self.port = port
         self.socket = None
@@ -286,7 +286,7 @@ class BlockingJSONReceiver:
                 f"An error occurred during connecting {self.host}:{self.port}: {e}"
             ) from e
 
-    def disconnect(self):
+    def disconnect(self) -> None:
         """Close the listening socket and any active connection."""
         if self.socket:
             self.socket.close()
@@ -296,7 +296,7 @@ class BlockingJSONReceiver:
             self.conn = None
         logger.info("receiver disconnected")
 
-    def _read_blocking(self, n):
+    def _read_blocking(self, n: int) -> bytes | None:
         """Read exactly n bytes from the blocking socket."""
         data = b""
         while len(data) < n:
@@ -306,7 +306,7 @@ class BlockingJSONReceiver:
             data += packet
         return data
 
-    def capture_data(self):
+    def capture_data(self) -> dict | list | None:
         """Block until a complete JSON message is received."""
         try:
             if self.conn is None:

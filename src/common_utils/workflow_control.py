@@ -1,5 +1,6 @@
 """Base controller for the GraspGen-to-IsaacSim-to-ROS2 workflow loop."""
 
+import argparse
 import json
 import logging
 import time
@@ -35,7 +36,10 @@ class BaseWorkflowController:
     """
 
     def __init__(
-        self, args, sender: NonBlockingJSONSender, receiver: NonBlockingJSONReceiver
+        self,
+        args: argparse.Namespace,
+        sender: NonBlockingJSONSender,
+        receiver: NonBlockingJSONReceiver,
     ) -> None:
         self.args = args
         self.sender = sender
@@ -50,10 +54,10 @@ class BaseWorkflowController:
         )
         logger.info("======Successfully initialized======")
 
-    def _send_eof(self):
+    def _send_eof(self) -> None:
         raise NotImplementedError("Child class must implement how to handle EOF")
 
-    def _handle_keyboard_interrupt(self):
+    def _handle_keyboard_interrupt(self) -> None:
         raise NotImplementedError(
             "Child class must implement how to handle keyboard interrupt"
         )
@@ -68,7 +72,12 @@ class BaseWorkflowController:
         """Allows the use of 'with GraspGenController(args) as controller:'."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object,
+    ) -> bool:
         """Clean up resources when the context manager exits."""
         if exc_type:
             logger.error(f"Exiting due to error: {exc_val}")
@@ -78,7 +87,7 @@ class BaseWorkflowController:
         # so you still see the traceback after cleanup.
         return False
 
-    def handle_task_command(self):
+    def handle_task_command(self) -> None:
         """Dispatch a task to the appropriate handler (GraspGen or CSV)."""
         task_type, task_name, no_need_curobo = self._capture_task_name()
         self._eat_aborts()
@@ -89,7 +98,9 @@ class BaseWorkflowController:
         else:
             raise ValueError(f"Unknown task_type {task_type}")
 
-    def _process_csv_command(self, command: str, no_need_curobo: bool = False):
+    def _process_csv_command(
+        self, command: str, no_need_curobo: bool = False
+    ) -> None:
         extra_obstacles: dict[str, ObstacleBound] = load_extra_obstacles()
         self._run_csv(command, extra_obstacles, no_need_curobo=no_need_curobo)
 
@@ -98,7 +109,7 @@ class BaseWorkflowController:
         command: str,
         extra_obstacles: dict[str, ObstacleBound],
         no_need_curobo: bool = False,
-    ):
+    ) -> None:
         while True:
             full_acts: list[dict] = csv_act(
                 command, extra_obstacles, no_need_curobo=no_need_curobo
@@ -110,7 +121,7 @@ class BaseWorkflowController:
                 continue
         self._send_eof()
 
-    def _process_graspgen_command(self):
+    def _process_graspgen_command(self) -> None:
         graspgen_filepath = (
             PROJECT_ROOT_DIR / "configs" / "actions" / "Grasp_and_Dump.json"
         )
@@ -188,7 +199,9 @@ class BaseWorkflowController:
         else:
             raise ValueError(f"Can't recognize the response {response}")
 
-    def _generate_scene_data(self, task, num_try=20) -> SceneData:
+    def _generate_scene_data(
+        self, task: TaskConfig, num_try: int = 20
+    ) -> SceneData:
         # try 20 times
         while True:
             for _ in range(num_try):
@@ -207,7 +220,7 @@ class BaseWorkflowController:
                 logger.error("Failed to detect using groundingDINO")
                 input("Try Again:")
 
-    def _eat_aborts(self):
+    def _eat_aborts(self) -> None:
         # eat aborts if there is any
         for _ in range(5):
             self.receiver.capture_data()
@@ -241,7 +254,7 @@ class BaseWorkflowController:
             )
             return self._capture_task_name()
 
-    def _close(self):
+    def _close(self) -> None:
         logger.info("Cleaning up resources...")
         try:
             self.pc_generator.close()

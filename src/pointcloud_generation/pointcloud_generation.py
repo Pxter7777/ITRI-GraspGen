@@ -36,7 +36,7 @@ class NamedMask:
         mask: Boolean segmentation mask.
     """
 
-    def __init__(self, name, mask):
+    def __init__(self, name: str, mask: np.ndarray) -> None:
         self.name = name
         self.mask = mask
 
@@ -60,7 +60,7 @@ class PointCloudGenerator:
         mouse_handler (MouseHandler): Mouse input handler.
     """
 
-    def __init__(self, args):
+    def __init__(self, args: object) -> None:
         # Init
         torch.autograd.set_grad_enabled(False)
         # Init configs
@@ -303,7 +303,12 @@ class PointCloudGenerator:
             return None
     @staticmethod
     def _generate_pointcloud(
-        depth, color_np_org, mask, K_cam, scale, max_depth  # noqa: N803
+        depth: np.ndarray,
+        color_np_org: np.ndarray,
+        mask: np.ndarray,
+        K_cam: np.ndarray,  # noqa: N803
+        scale: float,
+        max_depth: float,
     ) -> SceneData | None:
         logging.info("generating scene and object...")
 
@@ -402,7 +407,12 @@ class PointCloudGenerator:
         )
     @staticmethod
     def _generate_pointcloud_multiple_obj_with_name_dict(
-        depth, color_np_org, named_masks: list[NamedMask], K_cam, scale, max_depth  # noqa: N803
+        depth: np.ndarray,
+        color_np_org: np.ndarray,
+        named_masks: list[NamedMask],
+        K_cam: np.ndarray,  # noqa: N803
+        scale: float,
+        max_depth: float,
     ) -> SceneData:
         logging.info("generating scene and object...")
 
@@ -505,7 +515,9 @@ class PointCloudGenerator:
         )
 
     @staticmethod
-    def _depth2xyzmap(depth, K) -> np.ndarray:  # noqa: N803
+    def _depth2xyzmap(
+        depth: np.ndarray, K: np.ndarray  # noqa: N803
+    ) -> np.ndarray:
         vy, vx = np.meshgrid(
             np.arange(depth.shape[0]), np.arange(depth.shape[1]), indexing="ij"
         )
@@ -514,7 +526,7 @@ class PointCloudGenerator:
         z_map = depth
         xyz_map = np.stack([x_map, y_map, z_map], axis=-1)
         return xyz_map
-    def close(self):
+    def close(self) -> None:
         """Release the camera and destroy all OpenCV windows."""
         self.zed.close()
         cv2.destroyAllWindows()

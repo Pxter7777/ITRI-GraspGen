@@ -24,7 +24,7 @@ logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
 logger = logging.getLogger(__name__)
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
     parser.add_argument(
@@ -71,7 +71,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
     """Capture an obstacle bounding box from a point cloud and save it."""
     logger.info("starting the program")
     args = parse_args()

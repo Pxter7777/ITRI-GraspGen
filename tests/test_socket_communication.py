@@ -24,7 +24,9 @@ logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
 logger = logging.getLogger(__name__)
 
 
-def blocking_receiver_loop(port: int, receiver_type: str, data_queue, error_queue):
+def blocking_receiver_loop(
+    port: int, receiver_type: str, data_queue: Queue, error_queue: Queue
+) -> None:
     """Run a receiver loop that blocks on each capture_data call."""
     receiver = None
     if receiver_type == "non-blocking_receiver":
@@ -45,7 +47,9 @@ def blocking_receiver_loop(port: int, receiver_type: str, data_queue, error_queu
     receiver.disconnect()
 
 
-def responsive_receiver_loop(port: int, receiver_type: str, data_queue, error_queue):
+def responsive_receiver_loop(
+    port: int, receiver_type: str, data_queue: Queue, error_queue: Queue
+) -> None:
     """Simulate a responsive 60 FPS application loop while checking for socket data.
 
     A blocking `capture_data` will prevent the counter from incrementing.
@@ -79,7 +83,9 @@ def responsive_receiver_loop(port: int, receiver_type: str, data_queue, error_qu
     receiver.disconnect()
 
 
-def receiver_process(port: int, task_type: str, receiver_type: str):
+def receiver_process(
+    port: int, task_type: str, receiver_type: str
+) -> tuple[Process, Queue, Queue]:
     """Set up a DataReceiver in a separate background process.
 
     Yields:

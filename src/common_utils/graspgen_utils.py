@@ -93,7 +93,13 @@ class GraspGenerator:
         topk_num_grasps: Number of top-scoring grasps to keep.
     """
 
-    def __init__(self, gripper_config, grasp_threshold, num_grasps, topk_num_grasps):
+    def __init__(
+        self,
+        gripper_config: str,
+        grasp_threshold: float,
+        num_grasps: int,
+        topk_num_grasps: int,
+    ) -> None:
         self.grasp_cfg = load_grasp_cfg(gripper_config)
         self.gripper_name = self.grasp_cfg.data.gripper_name
         self.grasp_sampler = GraspGenSampler(self.grasp_cfg)
@@ -129,7 +135,7 @@ class GraspGenerator:
             return None
 
 
-def start_meshcat_server():
+def start_meshcat_server() -> subprocess.Popen:
     """Starts the meshcat-server and registers a cleanup function."""
     print("Starting meshcat-server...")
     meshcat_server_process = subprocess.Popen(
@@ -137,7 +143,7 @@ def start_meshcat_server():
     )
 
     @atexit.register
-    def cleanup_meshcat_server():
+    def cleanup_meshcat_server() -> None:
         if meshcat_server_process.poll() is None:
             print("Terminating meshcat-server...")
             os.killpg(os.getpgid(meshcat_server_process.pid), signal.SIGTERM)
@@ -146,7 +152,7 @@ def start_meshcat_server():
     return meshcat_server_process
 
 
-def open_meshcat_url(url):
+def open_meshcat_url(url: str) -> None:
     """Opens the given URL in a web browser."""
     print(f"\n--- Meshcat Visualizer ---\nURL: {url}\n--------------------------\n")
     try:
@@ -166,7 +172,9 @@ def open_meshcat_url(url):
         pass  # If opening fails, the user has the URL printed.
 
 
-def get_left_up_and_front(grasp: np.array):
+def get_left_up_and_front(
+    grasp: np.array,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Extract left, up, and front direction vectors from a 4x4 grasp matrix."""
     left = grasp[:3, 0]
     up = grasp[:3, 1]
@@ -187,12 +195,12 @@ class ControlPanel:
 
     def __init__(
         self,
-        root,
-        vis,
-        grasp_queue,
-        grasps_to_handle_queue,
-        gripper_name,
-    ):
+        root: tk.Tk,
+        vis: object,
+        grasp_queue: queue.Queue,
+        grasps_to_handle_queue: queue.Queue,
+        gripper_name: str,
+    ) -> None:
         self.root = root
         self.vis = vis
         self.gripper_name = gripper_name
@@ -240,26 +248,26 @@ class ControlPanel:
         self.next_button = tk.Button(nav_frame, text=">", command=self.next_grasp)
         self.next_button.pack(side=tk.LEFT, padx=5)
 
-    def run(self):
+    def run(self) -> None:
         """Start the tkinter main loop."""
         self.root.after(100, self._catch_grasps)
         self.root.mainloop()
 
-    def next_grasp(self, event=None):
+    def next_grasp(self, event: object = None) -> None:
         """Advance to the next grasp in the current filtered pool."""
         if len(self.current_grasp_pool) == 0:
             return
         self.current_index = (self.current_index + 1) % len(self.current_grasp_pool)
         self._update_grasp_visualization()
 
-    def prev_grasp(self, event=None):
+    def prev_grasp(self, event: object = None) -> None:
         """Go back to the previous grasp in the current filtered pool."""
         if len(self.current_grasp_pool) == 0:
             return
         self.current_index = (self.current_index - 1) % len(self.current_grasp_pool)
         self._update_grasp_visualization()
 
-    def toggle_grasp_display(self):
+    def toggle_grasp_display(self) -> None:
         """Recompute the visible grasp pool based on active filter checkboxes."""
         grasps_mask = np.array([True for grasp in self.all_grasps])
         if self.apply_custom_filter_var.get():
@@ -270,21 +278,21 @@ class ControlPanel:
         self.current_grasp_pool = self.all_grasps[grasps_mask]
         self._update_grasp_visualization()
 
-    def _return_grasp_and_destroy(self):
+    def _return_grasp_and_destroy(self) -> None:
         self.grasp_queue.put(self.current_grasp_pool[self.current_index])
         self.root.destroy()
 
-    def _return_none_and_retry(self):
+    def _return_none_and_retry(self) -> None:
         self.grasp_queue.put(None)
         self._catch_grasps()
 
-    def _catch_grasps(self):
+    def _catch_grasps(self) -> None:
         self.all_grasps, self.custom_filter_mask, self.collision_free_mask = (
             self.grasps_to_handle_queue.get()
         )
         self.toggle_grasp_display()
 
-    def _update_grasp_visualization(self):
+    def _update_grasp_visualization(self) -> None:
         if len(self.current_grasp_pool) == 0:
             return
         self.vis["GraspGen"].delete()
@@ -344,14 +352,14 @@ class ControlPanel:
 
 
 def create_control_panel(
-    vis,
-    grasp_sampler,
-    gripper_name,
-    grasp_threshold,
-    num_grasps,
-    topk_num_grasps,
-    grasp_queue,
-):
+    vis: object,
+    grasp_sampler: GraspGenSampler,
+    gripper_name: str,
+    grasp_threshold: float,
+    num_grasps: int,
+    topk_num_grasps: int,
+    grasp_queue: queue.Queue,
+) -> None:
     """Creates and runs the tkinter control panel."""
     root = tk.Tk()
     panel = ControlPanel(
@@ -392,12 +400,12 @@ class GraspGeneratorUI:
 
     def __init__(
         self,
-        gripper_config,
-        grasp_threshold,
-        num_grasps,
-        topk_num_grasps,
-        need_GUI=False,  # noqa: N803
-    ):
+        gripper_config: str,
+        grasp_threshold: float,
+        num_grasps: int,
+        topk_num_grasps: int,
+        need_GUI: bool = False,  # noqa: N803
+    ) -> None:
         self.grasp_cfg = load_grasp_cfg(gripper_config)
         self.gripper_name: str = self.grasp_cfg.data.gripper_name
         self.grasp_sampler = GraspGenSampler(self.grasp_cfg)
@@ -552,7 +560,11 @@ class GraspGeneratorUI:
             if selected_grasp is not None:
                 return [selected_grasp]
 
-    def _create_control_panel(self, grasp_queue, grasps_to_handle_queue):
+    def _create_control_panel(
+        self,
+        grasp_queue: queue.Queue,
+        grasps_to_handle_queue: queue.Queue,
+    ) -> None:
         """Creates and runs the tkinter control panel."""
         root = tk.Tk()
         panel = ControlPanel(
@@ -564,7 +576,7 @@ class GraspGeneratorUI:
         )
         panel.run()
 
-    def _visualize_scene(self):
+    def _visualize_scene(self) -> None:
         """Loads scene data, processes point clouds, and visualizes them."""
         # self.vis.delete()
         scene_info = self.scene_data["scene_info"]
@@ -591,7 +603,7 @@ class GraspGeneratorUI:
             self.vis, "pc_scene", xyz_scene, xyz_scene_color, size=0.0025
         )
 
-    def _visualize_target(self):
+    def _visualize_target(self) -> None:
         obj_pc = self.scene_data["object_infos"][self.move.target_name]["points"]
         obj_pc_color = self.scene_data["object_infos"][self.move.target_name]["colors"]
         visualize_pointcloud(self.vis, "pc_obj", obj_pc, obj_pc_color, size=0.005)

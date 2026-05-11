@@ -23,7 +23,9 @@ PROJECT_ROOT_DIR = Path(__file__).resolve().parents[2]
 class ZedCamera:
     """A class to interface with a ZED camera."""
 
-    def __init__(self, use_png="", from_stream=False) -> None:
+    def __init__(
+        self, use_png: str = "", from_stream: bool = False
+    ) -> None:
         """Initializes the ZedCamera object."""
         self.baseline: float
         self.camera: sl.Camera
@@ -49,7 +51,7 @@ class ZedCamera:
             self.initialize_zed_using_stream()
         return
 
-    def initialize_zed_using_stream(self):
+    def initialize_zed_using_stream(self) -> None:
         """Initialize the camera from a streaming source."""
         self.initialize_zed_using_existing_png("demo6")
         self.from_stream = True
@@ -92,7 +94,9 @@ class ZedCamera:
 
         self.ext_ir1_to_color = np.identity(4)
 
-    def initialize_zed_using_existing_png(self, use_png) -> None:
+    def initialize_zed_using_existing_png(
+        self, use_png: str
+    ) -> None:
         """Initialize camera parameters from saved PNG images and calibration data."""
         self.png_dir = PROJECT_ROOT_DIR / "data" / "zed_images" / use_png
         self.baseline = 0
@@ -111,7 +115,7 @@ class ZedCamera:
         self.baseline = camera_data["baseline"]
 
     def capture_images_from_stream(
-        self, port=STREAM_TO_ZED_PORT
+        self, port: int = STREAM_TO_ZED_PORT
     ) -> tuple[sl.ERROR_CODE, np.ndarray, np.ndarray]:
         """Capture images from a ZMQ stream.
 

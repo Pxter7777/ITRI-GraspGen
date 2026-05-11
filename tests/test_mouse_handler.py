@@ -7,12 +7,14 @@ from pointcloud_generation.mouse_handlerv2 import BoundingBox, MouseHandler
 
 
 @pytest.fixture
-def handler():
+def handler() -> MouseHandler:
     """Create a fresh MouseHandler instance."""
     return MouseHandler()
 
 
-def draw_box(handler: MouseHandler, x1, y1, x2, y2):
+def draw_box(
+    handler: MouseHandler, x1: int, y1: int, x2: int, y2: int
+) -> None:
     """Simulate a complete mouse drag from (x1,y1) to (x2,y2)."""
     handler.handle_event(cv2.EVENT_LBUTTONDOWN, x1, y1, 0, None)
     handler.handle_event(cv2.EVENT_MOUSEMOVE, x2, y2, 0, None)
