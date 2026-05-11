@@ -1,8 +1,5 @@
-import datetime
-import json
 import logging
 import sys
-from pathlib import Path
 
 import cv2
 import numpy as np
@@ -458,7 +455,7 @@ class PointCloudGenerator:
                 img_color=[scene_colors],
             ),
         )
-    
+
     @staticmethod
     def _depth2xyzmap(depth, K):
         vy, vx = np.meshgrid(
