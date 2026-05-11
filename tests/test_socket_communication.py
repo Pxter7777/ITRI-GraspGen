@@ -123,7 +123,7 @@ def receiver_process(port: int, task_type: str, receiver_type: str):
             process.join()
 
 
-def test_Non_to_Non_sendall_first():  # should success
+def test_non_to_non_sendall_first():  # should success
     """Send all data before the receiver reads any."""
     process, data_queue, _error_queue = receiver_process(
         port=9876, task_type="non-blocking_task", receiver_type="non-blocking_receiver"
@@ -141,7 +141,7 @@ def test_Non_to_Non_sendall_first():  # should success
     process.join()
 
 
-def test_NonBlockingJSONReceiver_on_NonBlockingJSONReceiver_task():  # should success
+def test_nonblocking_receiver_on_nonblocking_task():  # should success
     """Send and receive data interleaved with a non-blocking receiver."""
     process, data_queue, _error_queue = receiver_process(
         port=9876, task_type="non-blocking_task", receiver_type="non-blocking_receiver"
@@ -159,7 +159,7 @@ def test_NonBlockingJSONReceiver_on_NonBlockingJSONReceiver_task():  # should su
     process.join()
 
 
-def test_NonBlockingJSONReceiver_on_BlockingJSONReceiver_task():  # should fail
+def test_nonblocking_receiver_on_blocking_task():  # should fail
     """Verify non-blocking receiver fails on a blocking task."""
     process, _data_queue, error_queue = receiver_process(
         port=9876, task_type="blocking_task", receiver_type="non-blocking_receiver"
@@ -174,7 +174,7 @@ def test_NonBlockingJSONReceiver_on_BlockingJSONReceiver_task():  # should fail
     process.join()
 
 
-def test_BlockingJSONReceiver_on_BlockingJSONReceiver_task():  # should success
+def test_blocking_receiver_on_blocking_task():  # should success
     """Send and receive data interleaved with a blocking receiver."""
     process, data_queue, _error_queue = receiver_process(
         port=9876, task_type="blocking_task", receiver_type="blocking_receiver"
@@ -193,7 +193,7 @@ def test_BlockingJSONReceiver_on_BlockingJSONReceiver_task():  # should success
     process.join()
 
 
-def test_BlockingJSONReceiver_on_NonBlockingJSONReceiver_task():  # should fail
+def test_blocking_receiver_on_nonblocking_task():  # should fail
     """Verify blocking receiver slows down a non-blocking task loop."""
     process, _data_queue, error_queue = receiver_process(
         port=9876, task_type="non-blocking_task", receiver_type="blocking_receiver"
@@ -212,7 +212,7 @@ def test_BlockingJSONReceiver_on_NonBlockingJSONReceiver_task():  # should fail
     process.join()
 
 
-def test_send_to_disconnected_NonBlockingJSONReceiver():
+def test_send_to_disconnected_nonblocking_receiver():
     """Reconnect and resume sending after the receiver process restarts."""
     process, data_queue, error_queue = receiver_process(
         port=9876, task_type="non-blocking_task", receiver_type="non-blocking_receiver"
@@ -249,7 +249,7 @@ def test_send_to_non_open_socket():
     assert not succ
 
 
-def test_send_big_data_to_NonBlockingJSONReceiver():
+def test_send_big_data_to_nonblocking_receiver():
     """Send a large payload through a non-blocking receiver."""
     sender = NonBlockingJSONSender(port=9878)
     receiver = NonBlockingJSONReceiver(port=9878)
@@ -259,7 +259,7 @@ def test_send_big_data_to_NonBlockingJSONReceiver():
     assert received_data == SAMPLE_BIG_DATA
 
 
-def test_send_big_data_to_BlockingJSONReceiver():
+def test_send_big_data_to_blocking_receiver():
     """Send a large payload through a blocking receiver."""
     sender = NonBlockingJSONSender(port=9876)
     receiver = BlockingJSONReceiver(port=9876)

@@ -49,7 +49,7 @@ class BaseWorkflowController:
         )
         logger.info("======Successfully initialized======")
 
-    def _send_EOF(self):
+    def _send_eof(self):
         raise NotImplementedError("Child class must implement how to handle EOF")
 
     def _handle_keyboard_interrupt(self):
@@ -106,7 +106,7 @@ class BaseWorkflowController:
                 break
             else:
                 continue
-        self._send_EOF()
+        self._send_eof()
 
     def _process_graspgen_command(self):
         graspgen_filepath = (
@@ -155,7 +155,7 @@ class BaseWorkflowController:
                         break
                     else:
                         continue
-            self._send_EOF()
+            self._send_eof()
         except KeyboardInterrupt:
             self._handle_keyboard_interrupt()
         except InterruptedError as e:

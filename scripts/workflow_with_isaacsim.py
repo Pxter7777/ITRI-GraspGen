@@ -137,7 +137,7 @@ class CLIWorkflowController(BaseWorkflowController):
         )
         super().__init__(args, sender, receiver)
 
-    def _send_EOF(self):
+    def _send_eof(self):
         # end of move
         self.sender.send_data(["EOF"])
         response = self.receiver.capture_data()

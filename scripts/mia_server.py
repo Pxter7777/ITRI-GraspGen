@@ -143,7 +143,7 @@ class MiaWorkflowController(BaseWorkflowController):
             port=network_config.MIA_TO_GRASPGEN_PORT
         )
 
-    def _send_EOF(self):
+    def _send_eof(self):
         # end of move
         self.sender.send_data(["EOF"])
         response = self.receiver.capture_data()

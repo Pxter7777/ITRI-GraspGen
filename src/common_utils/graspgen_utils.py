@@ -209,7 +209,7 @@ class ControlPanel:
         select_button.pack(padx=20, pady=5)
         # retry button
         retry_button = tk.Button(
-            self.root, text="Retry", command=self._return_None_and_retry
+            self.root, text="Retry", command=self._return_none_and_retry
         )
         retry_button.pack(padx=20, pady=5)
 
@@ -273,7 +273,7 @@ class ControlPanel:
         self.grasp_queue.put(self.current_grasp_pool[self.current_index])
         self.root.destroy()
 
-    def _return_None_and_retry(self):
+    def _return_none_and_retry(self):
         self.grasp_queue.put(None)
         self._catch_grasps()
 
@@ -513,11 +513,11 @@ class GraspGeneratorUI:
 
         if self.need_GUI:
             # create control panel and use GUI mode
-            return self._generate_grasp_with_GUI()
+            return self._generate_grasp_with_gui()
         else:
             return self._generate_grasp_silent()
 
-    def _generate_grasp_with_GUI(self) -> list[np.ndarray]:
+    def _generate_grasp_with_gui(self) -> list[np.ndarray]:
         """Let the user select a grasp via the tkinter panel.
 
         Returns:
