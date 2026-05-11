@@ -6,11 +6,12 @@ import torch
 import groundingdino.datasets.transforms as T
 from torchvision.ops import box_convert
 from common_utils import config
+from pointcloud_generation.mouse_handlerv2 import BoundingBox
 
 
 class DetectedBoxInfo:
-    def __init__(self, box, phrase, logits):
-        self.box = box  # match pixel format like in pointcloud_generation.py
+    def __init__(self, box: BoundingBox, phrase, logits):
+        self.box = box
         self.phrase = phrase
         self.logits = logits
 
@@ -49,9 +50,10 @@ class GroundindDinoPredictor:
 
         results = []
         for i in range(boxes.size(0)):
+            coords = xyxy_boxes[i].numpy().astype(int).tolist()
             results.append(
                 DetectedBoxInfo(
-                    box=tuple(xyxy_boxes[i].numpy().astype(int).tolist()),
+                    box=BoundingBox(x_min=coords[0], y_min=coords[1], x_max=coords[2], y_max=coords[3]),
                     phrase=phrases[i],
                     logits=logits[i].item(),
                 )

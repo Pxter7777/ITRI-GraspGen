@@ -1,10 +1,12 @@
 import json
 import datetime
 import logging
+import copy
 import numpy as np
 
 from pathlib import Path
 from common_utils.actions_format_checker import ObstacleBound
+from pointcloud_generation.pointcloud_generation import SceneData
 
 
 logger = logging.getLogger(__name__)
@@ -24,22 +26,19 @@ def save_json(dir: str, prefix: str, data) -> True:  # save json data for test
 
 
 def create_obstacle_info(
-    scene_data: dict, extra_obstacles: dict[str, ObstacleBound] = None
-) -> dict:
+    scene_data: SceneData,  ob: ObstacleBound, extra_obstacles: dict[str, ObstacleBound] | None = None,
+) -> SceneData:
     # Copy from .json
     if extra_obstacles is None:
         extra_obstacles = {}
-    new_scene_data = scene_data  # it's lazy that this isn't full copy, but I think it's fine to keep it this way for now.
-    new_scene_data["obstacles"] = dict()
+    new_scene_data = copy.deepcopy(scene_data)
+    new_scene_data.obstacle_infos = dict()
     for extra_obstacle_name in extra_obstacles:
         obstacle = extra_obstacles[extra_obstacle_name]
-        new_scene_data["obstacles"][extra_obstacle_name] = {
-            "max": obstacle.max,
-            "min": obstacle.min,
-        }
+        new_scene_data.obstacle_infos[extra_obstacle_name] = obstacle
     # Dynamically generated obstacles
-    for object_name in new_scene_data["object_infos"]:
-        obj_pc = new_scene_data["object_infos"][object_name]["points"]
+    for object_name in new_scene_data.object_infos:
+        obj_pc = new_scene_data.object_infos[object_name].points
         pc_max, pc_min = (
             np.percentile(obj_pc, 97, axis=0),
             np.percentile(obj_pc, 3, axis=0),
@@ -49,16 +48,14 @@ def create_obstacle_info(
         mod_width = np.array([width[0] * 1.6, width[1] * 1.6, width[2] * 1.9])
         pc_max = middle_point + mod_width
         pc_min = middle_point - mod_width
-        new_scene_data["obstacles"][object_name] = {
-            "max": pc_max.tolist(),
-            "min": pc_min.tolist(),
-        }
+        new_scene_data.obstacle_infos[object_name] = ObstacleBound(max=pc_max.tolist(), min=pc_min.tolist())
+
 
     return new_scene_data
 
 
 def load_extra_obstacles() -> dict[str, ObstacleBound]:
-    extra_obstacles: dict = {}
+    extra_obstacles: dict[str, ObstacleBound] = dict()
     extra_obstacles_path = (
         PROJECT_ROOT_DIR / "configs" / "actions" / "extra_obstacles.json"
     )

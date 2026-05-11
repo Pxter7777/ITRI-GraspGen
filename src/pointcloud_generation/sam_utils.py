@@ -6,6 +6,7 @@ from sam2.sam2_image_predictor import SAM2ImagePredictor
 import logging
 import sys
 from common_utils import config
+from pointcloud_generation.mouse_handlerv2 import BoundingBox
 
 
 def load_sam_model():
@@ -23,10 +24,9 @@ def load_sam_model():
         sys.exit(1)
 
 
-def run_sam2(predictor, image_rgb, box, iterations=6):
+def run_sam2(predictor, image_rgb, box:BoundingBox, iterations=6):
     predictor.set_image(image_rgb)
-    x1, y1, x2, y2 = box
-    input_point = np.array([[(x1 + x2) / 2, (y1 + y2) / 2]])
+    input_point = np.array([[(box.x_min + box.x_max) / 2, (box.y_min + box.y_max) / 2]])
     input_label = np.array([1])
     with torch.inference_mode():
         masks, _, _ = predictor.predict(

@@ -2,7 +2,7 @@ import logging
 import json
 import time
 from pathlib import Path
-from pointcloud_generation.pointcloud_generation import PointCloudGenerator
+from pointcloud_generation.pointcloud_generation import PointCloudGenerator, SceneData
 from pointcloud_generation.PC_transform import (
     silent_transform_multiple_obj_with_name_dict,
 )
@@ -108,14 +108,14 @@ class BaseWorkflowController:
         with open(graspgen_filepath, "rb") as f:
             task_json = json.load(f)
             task = TaskConfig(**task_json)
-        extra_obstacles: dict = load_extra_obstacles()
-        scene_data: dict = self._generate_scene_data(task=task)
+        extra_obstacles: dict[str, ObstacleBound] = load_extra_obstacles()
+        scene_data: SceneData = self._generate_scene_data(task=task)
         # transform
         scene_data = silent_transform_multiple_obj_with_name_dict(scene_data)
         scene_data = create_obstacle_info(scene_data, extra_obstacles)
         self._run_graspgen(task, scene_data)
 
-    def _run_graspgen(self, task: TaskConfig, scene_data):
+    def _run_graspgen(self, task: TaskConfig, scene_data: SceneData) -> None:
         current_target = "Unknown Setup"
         try:
             for move in task.moves:
@@ -177,12 +177,12 @@ class BaseWorkflowController:
         else:
             raise ValueError(f"Can't recognize the response {response}")
 
-    def _generate_scene_data(self, task, num_try=20) -> dict:
+    def _generate_scene_data(self, task, num_try=20) -> SceneData:
         # try 20 times
         while True:
             for _ in range(num_try):
                 try:
-                    scene_data: dict = self.pc_generator.generate_pointcloud(
+                    scene_data: SceneData = self.pc_generator.generate_pointcloud(
                         task.track,
                         blockages=task.blockages,
                         valid_region=task.valid_region,

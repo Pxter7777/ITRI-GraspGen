@@ -5,16 +5,22 @@ import logging
 import open3d as o3d
 import numpy as np
 import pyzed.sl as sl
+import datetime
+import json
+from pathlib import Path
+from dataclasses import dataclass, field
 
-from pointcloud_generation.mouse_handlerv2 import MouseHandler
+from pointcloud_generation.mouse_handlerv2 import MouseHandler, BoundingBox
 from pointcloud_generation.grounding_dino_utils import GroundindDinoPredictor
 from pointcloud_generation.visualization import visualize_named_box, visualize_mask
-from pointcloud_generation import mouse_handler  # noqa: E402
+# from pointcloud_generation import mouse_handler  # noqa: E402
 from pointcloud_generation import visualization  # noqa: E402
 from pointcloud_generation import sam_utils  # noqa: E402
 from pointcloud_generation.stereo_utils import FoundationStereoModel  # noqa: E402
 from pointcloud_generation.zed_utils import ZedCamera  # noqa: E402
 # from pointcloud_generation.yolo_inference import YOLOv5Detector  # noqa: E402
+
+from common_utils.actions_format_checker import ObstacleBound
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +29,28 @@ class NamedMask:
     def __init__(self, name, mask):
         self.name = name
         self.mask = mask
+
+
+
+@dataclass
+class SceneData:
+    @dataclass
+    class ObjectInfo:
+        points: np.ndarray
+        colors: np.ndarray
+    @dataclass
+    class SceneInfo:
+        pc_color: list[np.ndarray]
+        img_color: list[np.ndarray]
+    @dataclass
+    class GraspInfo:
+        grasp_poses: list = field(default_factory=list)
+        grasp_conf: list = field(default_factory=list)
+
+    object_infos: dict[str, ObjectInfo]
+    scene_info: SceneInfo
+    obstacle_infos: dict[str, ObstacleBound] = field(default_factory=dict)
+    grasp_info: GraspInfo = field(default_factory=GraspInfo)
 
 
 def depth2xyzmap(depth, K):
@@ -342,8 +370,110 @@ def generate_pointcloud_multiple_obj_with_name(
 
 def generate_pointcloud_multiple_obj_with_name_dict(
     depth, color_np_org, named_masks: list[NamedMask], K_cam, scale, max_depth
-):
+) -> SceneData:
     logging.info("generating scene and object...")
+
+    K_scaled_cam = K_cam.copy()
+    K_scaled_cam[:2, :] *= scale
+
+    xyz_map = depth2xyzmap(depth, K_scaled_cam)
+    points_in_cam_view = xyz_map.reshape(-1, 3)
+
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(points_in_cam_view)
+    pcd = pcd.remove_non_finite_points()
+
+    points_post_filter = np.asarray(pcd.points)
+
+    if not points_post_filter.size:
+        raise ValueError("No valid points in the disparity map to save.")
+
+    # Filter out points with zero or negative depth to prevent division by zero
+    z_coords = points_post_filter[:, 2]
+    valid_depth_mask = z_coords > 1e-6
+    points_post_filter = points_post_filter[valid_depth_mask]
+
+    if not points_post_filter.size:
+        raise ValueError("No valid points after filtering for depth > 0.")
+
+    valid_depth_mask = points_post_filter[:, 2] < max_depth
+    points_post_filter = points_post_filter[valid_depth_mask]
+    if not points_post_filter.size:
+        raise ValueError(f"No points remaining after filtering with max_depth={max_depth}")
+
+    # Since the depth map is already in the color camera's frame, no transformation is needed.
+    # We just need to map points to pixels to get their color and check the mask.
+    projected_points_uv = (K_cam @ points_post_filter.T).T
+    projected_points_uv[:, :2] /= projected_points_uv[:, 2:]
+
+    # Accumulation phase
+    objects_points_acc: list[list[np.ndarray]] = [[] for _ in named_masks]
+    objects_colors_acc: list[list[np.ndarray]] = [[] for _ in named_masks]
+    scene_points_acc: list[np.ndarray] = []
+    scene_colors_acc: list[np.ndarray] = []
+
+    H_color, W_color = color_np_org.shape[:2]
+
+    for i in range(len(projected_points_uv)):
+        u, v = int(projected_points_uv[i, 0]), int(projected_points_uv[i, 1])
+        if 0 <= u < W_color and 0 <= v < H_color:
+            point = points_post_filter[i]
+            color = color_np_org[v, u]
+
+            for pts, cols, named_mask in zip(
+                objects_points_acc, objects_colors_acc, named_masks, strict=False
+            ):
+                if named_mask.mask[v, u]:
+                    pts.append(point)
+                    cols.append(color)
+                    break
+            else:
+                scene_points_acc.append(point)
+                scene_colors_acc.append(color)
+
+    # Conversion phase
+    scene_points = np.array([[z, -x, -y] for x, y, z in scene_points_acc])
+    scene_colors = np.array(scene_colors_acc)
+    if scene_colors.size > 0:
+        scene_colors = scene_colors[:, ::-1]
+
+    objects_points: list[np.ndarray] = []
+    objects_colors: list[np.ndarray] = []
+    for pts_acc, cols_acc in zip(objects_points_acc, objects_colors_acc, strict=False):
+        if not pts_acc:
+            raise ValueError(
+                "The selected mask contains no points from the point cloud."
+            )
+        pts = np.array([[z, -x, -y] for x, y, z in pts_acc])
+        cols = np.array(cols_acc)
+        if cols.size > 0:
+            cols = cols[:, ::-1]
+        objects_points.append(pts)
+        objects_colors.append(cols)
+
+    # Final construct
+    return SceneData(
+        object_infos={
+            named_mask.name: SceneData.ObjectInfo(points=pts, colors=cols)
+            for pts, cols, named_mask in zip(
+                objects_points, objects_colors, named_masks, strict=False
+            )
+        },
+        scene_info=SceneData.SceneInfo(
+            pc_color=[scene_points],
+            img_color=[scene_colors],
+        ),
+    )
+
+def save_zed_point_cloud(
+    scale,
+    max_depth,
+    K_cam,
+    depth,
+    color_np_org,
+    mask,
+):
+    logger.info("Saving scene and object...")
 
     K_scaled_cam = K_cam.copy()
     K_scaled_cam[:2, :] *= scale
@@ -370,24 +500,24 @@ def generate_pointcloud_multiple_obj_with_name_dict(
         logging.warning("No valid points after filtering for depth > 0.")
         return
 
-    valid_depth_mask = points_post_filter[:, 2] < max_depth
-    points_post_filter = points_post_filter[valid_depth_mask]
-    if not points_post_filter.size:
-        logging.warning(
-            f"No points remaining after filtering with max_depth={max_depth}"
-        )
-        return
+    if max_depth is not None:
+        valid_depth_mask = points_post_filter[:, 2] < max_depth
+        points_post_filter = points_post_filter[valid_depth_mask]
+        if not points_post_filter.size:
+            logging.warning(
+                f"No points remaining after filtering with max_depth={max_depth}"
+            )
+            return
 
     # Since the depth map is already in the color camera's frame, no transformation is needed.
     # We just need to map points to pixels to get their color and check the mask.
     projected_points_uv = (K_cam @ points_post_filter.T).T
     projected_points_uv[:, :2] /= projected_points_uv[:, 2:]
 
-    # objects_name = [named_mask.name for named_mask in named_masks]
-    objects_points = [[] for _ in named_masks]
-    objects_colors = [[] for _ in named_masks]
     scene_points = []
     scene_colors = []
+    object_points = []
+    object_colors = []
 
     H_color, W_color = color_np_org.shape[:2]
 
@@ -397,68 +527,62 @@ def generate_pointcloud_multiple_obj_with_name_dict(
             point = points_post_filter[i]
             color = color_np_org[v, u]
 
-            for object_points, object_colors, named_mask in zip(
-                objects_points, objects_colors, named_masks, strict=False
-            ):
-                if named_mask.mask[v, u]:
-                    object_points.append(point)
-                    object_colors.append(color)
-                    break
+            if mask[v, u]:
+                object_points.append(point)
+                object_colors.append(color)
             else:
-                # add the point into scene if not belongs to any object
                 scene_points.append(point)
                 scene_colors.append(color)
-    # scene points
-    scene_points = np.array([[z, -x, -y] for x, y, z in scene_points])
-    scene_colors = np.array(scene_colors)
-    if scene_colors.size > 0:
-        scene_colors = scene_colors[:, ::-1]
-    # objects points parse
-    for i in range(len(objects_points)):
-        if not objects_points[i]:
-            logging.error(
-                "The selected mask contains no points from the point cloud. Nothing to save."
-            )
-            raise ValueError(
-                "The selected mask contains no points from the point cloud."
-            )
 
-        objects_points[i] = np.array([[z, -x, -y] for x, y, z in objects_points[i]])
-        objects_colors[i] = np.array(objects_colors[i])
-        if objects_colors[i].size > 0:
-            objects_colors[i] = objects_colors[i][:, ::-1]
-        """
-        ## remove outliers
-        objects_points[i], removed_points, objects_colors[i], removed_colors = (
-            point_cloud_outlier_removal_with_color(
-                torch.from_numpy(objects_points[i]),
-                torch.from_numpy(objects_colors[i].copy()),
-            )
+    if not object_points:
+        logger.warning(
+            "The selected mask contains no points from the point cloud. Nothing to save."
         )
-        objects_points[i] = objects_points[i].cpu().numpy()
-        objects_colors[i] = objects_colors[i].cpu().numpy()
-        removed_points = removed_points.cpu().numpy()
-        removed_colors = removed_colors.cpu().numpy()
-        scene_points = np.vstack((scene_points, removed_points))
-        scene_colors = np.vstack((scene_colors, removed_colors))
-        """
+        return
 
-    # Final construct
+    scene_points = [[z, -x, -y] for x, y, z in scene_points]
+    object_points = [[z, -x, -y] for x, y, z in object_points]
+
+    save_json_object_and_scene(
+        object_points,
+        object_colors,
+        scene_points,
+        scene_colors,
+    )
+
+def save_json_object_and_scene(
+    object_points,
+    object_colors,
+    scene_points,
+    scene_colors,
+):
+    """Saves the scene and object data to a JSON file."""
+    object_colors_arr = np.array(object_colors)
+    if object_colors_arr.size > 0:
+        object_colors_arr = object_colors_arr[:, ::-1]
+
+    scene_colors_arr = np.array(scene_colors)
+    if scene_colors_arr.size > 0:
+        scene_colors_arr = scene_colors_arr[:, ::-1]
+
     scene_data = {
-        "object_infos": {
-            named_mask.name: {"points": object_points, "colors": object_colors}
-            for object_points, object_colors, named_mask in zip(
-                objects_points, objects_colors, named_masks, strict=False
-            )
+        "object_info": {
+            "pc": np.array(object_points).tolist(),
+            "pc_color": object_colors_arr.tolist(),
         },
         "scene_info": {
-            "pc_color": [scene_points],
-            "img_color": [scene_colors],
+            "pc_color": [np.array(scene_points).tolist()],
+            "img_color": [scene_colors_arr.tolist()],
         },
         "grasp_info": {"grasp_poses": [], "grasp_conf": []},
     }
-    return scene_data
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    json_filename = f"scene_{timestamp}.json"
+    json_filepath = Path("./data/calibrate/output_pointcloud/") / json_filename
 
+    with open(json_filepath, "w") as f:
+        json.dump(scene_data, f, indent=4)
+    logging.info(f"Scene saved to {json_filepath}")
 
 class PointCloudGenerator:
     def __init__(self, args):
@@ -475,13 +599,14 @@ class PointCloudGenerator:
         self.stereo_model = FoundationStereoModel(args)
         self.groundingdino_predictor = GroundindDinoPredictor()
         self.zed = ZedCamera(args.use_png)
+        self.mouse_handler = MouseHandler()
 
     def generate_pointcloud(
         self,
         target_names: list[str],
         blockages: list | None = None,
         valid_region: list | None = None,
-    ) -> dict:
+    ) -> SceneData:
         """
         bloackages[
             [minX, minY, maxX, maxY],
@@ -532,10 +657,10 @@ class PointCloudGenerator:
                 raise ValueError
             if valid_region is not None:
                 if (
-                    box.box[0] < valid_region[0]
-                    or box.box[1] < valid_region[1]
-                    or box.box[2] > valid_region[2]
-                    or box.box[3] > valid_region[3]
+                    box.box.x_min < valid_region[0]
+                    or box.box.y_min < valid_region[1]
+                    or box.box.x_max > valid_region[2]
+                    or box.box.y_max > valid_region[3]
                 ):
                     raise ValueError(f"Detected {box.phrase} out of region {box.box}")
             target_boxes[box.phrase] = box
@@ -603,11 +728,11 @@ class PointCloudGenerator:
         )
         return result_scene_data
 
-    def interactive_gui_mode(self, save_json=False):
+    def interactive_gui_mode(self) -> | None:
         # ---------- Window and Mouse Callback Setup ----------
         win_name = "RGB + Mask | Depth"
         cv2.namedWindow(win_name)
-        cv2.setMouseCallback(win_name, mouse_handler.select_box)
+        cv2.setMouseCallback(win_name, self.mouse_handler.handle_event)
         logging.info("Streaming... Draw a box with your mouse.")
         logging.info("Press SPACE to save, 'r' to reset box, ESC to exit.")
         try:
@@ -626,35 +751,23 @@ class PointCloudGenerator:
                     mask = np.zeros_like(color_np[:, :, 0], dtype=bool)
 
                     key = cv2.waitKey(1)
-                    if key == ord("y"):
-                        df = self.yolo_detector.infer(display_frame)
-                        if "name" in df.columns:
-                            cup_detections = df[df["name"] == "cup"]
-                            if not cup_detections.empty:
-                                logging.info("Cup detected, selecting it.")
-                                cup_box = cup_detections.iloc[0]
-                                box = (
-                                    int(cup_box["xmin"]),
-                                    int(cup_box["ymin"]),
-                                    int(cup_box["xmax"]),
-                                    int(cup_box["ymax"]),
-                                )
-                                mouse_handler.box_start_point = (box[0], box[1])
-                                mouse_handler.box_end_point = (box[2], box[3])
-                                mouse_handler.box_defined = True
-                                mouse_handler.drawing_box = False
 
-                    if mouse_handler.drawing_box:
+                    if len(self.mouse_handler.boxes) > 1:
+                        self.mouse_handler.reset()
+                        logger.warning("please don't draw more than one box, reseted.")
+                        continue
+
+                    if self.mouse_handler.temp_box is not None:
                         visualization.draw_box(
                             display_frame,
-                            mouse_handler.box_start_point,
-                            mouse_handler.box_end_point,
+                            (self.mouse_handler.temp_box.x_min, self.mouse_handler.temp_box.y_min),
+                            (self.mouse_handler.temp_box.x_max, self.mouse_handler.temp_box.y_max),
                         )
 
-                    if mouse_handler.box_defined:
-                        box = mouse_handler.get_box()
+                    if len(self.mouse_handler.boxes) == 1:
+                        box = self.mouse_handler.boxes[0]
                         visualization.draw_box(
-                            display_frame, (box[0], box[1]), (box[2], box[3])
+                            display_frame, (box.x_min, box.y_min), (box.x_max, box.y_max)
                         )
 
                         color_np_rgb = cv2.cvtColor(color_np, cv2.COLOR_BGR2RGB)
@@ -674,9 +787,9 @@ class PointCloudGenerator:
 
                     if key == ord("r"):
                         logging.info("Box reset. Draw a new one.")
-                        mouse_handler.reset_box()
+                        self.mouse_handler.reset()
 
-                    if key == 32 and mouse_handler.box_defined:
+                    if key == 32 and len(self.mouse_handler.boxes) == 1:
                         depth, (H_scaled, W_scaled) = self.stereo_model.run_inference(
                             left_gray, right_gray, self.zed.K_left, self.zed.baseline
                         )
@@ -696,7 +809,7 @@ class PointCloudGenerator:
             self.close()
             sys.exit(0)
         except Exception as e:
-            logging.error(
+            logging.exception(
                 f"An error occurred during mesh reconstruction or saving: {e}"
             )
             return None

@@ -1,9 +1,11 @@
 import json
+import copy
 from pathlib import Path
 
 import numpy as np
 
 from scipy.spatial.transform import Rotation as R
+from pointcloud_generation.pointcloud_generation import SceneData
 
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[2]
 
@@ -22,7 +24,7 @@ def transform(original_pointcloud, transformation_matrix):
     return transformed_pointcloud
 
 
-def silent_transform_multiple_obj_with_name_dict(scene_data: dict) -> dict:
+def silent_transform_multiple_obj_with_name_dict(scene_data: SceneData) -> SceneData:
     config_filepath = PROJECT_ROOT_DIR / "configs" / "transform_config.json"
     with open(config_filepath, "rb") as f:
         transform_data = json.load(f)
@@ -44,12 +46,13 @@ def silent_transform_multiple_obj_with_name_dict(scene_data: dict) -> dict:
     rotation_matrix[:3, :3] = rotation.as_matrix()
     transformation = translation_matrix @ rotation_matrix
 
+    scene_data = copy.deepcopy(scene_data)
     # actual transformation
-    for name in scene_data["object_infos"]:
-        scene_data["object_infos"][name]["points"] = transform(
-            scene_data["object_infos"][name]["points"], transformation
+    for name in scene_data.object_infos:
+        scene_data.object_infos[name].points = transform(
+            scene_data.object_infos[name].points, transformation
         )
-    scene_data["scene_info"]["pc_color"] = [
-        transform(np.array(scene_data["scene_info"]["pc_color"][0]), transformation)
+    scene_data.scene_info.pc_color = [
+        transform(np.array(scene_data.scene_info.pc_color[0]), transformation)
     ]
     return scene_data

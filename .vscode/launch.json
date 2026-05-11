@@ -78,7 +78,21 @@
             "args": [
             
             ]
-        }
+        },
+        {
+            "name": "Pytest Debug Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "console": "integratedTerminal",
+            "module": "pytest",
+            "args": [
+                "${file}", "-s", "-v"
+            ],
+            "justMyCode": false,
+            "windows": { "python": "${workspaceFolder}/.venv/Scripts/python.exe" },
+            "linux":   { "python": "${workspaceFolder}/.venv/bin/python" },
+            "osx":     { "python": "${workspaceFolder}/.venv/bin/python" }
+        },
 
     ]
     
