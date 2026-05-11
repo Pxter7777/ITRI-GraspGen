@@ -1,3 +1,5 @@
+"""YOLOv5 object detection inference."""
+
 from pathlib import Path
 
 import cv2
@@ -5,6 +7,18 @@ import torch
 
 
 class YOLOv5Detector:
+    """Wrap a YOLOv5 model for cup detection.
+
+    Args:
+        model_path (str): Path to the YOLOv5 weights file.
+        device (str): Device to run inference on.
+        conf (float): Confidence threshold.
+
+    Attributes:
+        device (torch.device): Torch device used for inference.
+        model: Loaded YOLOv5 model.
+    """
+
     def __init__(self, model_path="yolov5s.pt", device="cuda", conf=0.6):
         print("🔹 Loading model, please wait...")
         self.device = torch.device(device if torch.cuda.is_available() else "cpu")
@@ -15,8 +29,9 @@ class YOLOv5Detector:
         print("✅ Model loaded successfully!")
 
     def infer(self, image):
-        """image: 可為影像檔路徑(str) 或 OpenCV 影像(numpy array)
-        回傳推論結果 (pandas DataFrame).
+        """Run inference on an image path or numpy array.
+
+        Return detection results as a pandas DataFrame.
         """
         if isinstance(image, str):
             image = cv2.imread(image)
@@ -27,6 +42,7 @@ class YOLOv5Detector:
         return df
 
     def infer_and_show(self, image):
+        """Run inference and display results in an OpenCV window."""
         if isinstance(image, str):
             image = cv2.imread(image)
         results = self.model(image)

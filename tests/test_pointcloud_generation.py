@@ -1,3 +1,5 @@
+"""Test point cloud generation from stereo images."""
+
 import argparse
 from collections.abc import Generator
 
@@ -9,6 +11,7 @@ from pointcloud_generation.pointcloud_generation import PointCloudGenerator, Sce
 
 @pytest.fixture(scope="module")
 def pc_generator() -> Generator[PointCloudGenerator, None, None]:
+    """Create a PointCloudGenerator with demo settings."""
     args = argparse.Namespace(
         ckpt_dir=str(config.FOUNDATIONSTEREO_CHECKPOINT),
         scale=1.0,
@@ -25,6 +28,7 @@ def pc_generator() -> Generator[PointCloudGenerator, None, None]:
 
 
 def test_generate_pointcloud(pc_generator: PointCloudGenerator):
+    """Generate a point cloud and verify object info is populated."""
     result = pc_generator.generate_pointcloud(["blue cup", "green cup"])
 
     assert isinstance(result, SceneData)

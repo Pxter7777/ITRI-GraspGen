@@ -1,3 +1,5 @@
+"""Port and IP constants for inter-process socket communication."""
+
 GRASPGEN_TO_ISAACSIM_PORT = 9878
 ISAACSIM_TO_GRASPGEN_PORT = 9879
 

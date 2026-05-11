@@ -1,3 +1,5 @@
+"""Mouse handler for interactive bounding box drawing."""
+
 from dataclasses import dataclass
 
 import cv2
@@ -5,6 +7,8 @@ import cv2
 
 @dataclass(frozen=True)
 class BoundingBox:
+    """Represent an axis-aligned bounding box."""
+
     x_min: int
     y_min: int
     x_max: int
@@ -12,6 +16,12 @@ class BoundingBox:
 
 
 class MouseHandler:
+    """Track mouse drag events to create bounding boxes.
+
+    Attributes:
+        boxes (list[BoundingBox]): Finalized bounding boxes.
+    """
+
     def __init__(self):
         self.boxes: list[BoundingBox] = []
         self._current_start: tuple | None = None
@@ -19,6 +29,7 @@ class MouseHandler:
 
     @property
     def temp_box(self) -> BoundingBox | None:
+        """Return the in-progress bounding box, or None if not dragging."""
         if self._current_start is None or self._current_end is None:
             return None
         return self._create_box(
@@ -29,6 +40,7 @@ class MouseHandler:
         )
 
     def handle_event(self, event, x, y, flags, param):
+        """Handle an OpenCV mouse callback event."""
         if event == cv2.EVENT_LBUTTONDOWN:
             self._current_start = (x, y)
             self._current_end = (x, y)
@@ -47,6 +59,7 @@ class MouseHandler:
             self._current_end = None
 
     def reset(self):
+        """Clear all stored boxes and reset drag state."""
         self.boxes = []
         self._current_start = None
         self._current_end = None

@@ -1,3 +1,5 @@
+"""Manually transform point clouds via a tkinter GUI and meshcat visualizer."""
+
 import argparse
 import atexit
 import json
@@ -24,6 +26,8 @@ OUTPUT_TC_DIR = Path("data/calibrate/output_transform_config")
 
 
 class AppState:
+    """Mutable global state for point clouds and the current transformation."""
+
     def __init__(self):
         self.object_pc = None
         self.object_pc_color = None
@@ -35,6 +39,8 @@ class AppState:
 
 
 class PCInfo:
+    """Hold object and scene point cloud data."""
+
     def __init__(self):
         self.object_pc = None
         self.object_pc_color = None
@@ -46,6 +52,7 @@ app_state = AppState()
 
 
 def save_pointcloud(info: PCInfo, output_path: Path):
+    """Save object and scene point clouds to a JSON file."""
     data_to_save = {
         "object_info": {
             "pc": info.object_pc.tolist() if info.object_pc is not None else [],
@@ -68,6 +75,7 @@ def save_pointcloud(info: PCInfo, output_path: Path):
 
 
 def transform(original_pointcloud, transformation_matrix):
+    """Apply a 4x4 transformation matrix to a point cloud."""
     original_pc_homogeneous = np.hstack(
         (
             original_pointcloud,
@@ -82,6 +90,8 @@ def transform(original_pointcloud, transformation_matrix):
 
 
 class ControlPanel:
+    """Tkinter control panel for interactive point cloud transformation."""
+
     def __init__(self, root, vis, json_files, args):
         self.root = root
         self.vis = vis
@@ -138,6 +148,7 @@ class ControlPanel:
         self.save_transform_button.pack(padx=20, pady=5)
 
     def create_control(self, parent, label, from_, to, resolution, row):
+        """Create a labeled slider control with an entry field."""
         var = tk.DoubleVar()
         var.trace_add("write", self.on_transform_change)
 
@@ -155,14 +166,17 @@ class ControlPanel:
         return var
 
     def on_transform_change(self, *args):
+        """Handle slider or entry value change."""
         self.apply_transform()
 
     def load_scene(self):
+        """Load the selected JSON scene file into the visualizer."""
         selected = self.selected_file.get()
         if selected:
             load_and_process_scene(self.vis, selected)
 
     def apply_transform(self):
+        """Build and apply the current transformation to both point clouds."""
         if app_state.original_object_pc is None and app_state.original_scene_pc is None:
             return
 
@@ -224,6 +238,7 @@ class ControlPanel:
         update_visualization(self.vis)
 
     def save_transformed_pc(self):
+        """Save the transformed point cloud to a JSON file."""
         if app_state.object_pc is None and app_state.scene_pc is None:
             print("No point cloud to save.")
             return
@@ -260,6 +275,7 @@ class ControlPanel:
         print(f"Saved transformed point cloud and matrix to {output_path}")
 
     def save_transform_config(self):
+        """Save the current translation and rotation values to a config JSON."""
         if app_state.object_pc is None and app_state.scene_pc is None:
             print("No point cloud to save.")
             return
@@ -283,6 +299,7 @@ class ControlPanel:
         print(f"Saved transforme config {output_path}")
 
     def save_as_e57(self):
+        """Save the combined transformed point cloud as an E57 file."""
         if app_state.object_pc is None and app_state.scene_pc is None:
             print("No point cloud to save.")
             return
@@ -319,10 +336,12 @@ class ControlPanel:
         print(f"Saved combined transformed point cloud to {output_path}")
 
     def run(self):
+        """Start the tkinter main loop."""
         self.root.mainloop()
 
 
 def parse_args():
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
     parser.add_argument(
         "--sample_data_dir",
@@ -351,6 +370,7 @@ def parse_args():
 
 
 def start_meshcat_server():
+    """Launch the meshcat-server subprocess."""
     print("Starting meshcat-server...")
     meshcat_server_process = subprocess.Popen(
         "meshcat-server", shell=True, preexec_fn=os.setsid
@@ -367,6 +387,7 @@ def start_meshcat_server():
 
 
 def open_meshcat_url(url):
+    """Open the meshcat visualizer URL in a browser."""
     print(f"\n--- Meshcat Visualizer ---\nURL: {url}\n--------------------------\n")
     try:
         system = platform.system()
@@ -386,6 +407,7 @@ def open_meshcat_url(url):
 
 
 def load_scene(json_file) -> PCInfo:
+    """Load object and scene point clouds from a JSON file."""
     print(f"Loading scene from {json_file}")
     with open(json_file, "rb") as f:
         data = json.load(f)
@@ -415,6 +437,7 @@ def load_scene(json_file) -> PCInfo:
 
 
 def load_and_process_scene(vis, json_file):
+    """Load a scene, reset app state, and update the visualizer."""
     # print(f"Loading scene from {json_file}")
     vis.delete()
 
@@ -441,6 +464,7 @@ def load_and_process_scene(vis, json_file):
 
 
 def update_visualization(vis):
+    """Refresh the meshcat visualizer with the current point clouds."""
     pc_list = []
     pc_color_list = []
     if app_state.object_pc is not None:
@@ -461,12 +485,14 @@ def update_visualization(vis):
 
 
 def create_control_panel(vis, json_files, args):
+    """Create and run the tkinter control panel."""
     root = tk.Tk()
     panel = ControlPanel(root, vis, json_files, args)
     panel.run()
 
 
 def quick_transform(args):
+    """Apply a saved transform config to a point cloud without GUI."""
     # check and load transform config
     if args.transform_config == "":
         print("Please provide transform config")
@@ -514,6 +540,7 @@ def quick_transform(args):
 
 
 def main():
+    """Launch the point cloud transform tool."""
     args = parse_args()
     if args.quick:
         quick_transform(args)

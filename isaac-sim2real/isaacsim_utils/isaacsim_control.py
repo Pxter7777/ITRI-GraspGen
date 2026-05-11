@@ -1,3 +1,5 @@
+"""Control Isaac Sim robot with cuRobo motion planning and ROS2 communication."""
+
 import logging
 import queue
 import sys
@@ -46,10 +48,12 @@ logger = logging.getLogger(__name__)
 
 
 def cmd_to_move(cmd_plan):
+    """Extract joint positions from a cuRobo plan as a list."""
     return cmd_plan.position.cpu().numpy().tolist()
 
 
 def init_pose_matric(args, motion_gen):
+    """Initialize the pose cost metric from command-line arguments."""
     pose_metric = None
     if args.constrain_grasp_approach:
         pose_metric = PoseCostMetric.create_grasp_approach_metric()
@@ -65,6 +69,7 @@ def init_pose_matric(args, motion_gen):
 
 
 def get_cuboid_list(move: SingleRobotMove, obstacles: dict) -> list:
+    """Build a list of cuRobo Cuboid obstacles from move and obstacle data."""
     cuboids = []
     cuboids.append(
         Cuboid(name="table", pose=[0, 0, -1.97, 1, 0, 0, 0], dims=[4, 4, 4])
@@ -89,6 +94,7 @@ def get_cuboid_list(move: SingleRobotMove, obstacles: dict) -> list:
 
 
 def basic_world_config():
+    """Create a default world config with a collision table."""
     world_cfg_table = WorldConfig.from_dict(
         load_yaml(join_path(get_world_configs_path(), "collision_table.yml"))
     )
@@ -102,6 +108,7 @@ def basic_world_config():
 
 
 def basic_motion_gen(tensor_args, robot_cfg, world_cfg):
+    """Create a MotionGen instance with default trajectory optimization settings."""
     trajopt_tsteps = 32
     trajopt_dt = None
     optimize_dt = True
@@ -128,6 +135,7 @@ def basic_motion_gen(tensor_args, robot_cfg, world_cfg):
 
 
 def basic_plan_config():
+    """Create a default motion generation plan config."""
     return MotionGenPlanConfig(
         enable_graph=False,
         enable_graph_attempt=2,
@@ -138,6 +146,7 @@ def basic_plan_config():
 
 
 def zero_obstacle_world_config(usd_help, robot_prim_path):
+    """Get a collision world from the USD stage with no custom obstacles."""
     return usd_help.get_obstacles_from_stage(
         only_paths=["/World"],
         reference_prim_path=robot_prim_path,
@@ -151,6 +160,7 @@ def zero_obstacle_world_config(usd_help, robot_prim_path):
 
 
 def still_joint_states(joint_states: list, tensor_args: TensorDeviceType, sim_js_names):
+    """Create a JointState with zero velocity, acceleration, and jerk."""
     return JointState(
         position=tensor_args.to_device(joint_states),
         velocity=tensor_args.to_device([0.0] * len(joint_states)),
@@ -164,6 +174,13 @@ ROS2StateType = Literal["Ready", "Busy", "Error"]
 
 
 class IsaacSimController:
+    """Manage Isaac Sim world, cuRobo planning, and socket communication with GraspGen and ROS2.
+
+    Args:
+        args (argparse.Namespace): Parsed command-line arguments.
+        simulation_app (SimulationApp): The Isaac Sim application instance.
+    """
+
     def __init__(self, args, simulation_app) -> None:
         self.args = args
         self.simulation_app = simulation_app
@@ -260,9 +277,11 @@ class IsaacSimController:
         self.ros2state: ROS2StateType = "Ready"
 
     def __enter__(self):
+        """Enter the context manager."""
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the context manager and clean up resources."""
         if exc_type:
             logger.error(f"Exiting due to error: {exc_val}")
         self._close()
@@ -574,6 +593,7 @@ class IsaacSimController:
                 self.cmd_plan_positions = None
 
     def simulation_loop(self):
+        """Run the main simulation loop until the application stops."""
         while self.simulation_app.is_running():
             self._communicate_with_ros2()
             self._communicate_with_graspgen()

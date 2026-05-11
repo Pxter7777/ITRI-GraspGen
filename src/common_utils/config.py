@@ -1,3 +1,5 @@
+"""Path and device configuration constants."""
+
 from pathlib import Path
 
 import torch

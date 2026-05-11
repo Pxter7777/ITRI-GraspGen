@@ -1,4 +1,5 @@
-"""Grasp selection analysis:
+"""Grasp selection analysis.
+
 - Feature correlation with cuRobo success
 - Logistic regression re-ranking model
 - Comparison: discriminator order vs learned re-ranking.
@@ -38,6 +39,7 @@ FEATURE_LABELS = {
 
 
 def load_all_data():
+    """Load grasp records from all scenario JSON files."""
     records = []
     for scenario in SCENARIOS:
         for i in range(1, 6):
@@ -212,7 +214,9 @@ def train_and_evaluate(records):
 
 
 def topk_table(records, lr, scaler, xgb):
-    """For each scene, rank grasps by model score vs random.
+    """Rank grasps by model score and report top-k success rates.
+
+    For each scene, rank grasps by model score vs random.
     Report: % of scenes with at least one success in top-k, for k = 1,3,5,10,20.
     Also report mean attempts to first success.
     """
@@ -407,6 +411,7 @@ def topk_table(records, lr, scaler, xgb):
 
 
 def main():
+    """Run the full grasp selection analysis pipeline."""
     print("Loading data...")
     records = load_all_data()
     print(

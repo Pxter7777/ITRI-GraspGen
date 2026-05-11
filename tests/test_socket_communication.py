@@ -1,3 +1,5 @@
+"""Test JSON socket sender and receiver classes."""
+
 import logging
 import time
 from multiprocessing import Process, Queue
@@ -23,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 def blocking_receiver_loop(port: int, receiver_type: str, data_queue, error_queue):
+    """Run a receiver loop that blocks on each capture_data call."""
     receiver = None
     if receiver_type == "non-blocking_receiver":
         receiver = NonBlockingJSONReceiver(port=port)
@@ -42,11 +45,11 @@ def blocking_receiver_loop(port: int, receiver_type: str, data_queue, error_queu
 
 
 def responsive_receiver_loop(port: int, receiver_type: str, data_queue, error_queue):
-    """A loop that simulates a responsive application.
-    It increments a counter on each iteration while also checking for socket data.
-    A blocking `capture_data` will prevent the counter from incrementing.
+    """Simulate a responsive 60 FPS application loop while checking for socket data.
 
-    receiver can be either blocking or non-blocking, but only non-blocking type receiver can pass the assert
+    A blocking `capture_data` will prevent the counter from incrementing.
+    receiver can be either blocking or non-blocking, but only non-blocking type
+    receiver can pass the assert.
     """
     receiver = None
     if receiver_type == "non-blocking_receiver":
@@ -76,8 +79,7 @@ def responsive_receiver_loop(port: int, receiver_type: str, data_queue, error_qu
 
 
 def receiver_process(port: int, task_type: str, receiver_type: str):
-    """A pytest fixture that sets up and tears down a DataReceiver running
-    in a separate background process.
+    """Set up a DataReceiver in a separate background process.
 
     Yields:
         tuple: A tuple containing the multiprocessing Queue for results
@@ -122,6 +124,7 @@ def receiver_process(port: int, task_type: str, receiver_type: str):
 
 
 def test_Non_to_Non_sendall_first():  # should success
+    """Send all data before the receiver reads any."""
     process, data_queue, _error_queue = receiver_process(
         port=9876, task_type="non-blocking_task", receiver_type="non-blocking_receiver"
     )
@@ -139,6 +142,7 @@ def test_Non_to_Non_sendall_first():  # should success
 
 
 def test_NonBlockingJSONReceiver_on_NonBlockingJSONReceiver_task():  # should success
+    """Send and receive data interleaved with a non-blocking receiver."""
     process, data_queue, _error_queue = receiver_process(
         port=9876, task_type="non-blocking_task", receiver_type="non-blocking_receiver"
     )
@@ -156,6 +160,7 @@ def test_NonBlockingJSONReceiver_on_NonBlockingJSONReceiver_task():  # should su
 
 
 def test_NonBlockingJSONReceiver_on_BlockingJSONReceiver_task():  # should fail
+    """Verify non-blocking receiver fails on a blocking task."""
     process, _data_queue, error_queue = receiver_process(
         port=9876, task_type="blocking_task", receiver_type="non-blocking_receiver"
     )
@@ -170,6 +175,7 @@ def test_NonBlockingJSONReceiver_on_BlockingJSONReceiver_task():  # should fail
 
 
 def test_BlockingJSONReceiver_on_BlockingJSONReceiver_task():  # should success
+    """Send and receive data interleaved with a blocking receiver."""
     process, data_queue, _error_queue = receiver_process(
         port=9876, task_type="blocking_task", receiver_type="blocking_receiver"
     )
@@ -188,6 +194,7 @@ def test_BlockingJSONReceiver_on_BlockingJSONReceiver_task():  # should success
 
 
 def test_BlockingJSONReceiver_on_NonBlockingJSONReceiver_task():  # should fail
+    """Verify blocking receiver slows down a non-blocking task loop."""
     process, _data_queue, error_queue = receiver_process(
         port=9876, task_type="non-blocking_task", receiver_type="blocking_receiver"
     )
@@ -206,6 +213,7 @@ def test_BlockingJSONReceiver_on_NonBlockingJSONReceiver_task():  # should fail
 
 
 def test_send_to_disconnected_NonBlockingJSONReceiver():
+    """Reconnect and resume sending after the receiver process restarts."""
     process, data_queue, error_queue = receiver_process(
         port=9876, task_type="non-blocking_task", receiver_type="non-blocking_receiver"
     )
@@ -234,6 +242,7 @@ def test_send_to_disconnected_NonBlockingJSONReceiver():
 
 
 def test_send_to_non_open_socket():
+    """Return failure when no receiver is listening on the port."""
     port = 9881
     sender = NonBlockingJSONSender(port=port)
     succ = sender.send_data(SAMPLE_DATAS[0])
@@ -241,6 +250,7 @@ def test_send_to_non_open_socket():
 
 
 def test_send_big_data_to_NonBlockingJSONReceiver():
+    """Send a large payload through a non-blocking receiver."""
     sender = NonBlockingJSONSender(port=9878)
     receiver = NonBlockingJSONReceiver(port=9878)
     succ = sender.send_data(SAMPLE_BIG_DATA)
@@ -250,6 +260,7 @@ def test_send_big_data_to_NonBlockingJSONReceiver():
 
 
 def test_send_big_data_to_BlockingJSONReceiver():
+    """Send a large payload through a blocking receiver."""
     sender = NonBlockingJSONSender(port=9876)
     receiver = BlockingJSONReceiver(port=9876)
     succ = sender.send_data(SAMPLE_BIG_DATA)
@@ -305,8 +316,11 @@ def test_send_to_opened_captured_and_disconnected_blocking_receiver_socket():
 
 
 def test_send_to_connected_but_not_accepted_socket_with_nonblocking_receiver():
-    """This may happen because the socket was only connected, but not accepted.
-    Sender will notice the other peer's socket manager has closed, but since the sender's socket itself is never accepted, it pops out ConnectionResetError, and we should just handle that.
+    """Handle the case where a socket was connected but not yet accepted.
+
+    Sender will notice the other peer's socket manager has closed, but since
+    the sender's socket itself is never accepted, it pops out
+    ConnectionResetError, and we should just handle that.
     """
     port = 9883
     receiver = NonBlockingJSONReceiver(port=port)

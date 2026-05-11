@@ -1,3 +1,5 @@
+"""Obstacle generation and data persistence helpers."""
+
 import copy
 import datetime
 import json
@@ -15,7 +17,8 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[2]
 
 
-def save_json(dir: str, prefix: str, data) -> True:  # save json data for test
+def save_json(dir: str, prefix: str, data) -> True:
+    """Save data as a timestamped JSON file for debugging."""
     current_time_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     filepath = (
         PROJECT_ROOT_DIR / "data_for_test" / dir / (prefix + current_time_str + ".json")
@@ -29,7 +32,7 @@ def create_obstacle_info(
     scene_data: SceneData,
     extra_obstacles: dict[str, ObstacleBound] | None = None,
 ) -> SceneData:
-    # Copy from .json
+    """Build obstacle bounding boxes from object point clouds and extra config."""
     if extra_obstacles is None:
         extra_obstacles = {}
     new_scene_data = copy.deepcopy(scene_data)
@@ -57,6 +60,7 @@ def create_obstacle_info(
 
 
 def load_extra_obstacles() -> dict[str, ObstacleBound]:
+    """Load extra obstacle definitions from the config JSON file."""
     extra_obstacles: dict[str, ObstacleBound] = {}
     extra_obstacles_path = (
         PROJECT_ROOT_DIR / "configs" / "actions" / "extra_obstacles.json"

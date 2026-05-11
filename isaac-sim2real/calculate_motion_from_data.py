@@ -1,9 +1,12 @@
+"""Plan motions from saved grasp data using cuRobo in Isaac Sim."""
+
 import argparse
 
 from omni.isaac.kit import SimulationApp
 
 
 def parse_args():
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--visualize_spheres",
@@ -64,6 +67,7 @@ def parse_args():
 
 
 def main():
+    """Launch the Isaac Sim motion plan controller."""
     args = parse_args()
     simulation_app = SimulationApp(
         {

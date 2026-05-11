@@ -1,9 +1,12 @@
+"""Synchronize Isaac Sim with a ROS2 robot controller over sockets."""
+
 import argparse
 
 from omni.isaac.kit import SimulationApp
 
 
 def parse_args():
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--visualize_spheres",
@@ -58,6 +61,7 @@ def parse_args():
 
 
 def main():
+    """Launch the Isaac Sim controller synchronized with ROS2."""
     args = parse_args()
     simulation_app = SimulationApp(
         {

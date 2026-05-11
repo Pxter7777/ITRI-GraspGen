@@ -1,3 +1,5 @@
+"""ZED camera interface and image capture utilities."""
+
 import json
 import logging
 from pathlib import Path
@@ -48,6 +50,7 @@ class ZedCamera:
         return
 
     def initialize_zed_using_stream(self):
+        """Initialize the camera from a streaming source."""
         self.initialize_zed_using_existing_png("demo6")
         self.from_stream = True
 
@@ -90,6 +93,7 @@ class ZedCamera:
         self.ext_ir1_to_color = np.identity(4)
 
     def initialize_zed_using_existing_png(self, use_png) -> None:
+        """Initialize camera parameters from saved PNG images and calibration data."""
         self.png_dir = PROJECT_ROOT_DIR / "data" / "zed_images" / use_png
         self.baseline = 0
         self.K_left = 0
@@ -109,8 +113,9 @@ class ZedCamera:
     def capture_images_from_stream(
         self, port=STREAM_TO_ZED_PORT
     ) -> tuple[sl.ERROR_CODE, np.ndarray, np.ndarray]:
-        """To capture image from stream, here we immediately connect, try to grab info, and disconnect + close the socket completely.
-        If it keeps the socket connect, but not actually grabbing info, the info will pile up and eventually cause out of memory.
+        """Capture images from a ZMQ stream.
+
+        Connect, grab one frame, and disconnect immediately to avoid memory buildup.
         """
         ctx = zmq.Context()
         self.sub = ctx.socket(zmq.SUB)
@@ -141,6 +146,7 @@ class ZedCamera:
     def capture_images_from_exsisting_png(
         self,
     ) -> tuple[sl.ERROR_CODE, np.ndarray, np.ndarray]:
+        """Return the pre-loaded PNG images."""
         return (
             sl.ERROR_CODE.SUCCESS,
             self.left_image.get_data(),
@@ -148,6 +154,7 @@ class ZedCamera:
         )
 
     def capture_images(self) -> tuple[sl.ERROR_CODE, np.ndarray, np.ndarray]:
+        """Capture left and right images from the active source."""
         if self.from_stream:
             return self.capture_images_from_stream()
         if (
@@ -155,7 +162,6 @@ class ZedCamera:
         ):  # use existing png instead of the actual camera, for test purpose
             return self.capture_images_from_exsisting_png()
 
-        """Captures left and right images from the ZED camera."""
         status = self.camera.grab()
         if status == sl.ERROR_CODE.SUCCESS:
             self.camera.retrieve_image(self.left_image, sl.VIEW.LEFT)

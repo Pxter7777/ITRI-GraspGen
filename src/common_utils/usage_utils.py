@@ -1,3 +1,5 @@
+"""GPU time and VRAM usage profiling utilities."""
+
 import logging
 import time
 
@@ -5,6 +7,8 @@ import torch
 
 
 class UsageInspector:
+    """Track elapsed time and peak VRAM for named code sections."""
+
     def __init__(self, enabled=False, log_file="usage_log.txt"):
         self.enabled = enabled
         if not self.enabled:
@@ -28,6 +32,7 @@ class UsageInspector:
         self.logger.info("--- New Usage Inspection Session ---")
 
     def start(self, name):
+        """Begin timing a named section and reset peak VRAM stats."""
         if not self.enabled:
             return
         if torch.cuda.is_available():
@@ -37,6 +42,7 @@ class UsageInspector:
         print(f"Starting: {name}")
 
     def end(self, name):
+        """Stop timing a named section and log elapsed time and VRAM."""
         if not self.enabled:
             return
         if name not in self.timers:
@@ -56,6 +62,7 @@ class UsageInspector:
         print(log_message)
 
     def report(self):
+        """Write an end-of-session marker to the log."""
         if not self.enabled:
             return
         # This could be expanded to provide a summary report.

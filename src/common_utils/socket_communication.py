@@ -1,3 +1,5 @@
+"""Length-prefixed JSON socket communication for inter-process messaging."""
+
 import json
 import logging
 import select
@@ -35,7 +37,8 @@ SAMPLE_DATA = {
 
 
 class NonBlockingJSONSender:
-    """A class to manage connection and sending goals to the robot bridge.
+    """Manage connection and send JSON payloads to a receiver.
+
     Connects automatically upon instantiation.
     """
 
@@ -46,11 +49,11 @@ class NonBlockingJSONSender:
         self._connect_on_init()  # Attempt connection during initialization
 
     def _connect_on_init(self) -> bool | None:
-        """Internal method to establish connection. Used during init and for re-connection.
+        """Establish a TCP connection to the receiver.
+
         Returns True on success, False otherwise.
         """
         if self.socket:
-            # Already connected or socket object exists, close it first to ensure a fresh connection
             self.disconnect()
 
         try:
@@ -68,21 +71,21 @@ class NonBlockingJSONSender:
             return False
 
     def disconnect(self):
-        """Closes the connection to the robot bridge."""
+        """Close the connection to the receiver."""
         if self.socket:
             self.socket.close()
             self.socket = None
             logger.info("Sender disconnected")
 
     def reconnect(self) -> bool:
-        """Closes the current connection and establishes a new one."""
+        """Close the current connection and establish a new one."""
         logger.info("Attempting to reconnect sender...")
         self.disconnect()
         return self._connect_on_init()
 
     def send_data(self, data: dict | list) -> bool:
-        """Sends a single joint position goal to the robot bridge.
-        Attempts to reconnect if the connection is lost.
+        """Send a JSON payload, reconnecting automatically on failure.
+
         Returns True on successful send, False otherwise.
         """
         if not self.socket:
@@ -141,7 +144,8 @@ class NonBlockingJSONSender:
 
 
 class NonBlockingJSONReceiver:
-    """A class to manage connection and receive dict.
+    """Non-blocking TCP server that receives length-prefixed JSON messages.
+
     Connects automatically upon instantiation.
     """
 
@@ -155,11 +159,11 @@ class NonBlockingJSONReceiver:
         self._connect_on_init()  # Attempt connection during initialization
 
     def _connect_on_init(self) -> bool | None:
-        """Internal method to establish connection. Used during init and for re-connection.
+        """Bind and listen on the configured port in non-blocking mode.
+
         Returns True on success, False otherwise.
         """
         if self.socket:
-            # Already connected or socket object exists, close it first to ensure a fresh connection
             self.disconnect()
 
         try:
@@ -182,6 +186,7 @@ class NonBlockingJSONReceiver:
             ) from e
 
     def disconnect(self):
+        """Close the listening socket and any active connection."""
         if self.socket:
             self.socket.close()
             self.socket = None
@@ -191,6 +196,7 @@ class NonBlockingJSONReceiver:
         logger.info("receiver disconnected")
 
     def capture_data(self):
+        """Poll for a complete JSON message, returning None if unavailable."""
         try:
             if self.conn is None:
                 self.conn, addr = self.socket.accept()
@@ -239,7 +245,8 @@ class NonBlockingJSONReceiver:
 
 
 class BlockingJSONReceiver:
-    """A class to manage connection and receive dict.
+    """Blocking TCP server that receives length-prefixed JSON messages.
+
     Connects automatically upon instantiation.
     """
 
@@ -251,11 +258,11 @@ class BlockingJSONReceiver:
         self._connect_on_init()  # Attempt connection during initialization
 
     def _connect_on_init(self) -> bool | None:
-        """Internal method to establish connection. Used during init and for re-connection.
+        """Bind and listen on the configured port in blocking mode.
+
         Returns True on success, False otherwise.
         """
         if self.socket:
-            # Already connected or socket object exists, close it first to ensure a fresh connection
             self.disconnect()
 
         try:
@@ -277,6 +284,7 @@ class BlockingJSONReceiver:
             ) from e
 
     def disconnect(self):
+        """Close the listening socket and any active connection."""
         if self.socket:
             self.socket.close()
             self.socket = None
@@ -286,7 +294,7 @@ class BlockingJSONReceiver:
         logger.info("receiver disconnected")
 
     def _read_blocking(self, n):
-        """Helper to read exactly n bytes from a blocking socket."""
+        """Read exactly n bytes from the blocking socket."""
         data = b""
         while len(data) < n:
             packet = self.conn.recv(n - len(data))
@@ -296,6 +304,7 @@ class BlockingJSONReceiver:
         return data
 
     def capture_data(self):
+        """Block until a complete JSON message is received."""
         try:
             if self.conn is None:
                 self.conn, addr = self.socket.accept()

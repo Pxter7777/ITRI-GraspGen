@@ -1,3 +1,5 @@
+"""GraspGen inference, filtering, and meshcat-based visualization."""
+
 import atexit
 import logging
 import os
@@ -57,7 +59,8 @@ def is_qualified(grasp: np.array, mass_center, obj_std):
 
 
 def flip_grasp(grasp: np.ndarray) -> np.ndarray:
-    """Flips a grasp by rotating it 180 degrees around its approach (front) axis.
+    """Flip a grasp 180 degrees around its approach axis.
+
     This negates the 'left' and 'up' vectors.
     """
     flipped_grasp = grasp.copy()
@@ -80,6 +83,15 @@ def flip_upside_down_grasps(grasps: np.ndarray) -> np.ndarray:
 
 
 class GraspGenerator:
+    """Run GraspGen inference and filter results by qualification rules.
+
+    Args:
+        gripper_config: Path to the gripper YAML config.
+        grasp_threshold: Minimum confidence score for generated grasps.
+        num_grasps: Number of grasps to sample per batch.
+        topk_num_grasps: Number of top-scoring grasps to keep.
+    """
+
     def __init__(self, gripper_config, grasp_threshold, num_grasps, topk_num_grasps):
         self.grasp_cfg = load_grasp_cfg(gripper_config)
         self.gripper_name = self.grasp_cfg.data.gripper_name
@@ -89,6 +101,7 @@ class GraspGenerator:
         self.topk_num_grasps = topk_num_grasps
 
     def auto_select_valid_cup_grasp(self, pointcloud: np.array) -> np.array:
+        """Repeatedly sample grasps until a qualified one is found."""
         mass_center = np.mean(pointcloud, axis=0)
         std = np.std(pointcloud, axis=0)
         try:
@@ -153,6 +166,7 @@ def open_meshcat_url(url):
 
 
 def get_left_up_and_front(grasp: np.array):
+    """Extract left, up, and front direction vectors from a 4x4 grasp matrix."""
     left = grasp[:3, 0]
     up = grasp[:3, 1]
     front = grasp[:3, 2]
@@ -160,6 +174,16 @@ def get_left_up_and_front(grasp: np.array):
 
 
 class ControlPanel:
+    """Tkinter GUI for browsing and selecting grasp poses.
+
+    Args:
+        root: The tkinter root window.
+        vis: Meshcat visualizer instance.
+        grasp_queue: Queue to send the selected grasp back to the caller.
+        grasps_to_handle_queue: Queue receiving generated grasp batches.
+        gripper_name: Name of the gripper model for visualization.
+    """
+
     def __init__(
         self,
         root,
@@ -216,22 +240,26 @@ class ControlPanel:
         self.next_button.pack(side=tk.LEFT, padx=5)
 
     def run(self):
+        """Start the tkinter main loop."""
         self.root.after(100, self._catch_grasps)
         self.root.mainloop()
 
     def next_grasp(self, event=None):
+        """Advance to the next grasp in the current filtered pool."""
         if len(self.current_grasp_pool) == 0:
             return
         self.current_index = (self.current_index + 1) % len(self.current_grasp_pool)
         self._update_grasp_visualization()
 
     def prev_grasp(self, event=None):
+        """Go back to the previous grasp in the current filtered pool."""
         if len(self.current_grasp_pool) == 0:
             return
         self.current_index = (self.current_index - 1) % len(self.current_grasp_pool)
         self._update_grasp_visualization()
 
     def toggle_grasp_display(self):
+        """Recompute the visible grasp pool based on active filter checkboxes."""
         grasps_mask = np.array([True for grasp in self.all_grasps])
         if self.apply_custom_filter_var.get():
             grasps_mask = grasps_mask & self.custom_filter_mask
@@ -339,6 +367,7 @@ def create_control_panel(
 
 
 def angle_offset_rad(grasp: np.ndarray) -> float:
+    """Compute the angular offset between the grasp approach and position vectors."""
     position = grasp[:3, 3].tolist()
     _left, _up, front = get_left_up_and_front(grasp)
     angle_front = np.arctan2(front[1], front[0])
@@ -350,6 +379,16 @@ def angle_offset_rad(grasp: np.ndarray) -> float:
 
 
 class GraspGeneratorUI:
+    """GraspGen inference with optional meshcat visualization and tkinter GUI.
+
+    Args:
+        gripper_config: Path to the gripper YAML config.
+        grasp_threshold: Minimum confidence score for generated grasps.
+        num_grasps: Number of grasps to sample per batch.
+        topk_num_grasps: Number of top-scoring grasps to keep.
+        need_GUI: Whether to launch the meshcat server and tkinter panel.
+    """
+
     def __init__(
         self,
         gripper_config,
@@ -373,6 +412,7 @@ class GraspGeneratorUI:
             self.vis = create_visualizer()
 
     def _generate_grasps(self) -> tuple[np.array, np.array]:
+        """Run one batch of grasp inference and return masks for filtering."""
         obj_name = self.move.target_name
         obj_pc = self.scene_data.object_infos[obj_name].points
         qualifier_name = self.move.qualifier
@@ -440,8 +480,10 @@ class GraspGeneratorUI:
         return grasps, custom_filter_mask, collision_free_mask
 
     def _generate_grasp_silent(self) -> np.array:
-        """Returns:
-        Qualified grasps, A list of that contains multiple np.ndarray s of shape(4, 4).
+        """Return qualified grasps without GUI interaction.
+
+        Returns:
+            A list of shape(4, 4) np.ndarray grasp matrices.
         """
         # GRASPS_BATCH_SIZE = 4 # stop using this method, just send all to curobo to try
         num_try = 0
@@ -460,8 +502,10 @@ class GraspGeneratorUI:
                 return qualified_grasps
 
     def generate_grasp(self, scene_data: dict, move: MoveItem) -> list[np.ndarray]:
-        """Returns:
-        grasps: A list of shape(4, 4) np array. only single one elements if returned from self._generate_grasp_with_GUI(), while multiple elements if returned by self._generate_grasp_silent().
+        """Generate grasps for the given scene and move, with or without GUI.
+
+        Returns:
+            A list of 4x4 grasp pose matrices.
         """
         # reload scene_data and move
         self.scene_data = scene_data
@@ -474,8 +518,10 @@ class GraspGeneratorUI:
             return self._generate_grasp_silent()
 
     def _generate_grasp_with_GUI(self) -> list[np.ndarray]:
-        """Returns:
-        A list of that contains only one element: np.ndarray of shape(4, 4).
+        """Let the user select a grasp via the tkinter panel.
+
+        Returns:
+            A single-element list containing the selected 4x4 grasp matrix.
         """
         self._visualize_scene()
         grasp_q = queue.Queue()

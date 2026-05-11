@@ -1,3 +1,5 @@
+"""Helpers for packing grasp data and dispatching to the robot gripper."""
+
 import json
 import logging
 import subprocess
@@ -13,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 def pack_grasp_euler(grasp: np.array):
+    """Pack a 4x4 grasp matrix into a JSON temp file with Euler angles."""
     position = grasp[:3, 3].tolist()
 
     euler_orientation = list(trimesh.transformations.euler_from_matrix(grasp))
@@ -33,6 +36,7 @@ def pack_grasp_euler(grasp: np.array):
 
 
 def pack_moves(moves: list[dict]):
+    """Write a list of move dicts to a JSON temp file."""
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".json", delete=False, dir="/tmp"
     ) as tmp:
@@ -42,6 +46,7 @@ def pack_moves(moves: list[dict]):
 
 
 def send_cup_grasp_to_robot(grasp: np.array):
+    """Send a single grasp pose to the robot via quick_grip.py."""
     temp_grasp_file = pack_grasp_euler(grasp)
     # Construct the absolute path to quick_grip.py
     # Assuming quick_grip.py is in the project root, one level up from common_utils
@@ -59,6 +64,7 @@ def send_cup_grasp_to_robot(grasp: np.array):
 
 
 def send_moves_to_robot(moves: list[dict]):
+    """Send a list of moves to the robot via quick_grip2.py."""
     temp_moves_file = pack_moves(moves)
     quick_grip2_path = str(Path(__file__).resolve().parent / "quick_grip2.py")
     command = [

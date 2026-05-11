@@ -1,3 +1,5 @@
+"""Test the TaskConfig pydantic model for action format validation."""
+
 import json
 
 import pytest
@@ -62,6 +64,7 @@ STANDARD_VALID_JSON = """
 
 
 def test_standard_valid():
+    """Validate a fully-populated task config with all optional fields."""
     data_dict = json.loads(STANDARD_VALID_JSON)
     config = TaskConfig(**data_dict)
     assert config
@@ -81,6 +84,7 @@ MINIMAL_VALID_JSON = """
 
 
 def test_minimal_valid():
+    """Validate a minimal task config with only required fields."""
     data_dict = json.loads(MINIMAL_VALID_JSON)
     config = TaskConfig(**data_dict)
     assert config
@@ -100,6 +104,7 @@ INVALID_TARGET_JSON = """
 
 
 def test_target_not_in_track():
+    """Reject a move whose target_name is not listed in track."""
     data_dict = json.loads(INVALID_TARGET_JSON)
     with pytest.raises(ValidationError, match=r"'glass cup' is not in 'track'"):
         _ = TaskConfig(**data_dict)
@@ -120,6 +125,7 @@ UNEXPECTED_KEYS_IN_MOVE_JSON = """
 
 
 def test_unexpected_keys_in_move():
+    """Reject a move containing unexpected extra keys."""
     data_dict = json.loads(UNEXPECTED_KEYS_IN_MOVE_JSON)
     with pytest.raises(
         ValidationError, match=r"BABA_IS_YOU\s+Extra inputs are not permitted"
@@ -142,6 +148,7 @@ UNEXPECTED_KEYS_IN_TASK_JSON = """
 
 
 def test_unexpected_keys_in_task():
+    """Reject a task config containing unexpected extra keys."""
     data_dict = json.loads(UNEXPECTED_KEYS_IN_TASK_JSON)
     with pytest.raises(
         ValidationError, match=r"SHORYUKEN\s+Extra inputs are not permitted"
@@ -167,6 +174,7 @@ BAD_BLOCKAGE_ELEMENT_NUM_JSON = """
 
 
 def test_bad_blockage_element_num():
+    """Reject a blockage entry with more than 4 elements."""
     data_dict = json.loads(BAD_BLOCKAGE_ELEMENT_NUM_JSON)
     with pytest.raises(
         ValidationError,
@@ -176,6 +184,7 @@ def test_bad_blockage_element_num():
 
 
 def main():
+    """Run all test functions manually."""
     test_standard_valid()
     test_minimal_valid()
     test_target_not_in_track()

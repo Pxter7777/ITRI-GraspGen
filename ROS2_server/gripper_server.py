@@ -1,3 +1,5 @@
+"""Control the TM robot arm via ROS2 services and socket communication."""
+
 # execute it with /usr/bin/python3
 
 # one_arm_control_CPP.py
@@ -34,16 +36,19 @@ logger = logging.getLogger(__name__)
 
 
 def mrad_to_mmdeg(cartesian_pose: list) -> list:
+    """Convert meter-radian pose to millimeter-degree pose."""
     position = [p * 1000 for p in cartesian_pose[:3]]
     euler_orientation_deg = np.rad2deg(cartesian_pose[3:]).tolist()
     return position + euler_orientation_deg
 
 
 def is_joint_vel_near_zero(joint_vel: list):
+    """Check if all joint velocities are near zero."""
     return all(abs(v) < 0.001 for v in joint_vel)
 
 
 def is_pose_identical(joints1: list, joints2: list):
+    """Check if two joint poses are identical within tolerance."""
     if joints1 is None or joints2 is None:
         return False
     pos_identical = all(
@@ -56,6 +61,12 @@ successs = 0
 
 
 class TMRobotController(Node):
+    """ROS2 node that controls the TM robot arm and communicates with Isaac Sim.
+
+    Args:
+        real2sim (bool): Whether to send trajectory data to an Isaac Sim display.
+    """
+
     def __init__(self, real2sim: bool):
         super().__init__("tm_robot_controller")
         self.csv_receiver = NonBlockingJSONReceiver(
@@ -169,6 +180,7 @@ class TMRobotController(Node):
                 logger.error(f"TimeoutError, send_traj failed, not listening: {e}")
 
     def setup_services(self):
+        """Initialize ROS2 service clients and subscribe to feedback states."""
         logger.info("等待 ROS 2 服務啟動...")
 
         self.script_cli = self.create_client(SendScript, "send_script")
@@ -190,6 +202,7 @@ class TMRobotController(Node):
         logger.info("✅ 已訂閱 feedback_states")
 
     def feedback_callback(self, msg: FeedbackState) -> None:
+        """Handle feedback state updates and detect reach or stuck conditions."""
         self.current_IO_states = list(msg.ee_digital_output)[:3]
         self.current_joints_states = list(np.rad2deg(msg.joint_pos))
         if self.current_IO_states == [0, 0, 0]:
@@ -262,6 +275,7 @@ class TMRobotController(Node):
             future.add_done_callback(_done)
 
     def append_gripper_states(self, states):
+        """Append a gripper IO command to the TCP queue."""
         logger.debug(f"{self.current_IO_states} -> {states}")
         if self.current_IO_states == states:
             logger.info("set wait time to 0 since gripper already in target state")
@@ -277,6 +291,7 @@ class TMRobotController(Node):
     def append_ptp(
         self, ptp_values: list, vel=20, acc=20, coord=80, fine=False, wait_time=0.0
     ):
+        """Append a point-to-point Cartesian move to the TCP queue."""
         if len(ptp_values) != 6:
             logger.error("TCP 必須 6 個數字")
             return
@@ -302,6 +317,7 @@ class TMRobotController(Node):
         wait_time=0.0,
         blend: int = 100,
     ):
+        """Append a joint point-to-point move to the TCP queue."""
         if len(joint_values) != 6:
             logger.error("TCP 必須 6 個數字")
             return
@@ -373,6 +389,7 @@ class TMRobotController(Node):
         future.add_done_callback(_done)
 
     def clear_queue(self):
+        """Clear all pending commands from the TCP queue."""
         n = len(self.tcp_queue)
         self.tcp_queue.clear()
         logger.info(f"已清空佇列，共 {n} 筆")
@@ -404,6 +421,7 @@ class TMRobotController(Node):
 
 
 def parse_args():
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
         description="Visualize grasps on a scene point cloud after IsaacSim inference, for entire scene"
     )
@@ -421,6 +439,7 @@ def parse_args():
 
 
 def main():
+    """Start the TM robot controller ROS2 node."""
     args = parse_args()
     handler = logging.StreamHandler()
     handler.setFormatter(CustomFormatter())

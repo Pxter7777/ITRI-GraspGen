@@ -1,3 +1,5 @@
+"""Generate grasp data for order experiment scenes using GraspGen."""
+
 import argparse
 import json
 import logging
@@ -20,7 +22,10 @@ from common_utils.qualification import get_left_up_and_front
 
 
 class NumpyEncoder(json.JSONEncoder):
+    """JSON encoder that convert numpy arrays to lists."""
+
     def default(self, obj):
+        """Serialize numpy arrays as Python lists."""
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         return super().default(obj)
@@ -37,11 +42,13 @@ PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 
 
 def set_seed(seed):
+    """Set random seeds for torch and numpy."""
     torch.manual_seed(seed)
     np.random.seed(seed)
 
 
 def ndgrasp_to_pre_quat(grasp: np.ndarray):
+    """Convert a grasp matrix to a pre-grasp position-quaternion list."""
     quaternion_orientation = list(trimesh.transformations.quaternion_from_matrix(grasp))
     _, _, front = get_left_up_and_front(grasp)
     front = front.tolist()
@@ -52,6 +59,7 @@ def ndgrasp_to_pre_quat(grasp: np.ndarray):
 
 
 def ndgrasp_to_quat(grasp: np.ndarray):
+    """Convert a grasp matrix to a grasp position-quaternion list."""
     quaternion_orientation = list(trimesh.transformations.quaternion_from_matrix(grasp))
     _, _, front = get_left_up_and_front(grasp)
     front = front.tolist()
@@ -62,6 +70,7 @@ def ndgrasp_to_quat(grasp: np.ndarray):
 
 
 def parse_args():
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
     parser.add_argument(
         "--ckpt_dir",
@@ -153,6 +162,7 @@ def parse_args():
 
 
 def angle_diff_rad(grasp: np.ndarray) -> float:
+    """Compute the planar angle difference between approach and position vectors."""
     position = grasp[:3, 3].tolist()
     _left, _up, front = get_left_up_and_front(grasp)
     position += front * 0.20  # offset
@@ -166,15 +176,23 @@ def angle_diff_rad(grasp: np.ndarray) -> float:
 
 
 def distance_meter(grasp: np.ndarray) -> float:
+    """Return the Euclidean distance from the origin to the grasp position."""
     return np.linalg.norm(grasp[:3, 3])
 
 
 def up_vector(grasp: np.ndarray) -> float:
+    """Return the Z component of the grasp approach vector."""
     _left, _up, front = get_left_up_and_front(grasp)
     return front[2]
 
 
 class ExperimentWorkflowController:
+    """Run grasp generation experiments across order experiment scenes.
+
+    Args:
+        args (argparse.Namespace): Parsed command-line arguments.
+    """
+
     def __init__(self, args) -> None:
         self.args = args
         self.grasp_generator = GraspGeneratorUI(
@@ -197,6 +215,7 @@ class ExperimentWorkflowController:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Automatically called when the 'with' block ends.
+
         Even if an exception occurs, this method runs.
         """
         if exc_type:
@@ -215,6 +234,7 @@ class ExperimentWorkflowController:
             logger.exception(f"Error during pc_generator cleanup: {e}")
 
     def run_experiment(self):
+        """Generate and save grasp data for all experiment scenes."""
         for dir in ["in_basket", "on_shelf", "on_table"]:
             task_config_path = (
                 PROJECT_ROOT_DIR
@@ -346,6 +366,7 @@ class ExperimentWorkflowController:
 
 
 def main():
+    """Run the grasp data generation experiment."""
     args = parse_args()
     set_seed(42)
     with ExperimentWorkflowController(args) as controller:

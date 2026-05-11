@@ -1,3 +1,5 @@
+"""Grasp pose qualification filters based on geometric heuristics."""
+
 import logging
 
 import numpy as np
@@ -6,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_left_up_and_front(grasp: np.array) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Extract left, up, and front direction vectors from a 4x4 grasp matrix."""
     left = grasp[:3, 0]
     up = grasp[:3, 1]
     front = grasp[:3, 2]
@@ -13,6 +16,7 @@ def get_left_up_and_front(grasp: np.array) -> tuple[np.ndarray, np.ndarray, np.n
 
 
 def cup_qualifier(grasp: np.array, min_point: np.ndarray, max_point: np.ndarray) -> bool:
+    """Filter grasp poses suitable for grasping a cup from the side."""
     position = grasp[:3, 3].tolist()
     left, up, front = get_left_up_and_front(grasp)
     position += front * 0.20  # offset
@@ -39,6 +43,7 @@ def cup_qualifier(grasp: np.array, min_point: np.ndarray, max_point: np.ndarray)
 
 
 def small_cup_qualifier(grasp: np.array, mass_center, obj_std) -> bool:
+    """Filter grasp poses suitable for grasping a small cup."""
     position = grasp[:3, 3].tolist()
     _left, up, front = get_left_up_and_front(grasp)
     if up[2] < 0.7:
@@ -62,6 +67,7 @@ def small_cup_qualifier(grasp: np.array, mass_center, obj_std) -> bool:
 
 
 def small_cube_qualifier(grasp: np.array, mass_center, obj_std) -> bool:
+    """Filter grasp poses suitable for grasping a small cube from above."""
     position = grasp[:3, 3].tolist()
     _left, _up, front = get_left_up_and_front(grasp)
     if front[0] < 0:
@@ -94,6 +100,7 @@ qualifier_dict = {
 def is_qualified(
     grasp: np.array, qualifier: str, min_point: np.ndarray, max_point: np.ndarray
 ) -> bool:
+    """Run the named qualifier function against a grasp pose."""
     if qualifier not in qualifier_dict:
         logger.error(f"There is no such qualifier: {qualifier}")
         raise KeyError

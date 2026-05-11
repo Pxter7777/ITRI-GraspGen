@@ -1,3 +1,5 @@
+"""Point cloud transformation utilities."""
+
 import copy
 import json
 from pathlib import Path
@@ -11,6 +13,7 @@ PROJECT_ROOT_DIR = Path(__file__).resolve().parents[2]
 
 
 def transform(original_pointcloud, transformation_matrix):
+    """Apply a 4x4 transformation matrix to a point cloud."""
     original_pc_homogeneous = np.hstack(
         (
             original_pointcloud,
@@ -25,6 +28,7 @@ def transform(original_pointcloud, transformation_matrix):
 
 
 def silent_transform_multiple_obj_with_name_dict(scene_data: SceneData) -> SceneData:
+    """Transform scene data using the saved config without user interaction."""
     config_filepath = PROJECT_ROOT_DIR / "configs" / "transform_config.json"
     with open(config_filepath, "rb") as f:
         transform_data = json.load(f)

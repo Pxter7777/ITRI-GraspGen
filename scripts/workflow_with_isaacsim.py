@@ -1,3 +1,5 @@
+"""CLI workflow controller that communicates with Isaac Sim over sockets."""
+
 import argparse
 import logging
 from pathlib import Path
@@ -24,11 +26,13 @@ PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 
 
 def set_seed(seed):
+    """Set random seeds for torch and numpy."""
     torch.manual_seed(seed)
     np.random.seed(seed)
 
 
 def parse_args():
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
     parser.add_argument(
         "--ckpt_dir",
@@ -120,6 +124,12 @@ def parse_args():
 
 
 class CLIWorkflowController(BaseWorkflowController):
+    """Interactive CLI controller for the Isaac Sim grasping workflow.
+
+    Args:
+        args (argparse.Namespace): Parsed command-line arguments.
+    """
+
     def __init__(self, args) -> None:
         sender = NonBlockingJSONSender(port=network_config.GRASPGEN_TO_ISAACSIM_PORT)
         receiver = NonBlockingJSONReceiver(
@@ -151,6 +161,7 @@ class CLIWorkflowController(BaseWorkflowController):
 
 
 def main():
+    """Start the CLI workflow loop."""
     args = parse_args()
     set_seed(42)
     with CLIWorkflowController(args) as controller:

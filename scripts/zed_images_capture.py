@@ -1,3 +1,5 @@
+"""Capture stereo image pairs from a ZED camera and save with camera info."""
+
 import json
 import logging
 import os
@@ -18,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 def main():
+    """Interactively capture and save stereo images from the ZED camera."""
     zed = ZedCamera()
     try:
         while True:

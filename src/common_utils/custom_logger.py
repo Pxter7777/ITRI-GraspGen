@@ -1,8 +1,12 @@
+"""Color-coded logging formatter for console output."""
+
 # Referenced from https://stackoverflow.com/a/56944256
 import logging
 
 
 class CustomFormatter(logging.Formatter):
+    """Apply ANSI color codes to log messages based on severity level."""
+
     grey = "\x1b[38;20m"
     green = "\x1b[32;20m"
     yellow = "\x1b[33;20m"
@@ -23,6 +27,7 @@ class CustomFormatter(logging.Formatter):
     }
 
     def format(self, record):
+        """Format a log record with the appropriate color."""
         log_fmt = self.FORMATS.get(record.levelno)
         formatter = logging.Formatter(log_fmt)
         return formatter.format(record)

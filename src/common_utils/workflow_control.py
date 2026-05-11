@@ -1,3 +1,5 @@
+"""Base controller for the GraspGen-to-IsaacSim-to-ROS2 workflow loop."""
+
 import json
 import logging
 import time
@@ -23,6 +25,14 @@ PROJECT_ROOT_DIR = Path(__file__).resolve().parents[2]
 
 
 class BaseWorkflowController:
+    """Orchestrate scene capture, grasp generation, and robot execution.
+
+    Args:
+        args: CLI arguments with model paths and inference parameters.
+        sender: Socket sender for outgoing commands to Isaac Sim.
+        receiver: Socket receiver for responses from Isaac Sim.
+    """
+
     def __init__(
         self, args, sender: NonBlockingJSONSender, receiver: NonBlockingJSONReceiver
     ) -> None:
@@ -57,9 +67,7 @@ class BaseWorkflowController:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """Automatically called when the 'with' block ends.
-        Even if an exception occurs, this method runs.
-        """
+        """Clean up resources when the context manager exits."""
         if exc_type:
             logger.error(f"Exiting due to error: {exc_val}")
 
@@ -69,6 +77,7 @@ class BaseWorkflowController:
         return False
 
     def handle_task_command(self):
+        """Dispatch a task to the appropriate handler (GraspGen or CSV)."""
         task_type, task_name, no_need_curobo = self._capture_task_name()
         self._eat_aborts()
         if task_type == "GraspGen" and task_name == "Grasp_and_Dump":

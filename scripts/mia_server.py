@@ -1,3 +1,5 @@
+"""Workflow server that bridges MIA commands to Isaac Sim via sockets."""
+
 import argparse
 import logging
 from pathlib import Path
@@ -24,11 +26,13 @@ PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 
 
 def set_seed(seed):
+    """Set random seeds for torch and numpy."""
     torch.manual_seed(seed)
     np.random.seed(seed)
 
 
 def parse_args():
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
     parser.add_argument(
         "--ckpt_dir",
@@ -120,6 +124,12 @@ def parse_args():
 
 
 class MiaWorkflowController(BaseWorkflowController):
+    """Workflow controller that receives commands from MIA and relays results.
+
+    Args:
+        args (argparse.Namespace): Parsed command-line arguments.
+    """
+
     def __init__(self, args) -> None:
         sender = NonBlockingJSONSender(port=network_config.GRASPGEN_TO_ISAACSIM_PORT)
         receiver = NonBlockingJSONReceiver(
@@ -169,6 +179,7 @@ class MiaWorkflowController(BaseWorkflowController):
 
 
 def main():
+    """Start the MIA workflow server loop."""
     args = parse_args()
     set_seed(42)
     with MiaWorkflowController(args) as controller:

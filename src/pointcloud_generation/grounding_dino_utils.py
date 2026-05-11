@@ -1,3 +1,5 @@
+"""Grounding DINO detection utilities."""
+
 import cv2
 import groundingdino.datasets.transforms as T
 import numpy as np
@@ -11,6 +13,19 @@ from pointcloud_generation.mouse_handlerv2 import BoundingBox
 
 
 class DetectedBoxInfo:
+    """Store a detected bounding box with its phrase and confidence.
+
+    Args:
+        box (BoundingBox): Bounding box coordinates.
+        phrase: Detected phrase label.
+        logits: Confidence score.
+
+    Attributes:
+        box (BoundingBox): Bounding box coordinates.
+        phrase: Detected phrase label.
+        logits: Confidence score.
+    """
+
     def __init__(self, box: BoundingBox, phrase, logits):
         self.box = box
         self.phrase = phrase
@@ -18,6 +33,12 @@ class DetectedBoxInfo:
 
 
 class GroundindDinoPredictor:
+    """Wrap the Grounding DINO model for bounding box prediction.
+
+    Attributes:
+        model: Loaded Grounding DINO model.
+    """
+
     def __init__(self):
         self.model = load_model(
             config.GROUNDINGDINO_CFG,
@@ -27,6 +48,7 @@ class GroundindDinoPredictor:
     def predict_boxes(
         self, image: np.array, text_prompt: str, box_threshold=0.4, text_threshold=0.4
     ) -> list[DetectedBoxInfo]:
+        """Predict bounding boxes for the given text prompt in an image."""
         transform = T.Compose(
             [
                 T.RandomResize([800], max_size=1333),
@@ -69,5 +91,6 @@ class GroundindDinoPredictor:
 
 
 def main():
+    """Run a quick smoke test of the predictor."""
     predictor = GroundindDinoPredictor()
     predictor.predict_boxes("")

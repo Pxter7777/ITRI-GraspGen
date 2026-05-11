@@ -1,3 +1,5 @@
+"""Test delayed move sequences sent to Isaac Sim over sockets."""
+
 import time
 
 from common_utils import network_config
@@ -8,6 +10,7 @@ from common_utils.socket_communication import (
 
 
 def scenario2():
+    """Send three moves with 3-second delays between each."""
     sender = NonBlockingJSONSender(port=network_config.GRASPGEN_TO_ISAACSIM_PORT)
     # receiever = BlockingJSONReceiver(port=network_config.ISAACSIM_TO_GRASPGEN_PORT)
     joints_goal1 = [
@@ -43,6 +46,7 @@ def scenario2():
 
 
 def scenario1():
+    """Send three moves with 1-second delays between each."""
     sender = NonBlockingJSONSender(port=network_config.GRASPGEN_TO_ISAACSIM_PORT)
     # receiever = BlockingJSONReceiver(port=network_config.ISAACSIM_TO_GRASPGEN_PORT)
     joints_goal1 = [

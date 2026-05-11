@@ -1,3 +1,5 @@
+"""Send trajectory data to an Isaac Sim display PC over a socket."""
+
 import json
 import socket
 import sys
@@ -34,6 +36,7 @@ TEST_ROWS = [
 
 
 def send_traj(rows):
+    """Send trajectory rows to the remote Isaac Sim display server."""
     payload = {
         "type": "traj",
         "unit": "deg",

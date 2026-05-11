@@ -1,3 +1,5 @@
+"""Visualization helpers for masks, boxes, and depth maps."""
+
 import cv2
 import numpy as np
 
@@ -6,6 +8,7 @@ from pointcloud_generation.grounding_dino_utils import DetectedBoxInfo
 
 
 def overlay_mask_on_frame(frame, mask):
+    """Overlay a semi-transparent mask on a frame."""
     overlay = frame.copy()
     overlay[mask] = config.OVERLAY_COLOR_CV
     cv2.addWeighted(
@@ -15,6 +18,7 @@ def overlay_mask_on_frame(frame, mask):
 
 
 def draw_box(frame, start_point, end_point):
+    """Draw a bounding box rectangle on a frame."""
     cv2.rectangle(frame, start_point, end_point, config.BOX_COLOR, 2)
     return frame
 
@@ -52,6 +56,7 @@ def vis_depth(depth, vmax_percent=95):
 
 
 def visualize_named_box(display_frame: np.array, box: DetectedBoxInfo) -> None:
+    """Draw a labeled detection box on a display frame."""
     overlay = display_frame.copy()
     start_point = (int(box.box[0]), int(box.box[1]))
     end_point = (int(box.box[2]), int(box.box[3]))
@@ -70,6 +75,7 @@ def visualize_named_box(display_frame: np.array, box: DetectedBoxInfo) -> None:
 
 
 def visualize_mask(display_frame, mask):
+    """Blend a segmentation mask onto a display frame."""
     overlay = display_frame.copy()
     overlay[mask] = config.OVERLAY_COLOR_CV
     cv2.addWeighted(

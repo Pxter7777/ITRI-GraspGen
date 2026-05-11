@@ -1,3 +1,5 @@
+"""Load and replay CSV-recorded robot trajectories."""
+
 import csv
 import logging
 from collections import defaultdict
@@ -14,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 
 class Mode(Enum):
+    """Gripper/movement modes parsed from CSV trajectories."""
+
     MOVE = 1
     OPEN = 2
     HALF_OPEN = 3
@@ -28,6 +32,8 @@ status_close_tight = [1, 1, 0]
 
 
 class Movement:
+    """A single movement step with a mode and optional joint values."""
+
     def __init__(self, mode, joint_value=None):
         self.mode = mode
         self.joints_values = []
@@ -35,6 +41,7 @@ class Movement:
 
 
 def load_trajectory_from_csv(command: str) -> list[Movement]:
+    """Parse a CSV trajectory file into a list of Movement steps."""
     base_dir = Path("~").expanduser() / "RobotSnackServing-csv"
     if not base_dir.exists():
         raise FileNotFoundError(
@@ -100,6 +107,8 @@ def load_trajectory_from_csv(command: str) -> list[Movement]:
 
 @dataclass
 class SpeedParam:
+    """Velocity, acceleration, and blend parameters for a trajectory."""
+
     vel: int = 40
     acc: int = 20
     blend: int = 100
@@ -137,6 +146,7 @@ SPEED_PARAM_DICT["go_to_default"] = SpeedParam(vel=100, acc=500)
 def run_trajectory(
     command: str, obstacles: list | None = None, no_need_curobo: bool = False
 ) -> list[dict]:
+    """Convert a CSV trajectory into a list of SingleRobotMove dicts."""
     if obstacles is None:
         obstacles = []
     nodes = load_trajectory_from_csv(command)
@@ -214,6 +224,7 @@ def csv_act(
     obstacles: dict[str, ObstacleBound] | None = None,
     no_need_curobo: bool = False,
 ) -> list[dict]:
+    """Run a named CSV trajectory and wrap it as a sendable action list."""
     if obstacles is None:
         obstacles = {}
     return [

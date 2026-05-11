@@ -1,6 +1,4 @@
-# send one single full act like scripts/workflow_with_isaacsim.py does
-# This is deprecated due to I already removed data_for_test
-
+"""Send a single full action payload to Isaac Sim (deprecated)."""
 
 import json
 import logging

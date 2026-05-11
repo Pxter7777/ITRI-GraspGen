@@ -1,4 +1,4 @@
-# one_arm_control_CPP.py
+"""Control a TM robot arm and gripper via ROS 2 services."""
 
 import argparse
 import json
@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 def quat_to_euler_zyx_deg(qx, qy, qz, qw):
+    """Convert a quaternion to ZYX Euler angles in degrees."""
     def _clamp(v, lo, hi):
         return max(lo, min(hi, v))
 
@@ -43,6 +44,7 @@ def quat_to_euler_zyx_deg(qx, qy, qz, qw):
 
 
 def is_two_point_identical(point1: list, point2: list):
+    """Check whether two 6-DOF poses are approximately identical."""
     pos_identical = all(
         abs(p1 - p2) < 10 for p1, p2 in zip(point1[:3], point2[:3], strict=False)
     )
@@ -53,6 +55,8 @@ def is_two_point_identical(point1: list, point2: list):
 
 
 class TMRobotController(Node):
+    """ROS 2 node that queues and sends motion/gripper commands to a TM robot."""
+
     def __init__(self):
         super().__init__("tm_robot_controller")
         self.script_cli = None
@@ -71,6 +75,7 @@ class TMRobotController(Node):
         self.states_need_to_wait = []
 
     def setup_services(self):
+        """Initialize ROS 2 service clients and subscriptions."""
         self.get_logger().info("等待 ROS 2 服務啟動...")
 
         self.script_cli = self.create_client(SendScript, "send_script")
@@ -95,6 +100,7 @@ class TMRobotController(Node):
         self.get_logger().info(" subscribe /tool_pose")
 
     def feedback_callback(self, msg):
+        """Handle feedback state messages and detect gripper completion."""
         self.ee_digital_output = list(msg.ee_digital_output)
 
         if self.waiting_for_gripper and self.target_ee_output is not None:
@@ -107,6 +113,7 @@ class TMRobotController(Node):
                 self._start_gripper_wait_timer()
 
     def cb(self, msg: PoseStamped):
+        """Handle tool-pose messages and trigger wait timers on arrival."""
         p = msg.pose.position
         q = msg.pose.orientation
         # 2)  transform to CPP（x y z rx ry rz）
@@ -179,6 +186,7 @@ class TMRobotController(Node):
             future.add_done_callback(_done)
 
     def append_gripper_states(self, states):
+        """Enqueue a gripper IO command with the given 3-pin states."""
         if not (isinstance(states, (list, tuple)) and len(states) == 3):
             self.get_logger().error("IO 狀態必須為長度 3 的 list，例如 [1,0,0]")
             return
@@ -187,17 +195,21 @@ class TMRobotController(Node):
         )
 
     def append_gripper_close(self):
+        """Enqueue a gripper-close command."""
         self.append_gripper_states([1, 0, 0])
 
     def append_gripper_half(self):
+        """Enqueue a gripper-half-open command."""
         self.append_gripper_states([0, 1, 0])
 
     def append_gripper_open(self):
+        """Enqueue a gripper-open command."""
         self.append_gripper_states([0, 0, 1])
 
     def append_tcp(
         self, tcp_values: list, vel=20, acc=20, coord=80, fine=False, wait_time=0.0
     ):
+        """Enqueue a PTP move command to the given TCP pose."""
         if len(tcp_values) != 6:
             self.get_logger().error("TCP 必須 6 個數字")
             return
@@ -276,12 +288,14 @@ class TMRobotController(Node):
         future.add_done_callback(_done)
 
     def clear_queue(self):
+        """Remove all pending commands from the queue."""
         n = len(self.tcp_queue)
         self.tcp_queue.clear()
         self.get_logger().info(f"已清空佇列，共 {n} 筆")
 
 
 def parse_args():
+    """Parse command-line arguments for the grip script."""
     parser = argparse.ArgumentParser(
         description="Visualize grasps on a scene point cloud after GraspGen inference, for entire scene"
     )
@@ -295,6 +309,7 @@ def parse_args():
 
 
 def main():
+    """Load a motion plan from JSON and execute it on the TM robot."""
     args = parse_args()
     print(args.input, "HEEE")
     json_file = Path("output") / args.input

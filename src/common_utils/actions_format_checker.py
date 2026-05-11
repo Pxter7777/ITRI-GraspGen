@@ -1,3 +1,5 @@
+"""Pydantic models and validators for task action JSON files."""
+
 import logging
 from typing import Annotated, Any
 
@@ -49,6 +51,7 @@ class TaskConfig(BaseModel):
         mode="after"
     )  # mode="after" means we validate this after all basic type validations.
     def check_target_in_track(self):
+        """Validate that every target_name appears in the track list."""
         for move in self.moves:
             if move.target_name is None:
                 continue
@@ -62,6 +65,7 @@ class TaskConfig(BaseModel):
 
 
 def is_actions_format_valid(actions) -> bool:
+    """Check whether the legacy action list has valid structure."""
     try:
         if not isinstance(actions, list):
             return False
@@ -80,6 +84,7 @@ def is_actions_format_valid(actions) -> bool:
 
 
 def is_actions_format_valid_v1028(actions) -> bool:
+    """Check whether the v1028 action dict has valid structure."""
     try:
         if not isinstance(actions["track"], list):
             logger.error(actions["track"])

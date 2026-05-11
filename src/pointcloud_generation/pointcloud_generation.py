@@ -1,3 +1,5 @@
+"""Point cloud generation from stereo images and segmentation masks."""
+
 import logging
 import sys
 
@@ -23,6 +25,17 @@ logger = logging.getLogger(__name__)
 
 
 class NamedMask:
+    """Pair a segmentation mask with its object name.
+
+    Args:
+        name: Object name.
+        mask: Boolean segmentation mask.
+
+    Attributes:
+        name: Object name.
+        mask: Boolean segmentation mask.
+    """
+
     def __init__(self, name, mask):
         self.name = name
         self.mask = mask
@@ -30,6 +43,23 @@ class NamedMask:
 
 
 class PointCloudGenerator:
+    """Generate point clouds from stereo camera input and segmentation.
+
+    Args:
+        args: CLI arguments containing pipeline configuration.
+
+    Attributes:
+        erosion_iterations (int): Number of mask erosion iterations.
+        need_confirm (bool): Whether to show a confirmation GUI.
+        max_depth (float): Maximum depth threshold in meters.
+        scale (float): Scale factor for camera intrinsics.
+        sam_predictor: Loaded SAM2 predictor.
+        stereo_model (FoundationStereoModel): Stereo depth model.
+        groundingdino_predictor (GroundindDinoPredictor): Detection model.
+        zed (ZedCamera): Camera interface.
+        mouse_handler (MouseHandler): Mouse input handler.
+    """
+
     def __init__(self, args):
         # Init
         torch.autograd.set_grad_enabled(False)
@@ -52,10 +82,10 @@ class PointCloudGenerator:
         blockages: list | None = None,
         valid_region: list | None = None,
     ) -> SceneData:
-        """bloackages[
-            [minX, minY, maxX, maxY],
-            [minX, minY, maxX, maxY], ...
-        ].
+        """Generate a point cloud for the given target objects.
+
+        Blockages are rectangular regions to mask out before detection:
+        [[minX, minY, maxX, maxY], ...].
         """
         # blockage init
         if blockages is None:
@@ -173,6 +203,7 @@ class PointCloudGenerator:
         return result_scene_data
 
     def interactive_gui_mode(self) -> None:
+        """Run an interactive GUI for manual box selection and point cloud generation."""
         # ---------- Window and Mouse Callback Setup ----------
         win_name = "RGB + Mask | Depth"
         cv2.namedWindow(win_name)
@@ -467,5 +498,6 @@ class PointCloudGenerator:
         xyz_map = np.stack([x_map, y_map, z_map], axis=-1)
         return xyz_map
     def close(self):
+        """Release the camera and destroy all OpenCV windows."""
         self.zed.close()
         cv2.destroyAllWindows()

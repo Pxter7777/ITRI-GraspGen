@@ -1,4 +1,5 @@
 """IMPORTANT!
+
 This script won't work, because the transform config logic and path changed a bit.
 also the task format was changed, so I will need to rewrite this anyway.
 move it to scripts/legacy later.
@@ -24,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 def parse_args():
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
     parser.add_argument(
         "--ckpt_dir",
@@ -70,6 +72,7 @@ def parse_args():
 
 
 def main():
+    """Capture an obstacle bounding box from a point cloud and save it."""
     logger.info("starting the program")
     args = parse_args()
     pc_generator = PointCloudGenerator(args)

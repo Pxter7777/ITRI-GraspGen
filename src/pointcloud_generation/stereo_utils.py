@@ -1,3 +1,5 @@
+"""Wrapper around FoundationStereo for stereo depth inference."""
+
 import logging
 from pathlib import Path
 

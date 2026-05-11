@@ -1,3 +1,5 @@
+"""Generate a point cloud from stereo images and save as JSON."""
+
 import argparse
 import datetime
 import json
@@ -16,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 def parse_args():
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
     parser.add_argument(
         "--ckpt_dir",
@@ -73,6 +76,7 @@ def parse_args():
 
 
 def main():
+    """Run the interactive point cloud generation pipeline and save the result."""
     args = parse_args()
     pc_generator = PointCloudGenerator(args)
     scene_data = pc_generator.interactive_gui_mode()

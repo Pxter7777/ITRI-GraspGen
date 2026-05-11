@@ -1,3 +1,5 @@
+"""Robot move primitives and action dispatch for the grasping pipeline."""
+
 import logging
 from dataclasses import asdict, dataclass, field
 from typing import Literal
@@ -23,10 +25,11 @@ GripType = Literal["open", "close", "half_open", "close_tight"]
 
 @dataclass
 class SingleRobotMove:
-    """This class will be used for all who handles robot move command, since I figured that many info can be reused.
-    So, basically, the scripts, including scripts/mia_server.py, isaacsim2real/sync_with_ROS2.py, ROS2_server/gripper_server.
-    They don't need to fully translate it. They take what they need, and modify part of it.
-    For example, sync_with_ROS2.py may accept single_pose_meter_quaternion type, and transfer it to sequence_joint_rad type based on the info.
+    """Unified robot move command shared across all three processes.
+
+    Scripts like mia_server.py, sync_with_ROS2.py, and gripper_server.py
+    each consume the fields they need and may transform the move type
+    (e.g. single_pose_meter_quaternion to sequence_joint_rad).
     """
 
     type: MoveType  # "gripper", "sequence_joint_rad", "single_pose_meter_quaternion", "single_pose_joint_rad"
@@ -59,6 +62,7 @@ class SingleRobotMove:
 def grab_and_pour_and_place_back_curobo_by_rotation(
     target_name: str, grasp: np.ndarray, args: list, scene_data: SceneData
 ) -> dict:
+    """Generate a grab-pour-release move sequence using rotational pouring."""
     obstacles = scene_data.obstacle_infos
     moves: list[SingleRobotMove] = []
     # fetch basic infos
@@ -228,6 +232,7 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
 
 
 def joints_rad_move_to_curobo(args: list, scene_data: SceneData) -> dict:
+    """Generate a single joint-space move through cuRobo."""
     joints_goal = args[0]
     obstacles = scene_data.obstacle_infos
     moves: list[SingleRobotMove] = []
@@ -242,6 +247,7 @@ def joints_rad_move_to_curobo(args: list, scene_data: SceneData) -> dict:
 
 
 def open_grip() -> dict:
+    """Generate a gripper-open command."""
     obstacles = []
     moves = []
     moves.append(SingleRobotMove(type="gripper", grip_type="open", wait_time=1.0))
@@ -264,6 +270,7 @@ def act_with_name(
     scene_data: dict | None = None,
     target_name: str | None = None,
 ) -> list[dict]:
+    """Dispatch a named action to the appropriate move generator."""
     if action == "grab_and_pour_and_place_back_curobo":
         if grasps is None:
             raise ValueError(

@@ -1,3 +1,5 @@
+"""Pydantic models for grasp pose data serialization."""
+
 import logging
 from typing import Literal
 
@@ -10,6 +12,8 @@ CuroboSuccessType = Literal["Success", "Fail", "Unknown"]
 
 
 class GraspData(BaseModel):
+    """A single grasp pose with its associated metadata."""
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     grasp_pose: np.ndarray  # 4x4
@@ -17,6 +21,7 @@ class GraspData(BaseModel):
     @field_validator("grasp_pose", mode="before")
     @classmethod
     def coerce_to_ndarray(cls, v):
+        """Convert input to numpy array before validation."""
         return np.array(v)
 
     grasp_pose_pre_quat: list[float] = Field(..., min_length=7, max_length=7)
@@ -31,6 +36,8 @@ class GraspData(BaseModel):
 
 
 class GraspPack(BaseModel):
+    """Collection of grasp data entries for a single object."""
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     num_grasps: int

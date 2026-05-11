@@ -1,3 +1,5 @@
+"""Visualize generated grasp data for a given scene in meshcat."""
+
 import argparse
 import json
 import logging
@@ -29,6 +31,7 @@ PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 
 
 def parse_args():
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
         description="Visualize grasp data for a given scene."
     )
@@ -54,6 +57,7 @@ def parse_args():
 
 
 def main():
+    """Load and visualize grasp poses for a scene in meshcat."""
     args = parse_args()
     scene_class = getattr(args, "class")
     name = args.name

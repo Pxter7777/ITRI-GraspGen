@@ -1,3 +1,5 @@
+"""Pydantic models for Isaac Sim order-task configuration."""
+
 import logging
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -23,9 +25,10 @@ class ObjectBound(BaseModel):
 
 
 class OrderTaskConfig(BaseModel):
-    """For tm5s robot config
-    its pose is fixed.
-    we only need to record its jointstate.
+    """TM5S robot task config with fixed pose and recorded joint state.
+
+    Its pose is fixed.
+    We only need to record its jointstate.
     """
 
     model_config = ConfigDict(extra="ignore")
