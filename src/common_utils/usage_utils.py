@@ -22,7 +22,8 @@ class UsageInspector:
         self.logger.setLevel(logging.INFO)
         self.logger.propagate = False
 
-        # Prevent adding handlers multiple times if the class is instantiated more than once
+        # Prevent adding handlers multiple times if the
+        # class is instantiated more than once
         if not self.logger.handlers:
             handler = logging.FileHandler(log_file)
             formatter = logging.Formatter("%(asctime)s - %(message)s")
@@ -57,7 +58,11 @@ class UsageInspector:
 
         self.vram_reports[name] = vram_usage
 
-        log_message = f"Finished: {name} | Time: {elapsed_time:.4f}s | Peak VRAM: {vram_usage:.2f} MB"
+        log_message = (
+            f"Finished: {name}"
+            f" | Time: {elapsed_time:.4f}s"
+            f" | Peak VRAM: {vram_usage:.2f} MB"
+        )
         self.logger.info(log_message)
         print(log_message)
 

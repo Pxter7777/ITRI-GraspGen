@@ -42,7 +42,8 @@ def test_flip_grasp():
         flipped_grasp = flip_grasp(grasp_to_flip)
         left_new, up_new, front_new = get_left_up_and_front(flipped_grasp)
 
-        # Flipping should negate the left and up vectors, and keep front and position the same.
+        # Flipping should negate the left and up vectors,
+        # and keep front and position the same.
         np.testing.assert_allclose(left_new, -left_original)
         np.testing.assert_allclose(up_new, -up_original)
         np.testing.assert_allclose(front_new, front_original)
@@ -61,6 +62,7 @@ def test_flip_upside_down_grasps():
     expected_flipped_grasp = flip_grasp(UPSIDEDOWN_GRASP)
     np.testing.assert_allclose(flipped_grasps[1], expected_flipped_grasp)
 
-    # After flipping, the up vector of the formerly upside-down grasp should point upwards.
+    # After flipping, the up vector of the formerly
+    # upside-down grasp should point upwards.
     _, up_after_flip, _ = get_left_up_and_front(flipped_grasps[1])
     assert up_after_flip[2] > 0

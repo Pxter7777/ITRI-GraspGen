@@ -59,7 +59,8 @@ class BaseWorkflowController:
 
     def _grab_command(self) -> tuple[str, bool]:
         raise NotImplementedError(
-            "Child class must implement how to grab command, through CLI input or socket"
+            "Child class must implement how to grab"
+            " command, through CLI input or socket"
         )
 
     def __enter__(self):
@@ -162,7 +163,8 @@ class BaseWorkflowController:
             logger.exception(f"Action for {current_target} interrupted, stopping. {e}")
         except Exception as e:
             logger.exception(
-                f"Unknown Error while generating grasp for {current_target}, stopping. {e}"
+                f"Unknown Error while generating grasp"
+                f" for {current_target}, stopping. {e}"
             )
             raise e
 
@@ -219,7 +221,10 @@ class BaseWorkflowController:
         base_dir = Path("~").expanduser() / "RobotSnackServing-csv"
         if not base_dir.exists():
             raise FileNotFoundError(
-                "~/RobotSnackServing is missing. Is https://github.com/hongalicia/RobotSnackServing-csv.git cloned into ~/ ?"
+                "~/RobotSnackServing is missing."
+                " Is https://github.com/hongalicia/"
+                "RobotSnackServing-csv.git"
+                " cloned into ~/ ?"
             )
         traj_dir = base_dir / "trajectories"
         csv_paths = list(traj_dir.glob("*.csv"))
@@ -229,7 +234,9 @@ class BaseWorkflowController:
         else:
             avail_commands = ["Grasp_and_Dump", *filenames]
             print(
-                f"There's no such command called {text}. \nAvailable commands are {avail_commands}"
+                f"There's no such command called {text}."
+                f"\nAvailable commands are"
+                f" {avail_commands}"
             )
             return self._capture_task_name()
 

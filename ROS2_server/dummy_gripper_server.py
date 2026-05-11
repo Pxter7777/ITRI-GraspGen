@@ -2,8 +2,13 @@
 """Imitate gripper_server behavior without a real TM5S robot.
 
 Original gripper_server's behavior:
-    gripper_server accept signals from isaac sim script, run it, and responds {"message": "Success"} back to isaacsim script when the actual robot reaches the goal. (if wait_time is not 0.0, it will delay the response.)
-This script aims to imitate that behavior, only that all signal will only process for a fixed time, and also delay the wait_time, before the response {"message": "Success"}.
+    gripper_server accept signals from isaac sim script, run it,
+    and responds {"message": "Success"} back to isaacsim script
+    when the actual robot reaches the goal. (if wait_time is not
+    0.0, it will delay the response.)
+This script aims to imitate that behavior, only that all signal
+will only process for a fixed time, and also delay the wait_time,
+before the response {"message": "Success"}.
 """
 
 import logging
@@ -28,7 +33,9 @@ logging.basicConfig(
     force=True,
 )
 sender = NonBlockingJSONSender(port=network_config.ROS2_TO_ISAACSIM_PORT)
-# if it says [socket_communication][ERROR] Connection failed. Is the bridge.py script running on localhost:9877? when started, it's normal and can be ignored.
+# if it says [socket_communication][ERROR] Connection failed.
+# Is the bridge.py script running on localhost:9877?
+# when started, it's normal and can be ignored.
 receiver = NonBlockingJSONReceiver(port=network_config.ISAACSIM_TO_ROS2_PORT)
 
 try:

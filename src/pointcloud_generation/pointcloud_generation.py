@@ -68,8 +68,10 @@ class PointCloudGenerator:
         self.need_confirm = args.need_confirm
         self.max_depth = args.max_depth
         self.scale = args.scale
-        # This part could take a while, to load all these three models
-        # self.yolo_detector = YOLOv5Detector(model_path=config.YOLO_CHECKPOINT, conf=0.4)
+        # This part could take a while, to load all three models
+        # self.yolo_detector = YOLOv5Detector(
+        #     model_path=config.YOLO_CHECKPOINT, conf=0.4
+        # )
         self.sam_predictor = sam_utils.load_sam_model()
         self.stereo_model = FoundationStereoModel(args)
         self.groundingdino_predictor = GroundindDinoPredictor()
@@ -167,9 +169,11 @@ class PointCloudGenerator:
         # GroundingDINO detection
 
         """
-        Maybe, maybe, I shouldn't request GroundingDINO to detect all kinds of things at once.
+        Maybe, maybe, I shouldn't request GroundingDINO to
+        detect all kinds of things at once.
         Maybe we can try to detect things one by one.
-        But then it won't be able to know if that things has been detected and recorded before...
+        But then it won't be able to know if that things
+        has been detected and recorded before...
         """
 
         if self.need_confirm:
@@ -192,7 +196,8 @@ class PointCloudGenerator:
                     raise ValueError("Not satisfied with the generated result.")
 
         # gen pointcloud
-        result_scene_data = PointCloudGenerator._generate_pointcloud_multiple_obj_with_name_dict(
+        gen_pc = PointCloudGenerator._generate_pointcloud_multiple_obj_with_name_dict
+        result_scene_data = gen_pc(
             depth,
             color_np_org,
             named_masks,
@@ -203,7 +208,7 @@ class PointCloudGenerator:
         return result_scene_data
 
     def interactive_gui_mode(self) -> None:
-        """Run an interactive GUI for manual box selection and point cloud generation."""
+        """Run an interactive GUI for manual box selection."""
         # ---------- Window and Mouse Callback Setup ----------
         win_name = "RGB + Mask | Depth"
         cv2.namedWindow(win_name)
@@ -333,8 +338,10 @@ class PointCloudGenerator:
             )
             return
 
-        # Since the depth map is already in the color camera's frame, no transformation is needed.
-        # We just need to map points to pixels to get their color and check the mask.
+        # Since the depth map is already in the color
+        # camera's frame, no transformation is needed.
+        # We just need to map points to pixels to get
+        # their color and check the mask.
         projected_points_uv = (K_cam @ points_post_filter.T).T
         projected_points_uv[:, :2] /= projected_points_uv[:, 2:]
 
@@ -360,9 +367,13 @@ class PointCloudGenerator:
 
         if not object_points:
             logging.warning(
-                "The selected mask contains no points from the point cloud. Nothing to save."
+                "The selected mask contains no points"
+                " from the point cloud. Nothing to save."
             )
-            raise ValueError("The selected mask contains no points from the point cloud.")
+            raise ValueError(
+                "The selected mask contains no points"
+                " from the point cloud."
+            )
         scene_points = [[z, -x, -y] for x, y, z in scene_points]
         object_points = [[z, -x, -y] for x, y, z in object_points]
 
@@ -423,8 +434,10 @@ class PointCloudGenerator:
                 f"No points remaining after filtering with max_depth={max_depth}"
             )
 
-        # Since the depth map is already in the color camera's frame, no transformation is needed.
-        # We just need to map points to pixels to get their color and check the mask.
+        # Since the depth map is already in the color
+        # camera's frame, no transformation is needed.
+        # We just need to map points to pixels to get
+        # their color and check the mask.
         projected_points_uv = (K_cam @ points_post_filter.T).T
         projected_points_uv[:, :2] /= projected_points_uv[:, 2:]
 
@@ -461,7 +474,9 @@ class PointCloudGenerator:
 
         objects_points: list[np.ndarray] = []
         objects_colors: list[np.ndarray] = []
-        for pts_acc, cols_acc in zip(objects_points_acc, objects_colors_acc, strict=False):
+        for pts_acc, cols_acc in zip(
+            objects_points_acc, objects_colors_acc, strict=False
+        ):
             if not pts_acc:
                 raise ValueError(
                     "The selected mask contains no points from the point cloud."

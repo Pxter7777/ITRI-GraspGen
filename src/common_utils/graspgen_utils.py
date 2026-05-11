@@ -39,7 +39,8 @@ def is_qualified(grasp: np.array, mass_center, obj_std):
     # if front[1] < -0.2:
     #    return False
 
-    # Rule: planar 2D angle between grasp approach (front) vector and grasp position vector should be small
+    # Rule: planar 2D angle between grasp approach (front)
+    # vector and grasp position vector should be small
     angle_front = np.arctan2(front[1], front[0])
     angle_position = np.arctan2(position[1], position[0])
     angle_diff = np.abs(angle_front - angle_position)
@@ -464,12 +465,15 @@ class GraspGeneratorUI:
             indices = np.random.choice(len(xyz_scene), 8192, replace=False)
             xyz_scene_downsampled = xyz_scene[indices]
             logger.debug(
-                f"Downsampled scene point cloud from {len(xyz_scene)} to {len(xyz_scene_downsampled)} points"
+                f"Downsampled scene point cloud from"
+                f" {len(xyz_scene)} to"
+                f" {len(xyz_scene_downsampled)} points"
             )
         else:
             xyz_scene_downsampled = xyz_scene
             logger.debug(
-                f"Scene point cloud has {len(xyz_scene)} points (no downsampling needed)"
+                f"Scene point cloud has {len(xyz_scene)}"
+                " points (no downsampling needed)"
             )
         collision_free_mask = filter_colliding_grasps(
             scene_pc=xyz_scene_downsampled,

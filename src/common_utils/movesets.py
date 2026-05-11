@@ -32,13 +32,18 @@ class SingleRobotMove:
     (e.g. single_pose_meter_quaternion to sequence_joint_rad).
     """
 
-    type: MoveType  # "gripper", "sequence_joint_rad", "single_pose_meter_quaternion", "single_pose_joint_rad"
+    type: MoveType
+    # "gripper", "sequence_joint_rad",
+    # "single_pose_meter_quaternion", "single_pose_joint_rad"
     """
     There are four types
     "gripper": modify gripper state, it won't move the arm.
-    "sequence_joint_rad": move the arm given a list of jointstates rad.
-    "single_pose_meter_quaternion": move the arm given a single gripper pose(or called end effector/EE), with meter and quaternion.
-    "single_pose_joint_rad": move the arm given a single jointstate rad.
+    "sequence_joint_rad": move the arm given a list of
+        jointstates rad.
+    "single_pose_meter_quaternion": move the arm given a single
+        gripper pose (end effector/EE), meter and quaternion.
+    "single_pose_joint_rad": move the arm given a single
+        jointstate rad.
     """
     grip_type: GripType | None = (
         None  # "open", "close", only useful when type is "gripper".
@@ -127,7 +132,8 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
         pour_angle = np.deg2rad(45)
     else:  # Counter-clockwise
         pour_angle = -np.deg2rad(45)
-    # apply pour_angle on ready_pour_rotation using vector[mass_center[0], mass_center[1], 0] as axis:
+    # apply pour_angle on ready_pour_rotation using
+    # vector[mass_center[0], mass_center[1], 0] as axis:
     pour_axis = np.array([ready_pour_position[0], ready_pour_position[1], 0])
     axis_norm = np.linalg.norm(pour_axis)
     if axis_norm > 1e-6:  # Avoid division by zero
@@ -198,7 +204,9 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
     moves.append(
         SingleRobotMove(
             type="single_pose_meter_quaternion",
-            single_pose_meter_quaternion_goal=release_position + quaternion_orientation,
+            single_pose_meter_quaternion_goal=(
+                release_position + quaternion_orientation
+            ),
             ignore_obstacles=[target_name],
         )
     )
@@ -206,8 +214,9 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
     moves.append(
         SingleRobotMove(
             type="single_pose_meter_quaternion",
-            single_pose_meter_quaternion_goal=after_release_position
-            + quaternion_orientation,
+            single_pose_meter_quaternion_goal=(
+                after_release_position + quaternion_orientation
+            ),
             no_curobo=True,
             no_obstacles=True,
         )
@@ -215,13 +224,23 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
     moves.append(
         SingleRobotMove(
             type="single_pose_meter_quaternion",
-            single_pose_meter_quaternion_goal=[*after_release_position[:2], after_release_position[2] + 0.1, *quaternion_orientation],
+            single_pose_meter_quaternion_goal=[
+                *after_release_position[:2],
+                after_release_position[2] + 0.1,
+                *quaternion_orientation,
+            ],
             no_curobo=True,
             no_obstacles=True,
         )
     )
 
-    full_act = {"moves": [asdict(move) for move in moves], "obstacles": {name: obs.model_dump() for name, obs in obstacles.items()}}
+    full_act = {
+        "moves": [asdict(move) for move in moves],
+        "obstacles": {
+            name: obs.model_dump()
+            for name, obs in obstacles.items()
+        },
+    }
     return full_act
 
 
@@ -242,7 +261,13 @@ def joints_rad_move_to_curobo(args: list, scene_data: SceneData) -> dict:
         )
     )
     moves.append(SingleRobotMove(type="gripper"))
-    full_act = {"moves": [asdict(move) for move in moves], "obstacles": {name: obs.model_dump() for name, obs in obstacles.items()}}
+    full_act = {
+        "moves": [asdict(move) for move in moves],
+        "obstacles": {
+            name: obs.model_dump()
+            for name, obs in obstacles.items()
+        },
+    }
     return full_act
 
 
@@ -256,7 +281,9 @@ def open_grip() -> dict:
 
 
 action_dict = {
-    "grab_and_pour_and_place_back_curobo": grab_and_pour_and_place_back_curobo_by_rotation,
+    "grab_and_pour_and_place_back_curobo": (
+        grab_and_pour_and_place_back_curobo_by_rotation
+    ),
     "joints_rad_move_to_curobo": joints_rad_move_to_curobo,
     "open_grip": open_grip,
 }
@@ -278,11 +305,13 @@ def act_with_name(
             )
         if target_name is None:
             raise ValueError(
-                "grab_and_pour_and_place_back_curobo doesn't allow target_name to be None"
+                "grab_and_pour_and_place_back_curobo"
+                " doesn't allow target_name to be None"
             )
         if scene_data is None:
             raise ValueError(
-                "grab_and_pour_and_place_back_curobo doesn't allow scene_data to be None"
+                "grab_and_pour_and_place_back_curobo"
+                " doesn't allow scene_data to be None"
             )
         if args is None:
             raise ValueError(

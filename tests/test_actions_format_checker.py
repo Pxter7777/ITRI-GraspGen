@@ -38,7 +38,10 @@ STANDARD_VALID_JSON = """
             "target_name": "glass cup",
             "qualifier": "cup_qualifier",
             "move_type": "open_grip",
-            "args": [[1.37296326, 0.08553859, 1.05554023, 2.76803983, -1.48792809, 3.09947786]]
+            "args": [[
+                1.37296326, 0.08553859, 1.05554023,
+                2.76803983, -1.48792809, 3.09947786
+            ]]
         },
         {
             "target_name": "green cup",
@@ -56,7 +59,10 @@ STANDARD_VALID_JSON = """
             "target_name": "glass cup",
             "qualifier": "cup_qualifier",
             "move_type": "joints_rad_move_to_curobo",
-            "args": [[1.37296326, 0.08553859, 1.05554023, 2.76803983, -1.48792809, 3.09947786]]
+            "args": [[
+                1.37296326, 0.08553859, 1.05554023,
+                2.76803983, -1.48792809, 3.09947786
+            ]]
         }
     ]
 }

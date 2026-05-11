@@ -110,7 +110,8 @@ class NonBlockingJSONSender:
             else:
                 return False
         except ConnectionResetError:
-            # This happens when the sender's socket is connected but never accepted(triggered by receiver's capture data)
+            # This happens when the sender's socket is connected
+            # but never accepted (triggered by receiver's capture data)
             # Handle same as BrokenPipeError, reconnect and retry
             if self.reconnect():
                 return self.send_data(data)  # Retry sending
@@ -231,7 +232,9 @@ class NonBlockingJSONReceiver:
         # check message length
         if len(self.buffer) < self.msg_len:
             raise ValueError(
-                "Message length defined in the header is larger than the received buffer size, shouldn't happen"
+                "Message length defined in the header is"
+                " larger than the received buffer size,"
+                " shouldn't happen"
             )
 
         message_bytes = self.buffer[: self.msg_len]

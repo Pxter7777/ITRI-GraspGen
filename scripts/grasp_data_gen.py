@@ -123,7 +123,10 @@ def parse_args():
         "--grasp_threshold",
         type=float,
         default=0.70,
-        help="Threshold for valid grasps. If -1.0, then the top 100 grasps will be ranked and returned",
+        help=(
+            "Threshold for valid grasps. If -1.0, then the"
+            " top 100 grasps will be ranked and returned"
+        ),
     )
     parser.add_argument(
         "--num_grasps",
@@ -166,7 +169,8 @@ def angle_diff_rad(grasp: np.ndarray) -> float:
     position = grasp[:3, 3].tolist()
     _left, _up, front = get_left_up_and_front(grasp)
     position += front * 0.20  # offset
-    # Rule: planar 2D angle between grasp approach (front) vector and grasp position vector should be small
+    # Rule: planar 2D angle between grasp approach (front)
+    # vector and grasp position vector should be small
     angle_front = np.arctan2(front[1], front[0])
     angle_position = np.arctan2(position[1], position[0])
     angle_diff = np.abs(angle_front - angle_position)
@@ -299,7 +303,9 @@ class ExperimentWorkflowController:
         grasps = grasps[sort_idx][:200]
         grasp_conf = grasp_conf[sort_idx][:200]
         logger.info(
-            f"Generated {len(grasps)} grasps (scores {grasp_conf.min():.3f}–{grasp_conf.max():.3f})"
+            f"Generated {len(grasps)} grasps "
+            f"(scores {grasp_conf.min():.3f}"
+            f"–{grasp_conf.max():.3f})"
         )
 
         # Transform grasps from centered mesh frame → target local frame → world frame
@@ -332,12 +338,15 @@ class ExperimentWorkflowController:
             indices = np.random.choice(len(xyz_scene), 8192, replace=False)
             xyz_scene_downsampled = xyz_scene[indices]
             logger.debug(
-                f"Downsampled scene point cloud from {len(xyz_scene)} to {len(xyz_scene_downsampled)} points"
+                f"Downsampled scene point cloud from"
+                f" {len(xyz_scene)} to"
+                f" {len(xyz_scene_downsampled)} points"
             )
         else:
             xyz_scene_downsampled = xyz_scene
             logger.debug(
-                f"Scene point cloud has {len(xyz_scene)} points (no downsampling needed)"
+                f"Scene point cloud has {len(xyz_scene)}"
+                " points (no downsampling needed)"
             )
         collision_free_mask = filter_colliding_grasps(
             scene_pc=xyz_scene_downsampled,

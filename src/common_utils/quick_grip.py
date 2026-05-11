@@ -295,7 +295,10 @@ class TMRobotController(Node):
 def parse_args():
     """Parse command-line arguments for the grasp execution script."""
     parser = argparse.ArgumentParser(
-        description="Visualize grasps on a scene point cloud after GraspGen inference, for entire scene"
+        description=(
+            "Visualize grasps on a scene point cloud"
+            " after GraspGen inference, for entire scene"
+        )
     )
     parser.add_argument(
         "--input",

@@ -18,7 +18,8 @@ from send_traj_socket import send_traj
 from tm_msgs.msg import FeedbackState
 from tm_msgs.srv import SendScript, SetIO
 
-# Because this script isn't using itri-graspgen venv, we need to manually add the project root to sys.path
+# Because this script isn't using itri-graspgen venv, we need to
+# manually add the project root to sys.path
 
 
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -99,7 +100,8 @@ class TMRobotController(Node):
         self.current_moving_type = ""
         self.reached_time = float("inf")
         self.goal_gripper = None
-        # record the last LAST_JOINTS_REC_NUM joint positions to detect stuck, using queue
+        # record the last LAST_JOINTS_REC_NUM joint positions
+        # to detect stuck, using queue
         self.num_response_to_send_back = (
             0  # it's enough because we're not using multi-threading
         )
@@ -321,9 +323,11 @@ class TMRobotController(Node):
         if len(joint_values) != 6:
             logger.error("TCP 必須 6 個數字")
             return
+        jv = joint_values
         script = (
-            f'PTP("JPP",{joint_values[0]:.2f}, {joint_values[1]:.2f}, {joint_values[2]:.2f}, '
-            f"{joint_values[3]:.2f}, {joint_values[4]:.2f}, {joint_values[5]:.2f},"
+            f'PTP("JPP",{jv[0]:.2f}, {jv[1]:.2f},'
+            f" {jv[2]:.2f}, {jv[3]:.2f},"
+            f" {jv[4]:.2f}, {jv[5]:.2f},"
             f"{vel},{acc},{blend},true)"
         )
         self.tcp_queue.append({"script": script, "wait_time": wait_time})
@@ -423,7 +427,10 @@ class TMRobotController(Node):
 def parse_args():
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
-        description="Visualize grasps on a scene point cloud after IsaacSim inference, for entire scene"
+        description=(
+            "Visualize grasps on a scene point cloud"
+            " after IsaacSim inference, for entire scene"
+        )
     )
     parser.add_argument(
         "--debug",

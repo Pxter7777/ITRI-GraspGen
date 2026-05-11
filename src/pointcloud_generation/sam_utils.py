@@ -24,7 +24,9 @@ def load_sam_model():
     except Exception as e:
         logging.error(f"Error loading SAM2 model: {e}")
         logging.error(
-            f"Please check your checkpoint ('{config.SAM2_CHECKPOINT}') and config ('{config.SAM2_CFG}') paths."
+            f"Please check your checkpoint"
+            f" ('{config.SAM2_CHECKPOINT}') and config"
+            f" ('{config.SAM2_CFG}') paths."
         )
         sys.exit(1)
 

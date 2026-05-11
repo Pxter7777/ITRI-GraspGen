@@ -399,8 +399,10 @@ class MotionPlanController:
                         graspgen_move.sequence_joint_rad_goals is None
                         or len(graspgen_move.sequence_joint_rad_goals) == 0
                     ):
+                        goals = graspgen_move.sequence_joint_rad_goals
                         raise ValueError(
-                            f"Can't accept {graspgen_move.sequence_joint_rad_goals} as sequence_joint_rad_goals."
+                            f"Can't accept {goals}"
+                            " as sequence_joint_rad_goals."
                         )
                     if graspgen_move.no_curobo:
                         processed_moves.append(graspgen_move)
@@ -512,10 +514,13 @@ class MotionPlanController:
                 self.ros2state = "Busy"
         elif self.ros2state == "Error":
             logger.error(
-                "ROS2 failed to move the robot arm, telling graspgen to stop, and resetting JointState"
+                "ROS2 failed to move the robot arm, telling"
+                " graspgen to stop, and resetting JointState"
             )
             # Telling graspgen to stop and eat data
-            # Kinda critical, immediately tell graspgen to stop, even though this function isn't supposed to talk to graspgen
+            # Kinda critical, immediately tell graspgen to stop,
+            # even though this function isn't supposed to talk
+            # to graspgen
             self.graspgen_sender.send_data({"message": "Abort"})
             # eat datas
             for _ in range(5):
@@ -533,7 +538,10 @@ class MotionPlanController:
             self.ros2state = "Ready"
         else:
             raise ValueError(
-                f"Unexpected logical error, self.ros2state = {self.ros2state}, please enter debug mode to checkout this bug."
+                f"Unexpected logical error, "
+                f"self.ros2state = {self.ros2state}, "
+                "please enter debug mode to checkout "
+                "this bug."
             )
 
     def _handle_task(self) -> None:
@@ -624,8 +632,10 @@ class MotionPlanController:
                     type="sequence_joint_rad", sequence_joint_rad_goals=positions
                 )
             )
-            ### Actually, need to move forward a bit to grasp pose, but skip it for now
-            ### Second curobo: move to a fixed pose [0, 0.5, 0.5, 0.0, 0.0, 0.707, 0.707]
+            ### Actually, need to move forward a bit to grasp
+            ### pose, but skip it for now
+            ### Second curobo: move to a fixed pose
+            ### [0, 0.5, 0.5, 0.0, 0.0, 0.707, 0.707]
             last_joint_states = positions[-1]
             curobo_cu_js = still_joint_states(
                 last_joint_states, self.tensor_args, self.sim_js_names

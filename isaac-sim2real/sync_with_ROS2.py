@@ -38,7 +38,10 @@ def parse_args():
     parser.add_argument(
         "--constrain_grasp_approach",
         action="store_true",
-        help="When True, approaches grasp with fixed orientation and motion only along z axis.",
+        help=(
+            "When True, approaches grasp with fixed"
+            " orientation and motion only along z axis."
+        ),
         default=False,
     )
     parser.add_argument(

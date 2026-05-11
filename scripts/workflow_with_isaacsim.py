@@ -85,7 +85,10 @@ def parse_args():
         "--grasp_threshold",
         type=float,
         default=0.70,
-        help="Threshold for valid grasps. If -1.0, then the top 100 grasps will be ranked and returned",
+        help=(
+            "Threshold for valid grasps. If -1.0, then the"
+            " top 100 grasps will be ranked and returned"
+        ),
     )
     parser.add_argument(
         "--num_grasps",

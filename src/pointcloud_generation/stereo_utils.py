@@ -50,7 +50,8 @@ class FoundationStereoModel:
             baseline: The camera baseline.
 
         Returns:
-            A tuple containing the depth map and the scaled height and width of the images.
+            A tuple containing the depth map and the
+            scaled height and width of the images.
         """
         ir1_np_bgr = cv2.cvtColor(ir1_np, cv2.COLOR_GRAY2BGR)
         ir2_np_bgr = cv2.cvtColor(ir2_np, cv2.COLOR_GRAY2BGR)

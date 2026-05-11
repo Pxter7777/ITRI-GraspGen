@@ -45,7 +45,9 @@ def load_trajectory_from_csv(command: str) -> list[Movement]:
     base_dir = Path("~").expanduser() / "RobotSnackServing-csv"
     if not base_dir.exists():
         raise FileNotFoundError(
-            "~/RobotSnackServing-csv is missing. Is https://github.com/hongalicia/RobotSnackServing-csv.git cloned into ~/ ?"
+            "~/RobotSnackServing-csv is missing."
+            " Is https://github.com/hongalicia/"
+            "RobotSnackServing-csv.git cloned into ~/ ?"
         )
 
     file_path = base_dir / "trajectories" / f"{command}.csv"
@@ -114,7 +116,8 @@ class SpeedParam:
     blend: int = 100
 
 
-# A defaultdict automatically returns SpeedParam() (the defaults: 40, 20, 100) if a key is missing!
+# A defaultdict automatically returns SpeedParam()
+# (the defaults: 40, 20, 100) if a key is missing!
 SPEED_PARAM_DICT = defaultdict(SpeedParam)
 # Specific overrides
 SPEED_PARAM_DICT["spoon_peanuts"] = SpeedParam(vel=60, acc=500)

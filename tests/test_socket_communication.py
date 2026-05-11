@@ -34,7 +34,8 @@ def blocking_receiver_loop(port: int, receiver_type: str, data_queue, error_queu
     start_time = time.time()
     while time.time() - start_time < TIMEOUT:
         data = receiver.capture_data()
-        # if the receiver is non-blocking, captured nothing and continue without blocking, should raise a error here
+        # if the receiver is non-blocking, captured nothing
+        # and continue without blocking, should raise an error
         if data is None:
             error_queue.put("Capture a None data.")
             receiver.disconnect()
@@ -276,7 +277,9 @@ def test_raise_occupying_socket():
         _ = BlockingJSONReceiver(port=9890)
     assert (
         str(excinfo.value)
-        == "An error occurred during connecting localhost:9890: [Errno 98] Address already in use"
+        == "An error occurred during connecting"
+        " localhost:9890:"
+        " [Errno 98] Address already in use"
     )
     assert isinstance(excinfo.value.__cause__, OSError)
     receiver1.disconnect()
@@ -286,14 +289,21 @@ def test_raise_occupying_socket():
         _ = NonBlockingJSONReceiver(port=9891)
     assert (
         str(excinfo.value)
-        == "An error occurred during connecting localhost:9891: [Errno 98] Address already in use"
+        == "An error occurred during connecting"
+        " localhost:9891:"
+        " [Errno 98] Address already in use"
     )
     assert isinstance(excinfo.value.__cause__, OSError)
     receiver2.disconnect()
 
 
 def test_send_to_opened_captured_and_disconnected_nonblocking_receiver_socket():
-    """It's here because I found a weird bug, that receiver.disconnect only closed the listening socket, but kept the conn socket."""
+    """Verify send fails after receiver disconnects.
+
+    It's here because I found a weird bug, that
+    receiver.disconnect only closed the listening socket,
+    but kept the conn socket.
+    """
     port = 9881
     receiver = NonBlockingJSONReceiver(port=port)
     sender = NonBlockingJSONSender(port=port)

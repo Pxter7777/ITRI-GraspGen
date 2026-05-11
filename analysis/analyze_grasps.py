@@ -415,7 +415,9 @@ def main():
     print("Loading data...")
     records = load_all_data()
     print(
-        f"Loaded {len(records)} grasps, {sum(r['success'] for r in records)} successes ({100 * sum(r['success'] for r in records) / len(records):.1f}%)"
+        f"Loaded {len(records)} grasps, "
+        f"{sum(r['success'] for r in records)} successes "
+        f"({100 * sum(r['success'] for r in records) / len(records):.1f}%)"
     )
 
     print("\n--- Point-biserial correlation with curobo_success ---")

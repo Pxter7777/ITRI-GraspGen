@@ -174,11 +174,13 @@ ROS2StateType = Literal["Ready", "Busy", "Error"]
 
 
 class IsaacSimController:
-    """Manage Isaac Sim world, cuRobo planning, and socket communication with GraspGen and ROS2.
+    """Manage Isaac Sim world, cuRobo planning, and sockets.
+
+    Handles socket communication with GraspGen and ROS2.
 
     Args:
         args (argparse.Namespace): Parsed command-line arguments.
-        simulation_app (SimulationApp): The Isaac Sim application instance.
+        simulation_app (SimulationApp): The Isaac Sim app instance.
     """
 
     def __init__(self, args, simulation_app) -> None:
@@ -371,14 +373,18 @@ class IsaacSimController:
                         graspgen_move.sequence_joint_rad_goals is None
                         or len(graspgen_move.sequence_joint_rad_goals) == 0
                     ):
+                        goals = graspgen_move.sequence_joint_rad_goals
                         raise ValueError(
-                            f"Can't accept {graspgen_move.sequence_joint_rad_goals} as sequence_joint_rad_goals."
+                            f"Can't accept {goals}"
+                            " as sequence_joint_rad_goals."
                         )
                     if graspgen_move.no_curobo:
                         processed_moves.append(graspgen_move)
-                        self.last_joint_states = graspgen_move.sequence_joint_rad_goals[
-                            -1
-                        ]
+                        self.last_joint_states = (
+                            graspgen_move.sequence_joint_rad_goals[
+                                -1
+                            ]
+                        )
                         continue
                     joints_goal = JointState(
                         position=self.tensor_args.to_device(
@@ -484,10 +490,13 @@ class IsaacSimController:
                 self.ros2state = "Busy"
         elif self.ros2state == "Error":
             logger.error(
-                "ROS2 failed to move the robot arm, telling graspgen to stop, and resetting JointState"
+                "ROS2 failed to move the robot arm, telling"
+                " graspgen to stop, and resetting JointState"
             )
             # Telling graspgen to stop and eat data
-            # Kinda critical, immediately tell graspgen to stop, even though this function isn't supposed to talk to graspgen
+            # Kinda critical, immediately tell graspgen to stop,
+            # even though this function isn't supposed to talk
+            # to graspgen
             self.graspgen_sender.send_data({"message": "Abort"})
             # eat datas
             for _ in range(5):
@@ -505,7 +514,10 @@ class IsaacSimController:
             self.ros2state = "Ready"
         else:
             raise ValueError(
-                f"Unexpected logical error, self.ros2state = {self.ros2state}, please enter debug mode to checkout this bug."
+                f"Unexpected logical error, "
+                f"self.ros2state = {self.ros2state}, "
+                "please enter debug mode to checkout "
+                "this bug."
             )
 
     def _communicate_with_graspgen(self) -> None:

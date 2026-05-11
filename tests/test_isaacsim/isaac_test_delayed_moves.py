@@ -82,9 +82,14 @@ def scenario1():
 
 
 """
-Currently, scenario1 can work normally, however, I can see scenario2 is buggy, and that's because the bad logic currently in sync_with_ROS2.py.
-If ROS2 is complete, and there is no moves in queue, the robot will reset its last_joint_states back to default, which caused this weird result.
-This usually wouldn't happen, but theoritically and practically can happen sometimes.
+Currently, scenario1 can work normally, however, I can see
+scenario2 is buggy, and that's because the bad logic currently
+in sync_with_ROS2.py.
+If ROS2 is complete, and there is no moves in queue, the robot
+will reset its last_joint_states back to default, which caused
+this weird result.
+This usually wouldn't happen, but theoritically and practically
+can happen sometimes.
 """
 
 if __name__ == "__main__":
