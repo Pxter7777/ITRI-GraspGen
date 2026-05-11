@@ -164,5 +164,5 @@ class ZedCamera:
 
     def close(self) -> None:
         """Closes the ZED camera."""
-        
-        self.camera.close()
+        if hasattr(self, "camera"):
+            self.camera.close()

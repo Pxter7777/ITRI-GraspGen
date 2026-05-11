@@ -44,13 +44,32 @@ class SceneData:
         img_color: list[np.ndarray]
     @dataclass
     class GraspInfo:
-        grasp_poses: list = field(default_factory=list)
-        grasp_conf: list = field(default_factory=list)
+        grasp_poses: list[np.ndarray] = field(default_factory=list[np.ndarray])
+        grasp_conf: list[float] = field(default_factory=list[float])
 
     object_infos: dict[str, ObjectInfo]
     scene_info: SceneInfo
-    obstacle_infos: dict[str, ObstacleBound] = field(default_factory=dict)
+    obstacle_infos: dict[str, ObstacleBound] = field(default_factory=dict[str, ObstacleBound])
     grasp_info: GraspInfo = field(default_factory=GraspInfo)
+
+    def to_dict(self) -> dict:
+        return {
+            "object_infos": {
+                name: {"pc": info.points.tolist(), "pc_color": info.colors.tolist()}
+                for name, info in self.object_infos.items()
+            },
+            "scene_info": {
+                "pc_color": [arr.tolist() for arr in self.scene_info.pc_color],
+                "img_color": [arr.tolist() for arr in self.scene_info.img_color],
+            },
+            "obstacle_infos": {
+                name: obs.model_dump() for name, obs in self.obstacle_infos.items()
+            },
+            "grasp_info": {
+                "grasp_poses": self.grasp_info.grasp_poses,
+                "grasp_conf": self.grasp_info.grasp_conf,
+            },
+        }
 
 
 def depth2xyzmap(depth, K):
@@ -142,18 +161,16 @@ def generate_pointcloud(depth, color_np_org, mask, K_cam, scale, max_depth):
     if scene_colors_arr.size > 0:
         scene_colors_arr = scene_colors_arr[:, ::-1]
 
-    scene_data = {
-        "object_info": {
-            "pc": np.array(object_points),
-            "pc_color": object_colors_arr,
-        },
-        "scene_info": {
-            "pc_color": [np.array(scene_points)],
-            "img_color": [scene_colors_arr],
-        },
-        "grasp_info": {"grasp_poses": [], "grasp_conf": []},
-    }
-    return scene_data
+    return SceneData(
+        object_infos={"object": SceneData.ObjectInfo(
+            points=np.array(object_points),
+            colors=object_colors_arr,
+        )},
+        scene_info=SceneData.SceneInfo(
+            pc_color=[np.array(scene_points)],
+            img_color=[scene_colors_arr],
+        ),
+    )
 
 
 def generate_pointcloud_multiple_obj(
@@ -229,19 +246,10 @@ def generate_pointcloud_multiple_obj(
     if scene_colors_arr.size > 0:
         scene_colors_arr = scene_colors_arr[:, ::-1]
 
-    scene_data = {
-        "objects_info": [],
-        "scene_info": {
-            "pc_color": [np.array(scene_points)],
-            "img_color": [scene_colors_arr],
-        },
-        "grasp_info": {"grasp_poses": [], "grasp_conf": []},
-    }
-
-    # objects points
-    for object_points, object_colors in zip(
+    object_infos: dict[str, SceneData.ObjectInfo] = {}
+    for i, (object_points, object_colors) in enumerate(zip(
         objects_points, objects_colors, strict=False
-    ):
+    )):
         if not object_points:
             logging.warning(
                 "The selected mask contains no points from the point cloud. Nothing to save."
@@ -251,15 +259,21 @@ def generate_pointcloud_multiple_obj(
             )
         object_points = [[z, -x, -y] for x, y, z in object_points]
 
-        """Saves the scene and object data to a JSON file."""
         object_colors_arr = np.array(object_colors)
         if object_colors_arr.size > 0:
             object_colors_arr = object_colors_arr[:, ::-1]
-        scene_data["objects_info"].append(
-            {"pc": np.array(object_points), "pc_color": object_colors_arr}
+        object_infos[f"object_{i}"] = SceneData.ObjectInfo(
+            points=np.array(object_points),
+            colors=object_colors_arr,
         )
 
-    return scene_data
+    return SceneData(
+        object_infos=object_infos,
+        scene_info=SceneData.SceneInfo(
+            pc_color=[np.array(scene_points)],
+            img_color=[scene_colors_arr],
+        ),
+    )
 
 
 def generate_pointcloud_multiple_obj_with_name(
@@ -347,25 +361,23 @@ def generate_pointcloud_multiple_obj_with_name(
 
     # scene points
     scene_points = np.array([[z, -x, -y] for x, y, z in scene_points])
-    scene_colors = np.array(object_colors)
+    scene_colors = np.array(scene_colors)
     if scene_colors.size > 0:
         scene_colors = scene_colors[:, ::-1]
 
     # Final construct
-    scene_data = {
-        "object_infos": [
-            {"name": named_mask.name, "points": object_points, "colors": object_colors}
+    return SceneData(
+        object_infos={
+            named_mask.name: SceneData.ObjectInfo(points=object_points, colors=object_colors)
             for object_points, object_colors, named_mask in zip(
                 objects_points, objects_colors, named_masks, strict=False
             )
-        ],
-        "scene_info": {
-            "pc_color": [scene_points],
-            "img_color": [scene_colors],
         },
-        "grasp_info": {"grasp_poses": [], "grasp_conf": []},
-    }
-    return scene_data
+        scene_info=SceneData.SceneInfo(
+            pc_color=[scene_points],
+            img_color=[scene_colors],
+        ),
+    )
 
 
 def generate_pointcloud_multiple_obj_with_name_dict(
@@ -728,7 +740,7 @@ class PointCloudGenerator:
         )
         return result_scene_data
 
-    def interactive_gui_mode(self) -> | None:
+    def interactive_gui_mode(self) -> None:
         # ---------- Window and Mouse Callback Setup ----------
         win_name = "RGB + Mask | Depth"
         cv2.namedWindow(win_name)

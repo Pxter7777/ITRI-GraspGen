@@ -78,7 +78,7 @@ def main():
     json_filepath = Path("./data/calibrate/output_pointcloud/") / json_filename
 
     with open(json_filepath, "w") as f:
-        json.dump(scene_data, f, indent=4)
+        json.dump(scene_data.to_dict(), f, indent=4)
     logger.info(f"Scene saved to {json_filepath}")
     pc_generator.close()
 
