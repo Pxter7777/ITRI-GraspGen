@@ -16,8 +16,8 @@ from grasp_gen.utils.meshcat_utils import (
 )
 
 from common_utils import config
-from common_utils.log_formatter import CustomLoggingFormatter
 from common_utils.graspgen_utils import open_meshcat_url, start_meshcat_server
+from common_utils.log_formatter import CustomLoggingFormatter
 from common_utils.order_task_config import OrderTaskConfig
 
 # root logger setup
