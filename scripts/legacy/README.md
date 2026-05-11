@@ -1,1 +1,0 @@
-These code may or may not work, don't feel the need to maintain them though.

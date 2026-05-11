@@ -14,7 +14,6 @@ from pointcloud_generation.mouse_handlerv2 import MouseHandler
 from pointcloud_generation.grounding_dino_utils import GroundindDinoPredictor
 from pointcloud_generation.visualization import visualize_named_box, visualize_mask
 
-# from pointcloud_generation import mouse_handler  # noqa: E402
 from pointcloud_generation import visualization  # noqa: E402
 from pointcloud_generation import sam_utils  # noqa: E402
 from pointcloud_generation.stereo_utils import FoundationStereoModel  # noqa: E402
