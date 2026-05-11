@@ -140,7 +140,7 @@ skip-checking-short-docstrings = false
 
 
 [tool.pyright]
-extraPaths = ["third_party/GraspGen", "third_party/GroundingDINO", "third_party/FoundationStereo/src"] # Without this, pyright can't find these editable-installed package even though it works well at runtime.
+extraPaths = ["src", "third_party/GraspGen", "third_party/GroundingDINO", "third_party/FoundationStereo/src"] # Without this, pyright can't find these editable-installed package even though it works well at runtime.
 exclude = ["third_party", "isaac-sim2real/isaacsim_utils/helper.py"]
 venvPath = "."
 venv = ".venv"

@@ -165,7 +165,7 @@ class PointCloudGenerator:
                     raise ValueError("Not satisfied with the generated result.")
 
         # gen pointcloud
-        result_scene_data = PointCloudGenerator.generate_pointcloud_multiple_obj_with_name_dict(
+        result_scene_data = PointCloudGenerator._generate_pointcloud_multiple_obj_with_name_dict(
             depth,
             color_np_org,
             named_masks,
@@ -248,7 +248,7 @@ class PointCloudGenerator:
                         depth, (_H_scaled, _W_scaled) = self.stereo_model.run_inference(
                             left_gray, right_gray, self.zed.K_left, self.zed.baseline
                         )
-                        result = PointCloudGenerator.generate_pointcloud(
+                        result = PointCloudGenerator._generate_pointcloud(
                             depth,
                             color_np_org,
                             mask,
@@ -269,13 +269,13 @@ class PointCloudGenerator:
             )
             return None
     @staticmethod
-    def generate_pointcloud(depth, color_np_org, mask, K_cam, scale, max_depth):
+    def _generate_pointcloud(depth, color_np_org, mask, K_cam, scale, max_depth):
         logging.info("generating scene and object...")
 
         K_scaled_cam = K_cam.copy()
         K_scaled_cam[:2, :] *= scale
 
-        xyz_map = PointCloudGenerator.depth2xyzmap(depth, K_scaled_cam)
+        xyz_map = PointCloudGenerator._depth2xyzmap(depth, K_scaled_cam)
         points_in_cam_view = xyz_map.reshape(-1, 3)
 
         pcd = o3d.geometry.PointCloud()
@@ -360,7 +360,7 @@ class PointCloudGenerator:
             ),
         )
     @staticmethod
-    def generate_pointcloud_multiple_obj_with_name_dict(
+    def _generate_pointcloud_multiple_obj_with_name_dict(
         depth, color_np_org, named_masks: list[NamedMask], K_cam, scale, max_depth
     ) -> SceneData:
         logging.info("generating scene and object...")
@@ -368,7 +368,7 @@ class PointCloudGenerator:
         K_scaled_cam = K_cam.copy()
         K_scaled_cam[:2, :] *= scale
 
-        xyz_map = PointCloudGenerator.depth2xyzmap(depth, K_scaled_cam)
+        xyz_map = PointCloudGenerator._depth2xyzmap(depth, K_scaled_cam)
         points_in_cam_view = xyz_map.reshape(-1, 3)
 
         pcd = o3d.geometry.PointCloud()
@@ -460,7 +460,7 @@ class PointCloudGenerator:
         )
     
     @staticmethod
-    def depth2xyzmap(depth, K):
+    def _depth2xyzmap(depth, K):
         vy, vx = np.meshgrid(
             np.arange(depth.shape[0]), np.arange(depth.shape[1]), indexing="ij"
         )
