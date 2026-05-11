@@ -1,10 +1,12 @@
-import tempfile
-import trimesh
 import json
 import logging
 import subprocess
-import numpy as np
+import tempfile
 from pathlib import Path
+
+import numpy as np
+import trimesh
+
 from common_utils.graspgen_utils import get_left_up_and_front
 
 logger = logging.getLogger(__name__)

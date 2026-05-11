@@ -1,6 +1,7 @@
-import torch
-import cv2
 from pathlib import Path
+
+import cv2
+import torch
 
 
 class YOLOv5Detector:
@@ -14,9 +15,8 @@ class YOLOv5Detector:
         print("✅ Model loaded successfully!")
 
     def infer(self, image):
-        """
-        image: 可為影像檔路徑(str) 或 OpenCV 影像(numpy array)
-        回傳推論結果 (pandas DataFrame)
+        """image: 可為影像檔路徑(str) 或 OpenCV 影像(numpy array)
+        回傳推論結果 (pandas DataFrame).
         """
         if isinstance(image, str):
             image = cv2.imread(image)

@@ -1,9 +1,10 @@
-import socket
 import json
-import keyboard
-import time
+import socket
 import sys
+import time
 from pathlib import Path
+
+import keyboard
 
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT_DIR) not in sys.path:

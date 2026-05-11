@@ -1,10 +1,10 @@
-import json
 import copy
+import json
 from pathlib import Path
 
 import numpy as np
-
 from scipy.spatial.transform import Rotation as R
+
 from common_utils.scene_data import SceneData
 
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[2]

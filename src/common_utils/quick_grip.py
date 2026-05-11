@@ -1,17 +1,18 @@
 # one_arm_control_CPP.py
 
-import time
-import math
-import rclpy
-from rclpy.node import Node
-from tm_msgs.srv import SendScript, SetIO
-from tm_msgs.msg import FeedbackState
-from geometry_msgs.msg import PoseStamped
-from collections import deque
-import json
-import os
-from pathlib import Path
 import argparse
+import json
+import math
+import os
+import time
+from collections import deque
+from pathlib import Path
+
+import rclpy
+from geometry_msgs.msg import PoseStamped
+from rclpy.node import Node
+from tm_msgs.msg import FeedbackState
+from tm_msgs.srv import SendScript, SetIO
 
 HOME_SIGNAL = [326.8, -140.2, 212.6, 90.0, 0, 90.0]
 READY_POUR_SIGNAL_ABOVE = [581.6, -251.8, 327.9, 90, 0, 90.0]
@@ -149,7 +150,7 @@ class TMRobotController(Node):
             del self._wait_timer_arm
 
     def set_io(self, states: list):
-        """設定 End_DO0, End_DO1, End_DO2 狀態，例如 [1, 0, 0]"""
+        """設定 End_DO0, End_DO1, End_DO2 狀態，例如 [1, 0, 0]."""
         for pin, state in enumerate(states):
             req = SetIO.Request()
             req.module = 1  # End Module 夾爪

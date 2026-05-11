@@ -1,5 +1,6 @@
-import numpy as np
 import logging
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +12,7 @@ def get_left_up_and_front(grasp: np.array) -> tuple[np.ndarray, np.ndarray, np.n
     return left, up, front
 
 
-def cup_qualifier(grasp: np.array, min_point: np.ndarray, max_point: np.ndarray):
+def cup_qualifier(grasp: np.array, min_point: np.ndarray, max_point: np.ndarray) -> bool:
     position = grasp[:3, 3].tolist()
     left, up, front = get_left_up_and_front(grasp)
     position += front * 0.20  # offset
@@ -37,9 +38,9 @@ def cup_qualifier(grasp: np.array, min_point: np.ndarray, max_point: np.ndarray)
     return True
 
 
-def small_cup_qualifier(grasp: np.array, mass_center, obj_std):
+def small_cup_qualifier(grasp: np.array, mass_center, obj_std) -> bool:
     position = grasp[:3, 3].tolist()
-    left, up, front = get_left_up_and_front(grasp)
+    _left, up, front = get_left_up_and_front(grasp)
     if up[2] < 0.7:
         return False
     # Rule: planar 2D angle between grasp approach (front) vector and grasp position vector should be small
@@ -60,9 +61,9 @@ def small_cup_qualifier(grasp: np.array, mass_center, obj_std):
     return True  #
 
 
-def small_cube_qualifier(grasp: np.array, mass_center, obj_std):
+def small_cube_qualifier(grasp: np.array, mass_center, obj_std) -> bool:
     position = grasp[:3, 3].tolist()
-    left, up, front = get_left_up_and_front(grasp)
+    _left, _up, front = get_left_up_and_front(grasp)
     if front[0] < 0:
         return False
     if front[2] > -0.2:  # not facing down

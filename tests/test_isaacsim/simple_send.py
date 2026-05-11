@@ -5,9 +5,10 @@
 import json
 import logging
 from pathlib import Path
+
 from common_utils.socket_communication import (
-    NonBlockingJSONSender,
     BlockingJSONReceiver,
+    NonBlockingJSONSender,
 )
 
 PROJECT_ROOT_DIR = PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]

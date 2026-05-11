@@ -1,19 +1,19 @@
-"""
-Grasp selection analysis:
+"""Grasp selection analysis:
 - Feature correlation with cuRobo success
 - Logistic regression re-ranking model
-- Comparison: discriminator order vs learned re-ranking
+- Comparison: discriminator order vs learned re-ranking.
 """
 
 import json
-import numpy as np
-import matplotlib.pyplot as plt
 from pathlib import Path
-from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import StratifiedKFold, cross_val_score
-from sklearn.utils.class_weight import compute_class_weight
+
+import matplotlib.pyplot as plt
+import numpy as np
 from scipy import stats
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.preprocessing import StandardScaler
+from sklearn.utils.class_weight import compute_class_weight
 from xgboost import XGBClassifier
 
 DATA_ROOT = Path(__file__).resolve().parents[1] / "data" / "order_experiment_data"
@@ -212,8 +212,7 @@ def train_and_evaluate(records):
 
 
 def topk_table(records, lr, scaler, xgb):
-    """
-    For each scene, rank grasps by model score vs random.
+    """For each scene, rank grasps by model score vs random.
     Report: % of scenes with at least one success in top-k, for k = 1,3,5,10,20.
     Also report mean attempts to first success.
     """

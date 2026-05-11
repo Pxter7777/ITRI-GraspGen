@@ -1,11 +1,12 @@
-import torch
 import logging
 from pathlib import Path
-from omegaconf import OmegaConf
-from foundation_stereo.core.foundation_stereo import FoundationStereo
-from foundation_stereo.core.utils.utils import InputPadder
+
 import cv2
 import numpy as np
+import torch
+from foundation_stereo.core.foundation_stereo import FoundationStereo
+from foundation_stereo.core.utils.utils import InputPadder
+from omegaconf import OmegaConf
 
 
 class FoundationStereoModel:
@@ -71,7 +72,7 @@ class FoundationStereoModel:
 
         disp = padder.unpad(disp.float()).data.cpu().numpy().reshape(H_scaled, W_scaled)
 
-        xx, yy = np.meshgrid(np.arange(W_scaled), np.arange(H_scaled), indexing="xy")
+        xx, _yy = np.meshgrid(np.arange(W_scaled), np.arange(H_scaled), indexing="xy")
         us_right = xx - disp
         invalid = us_right < 0
         disp[invalid] = np.inf

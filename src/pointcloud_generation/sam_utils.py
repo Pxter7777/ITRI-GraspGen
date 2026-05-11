@@ -1,10 +1,12 @@
-import numpy as np
+import logging
+import sys
+
 import cv2
+import numpy as np
 import torch
 from sam2.build_sam import build_sam2
 from sam2.sam2_image_predictor import SAM2ImagePredictor
-import logging
-import sys
+
 from common_utils import config
 from pointcloud_generation.mouse_handlerv2 import BoundingBox
 

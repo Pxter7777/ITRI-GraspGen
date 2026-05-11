@@ -1,8 +1,9 @@
-import socket
 import json
 import logging
-import struct
 import select
+import socket
+import struct
+
 # Some example joint configurations to send
 
 logger = logging.getLogger(__name__)
@@ -34,8 +35,7 @@ SAMPLE_DATA = {
 
 
 class NonBlockingJSONSender:
-    """
-    A class to manage connection and sending goals to the robot bridge.
+    """A class to manage connection and sending goals to the robot bridge.
     Connects automatically upon instantiation.
     """
 
@@ -45,9 +45,8 @@ class NonBlockingJSONSender:
         self.socket = None
         self._connect_on_init()  # Attempt connection during initialization
 
-    def _connect_on_init(self):
-        """
-        Internal method to establish connection. Used during init and for re-connection.
+    def _connect_on_init(self) -> bool | None:
+        """Internal method to establish connection. Used during init and for re-connection.
         Returns True on success, False otherwise.
         """
         if self.socket:
@@ -69,25 +68,20 @@ class NonBlockingJSONSender:
             return False
 
     def disconnect(self):
-        """
-        Closes the connection to the robot bridge.
-        """
+        """Closes the connection to the robot bridge."""
         if self.socket:
             self.socket.close()
             self.socket = None
             logger.info("Sender disconnected")
 
     def reconnect(self) -> bool:
-        """
-        Closes the current connection and establishes a new one.
-        """
+        """Closes the current connection and establishes a new one."""
         logger.info("Attempting to reconnect sender...")
         self.disconnect()
         return self._connect_on_init()
 
     def send_data(self, data: dict | list) -> bool:
-        """
-        Sends a single joint position goal to the robot bridge.
+        """Sends a single joint position goal to the robot bridge.
         Attempts to reconnect if the connection is lost.
         Returns True on successful send, False otherwise.
         """
@@ -147,8 +141,7 @@ class NonBlockingJSONSender:
 
 
 class NonBlockingJSONReceiver:
-    """
-    A class to manage connection and receive dict.
+    """A class to manage connection and receive dict.
     Connects automatically upon instantiation.
     """
 
@@ -161,9 +154,8 @@ class NonBlockingJSONReceiver:
         self.msg_len = None
         self._connect_on_init()  # Attempt connection during initialization
 
-    def _connect_on_init(self):
-        """
-        Internal method to establish connection. Used during init and for re-connection.
+    def _connect_on_init(self) -> bool | None:
+        """Internal method to establish connection. Used during init and for re-connection.
         Returns True on success, False otherwise.
         """
         if self.socket:
@@ -247,8 +239,7 @@ class NonBlockingJSONReceiver:
 
 
 class BlockingJSONReceiver:
-    """
-    A class to manage connection and receive dict.
+    """A class to manage connection and receive dict.
     Connects automatically upon instantiation.
     """
 
@@ -259,9 +250,8 @@ class BlockingJSONReceiver:
         self.conn = None
         self._connect_on_init()  # Attempt connection during initialization
 
-    def _connect_on_init(self):
-        """
-        Internal method to establish connection. Used during init and for re-connection.
+    def _connect_on_init(self) -> bool | None:
+        """Internal method to establish connection. Used during init and for re-connection.
         Returns True on success, False otherwise.
         """
         if self.socket:

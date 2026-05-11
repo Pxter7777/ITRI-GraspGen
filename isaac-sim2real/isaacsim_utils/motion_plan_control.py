@@ -1,17 +1,13 @@
+import json
 import logging
+import queue
 import sys
 import time
-import queue
-import json
-import numpy as np
 from dataclasses import asdict
 from pathlib import Path
 from typing import Literal
-from isaacsim_utils.helper import add_extensions, add_robot_to_scene
-from omni.isaac.core import World
-from omni.isaac.core.objects import cuboid, sphere
-from omni.isaac.core.utils.types import ArticulationAction
 
+import numpy as np
 from curobo.geom.sdf.world import CollisionCheckerType
 from curobo.geom.types import Cuboid, Mesh, WorldConfig
 from curobo.types.base import TensorDeviceType
@@ -31,19 +27,23 @@ from curobo.wrap.reacher.motion_gen import (
     MotionGenPlanConfig,
     PoseCostMetric,
 )
+from isaacsim_utils.helper import add_extensions, add_robot_to_scene
+from omni.isaac.core import World
+from omni.isaac.core.objects import cuboid, sphere
+from omni.isaac.core.utils.types import ArticulationAction
 
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT_DIR))
 
-from common_utils.movesets import SingleRobotMove  # noqa: E402
+from common_utils import network_config  # noqa: E402
 from common_utils.grasp_data_format import GraspPack  # noqa: E402
+from common_utils.movesets import SingleRobotMove  # noqa: E402
 from common_utils.order_task_config import OrderTaskConfig  # noqa: E402
 from common_utils.socket_communication import (  # noqa: E402
-    NonBlockingJSONSender,
     NonBlockingJSONReceiver,
+    NonBlockingJSONSender,
 )
-from common_utils import network_config  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +77,7 @@ def init_pose_matric(args, motion_gen):
 def get_cuboid_list(move: SingleRobotMove, obstacles: dict) -> list:
     cuboids = []
     cuboids.append(
-        Cuboid(name="table", pose=[0, 0, -1.97] + [1, 0, 0, 0], dims=[4, 4, 4])
+        Cuboid(name="table", pose=[0, 0, -1.97, 1, 0, 0, 0], dims=[4, 4, 4])
     )
     for i, obstacle_name in enumerate(obstacles):
         if obstacle_name not in move.ignore_obstacles:
@@ -91,7 +91,7 @@ def get_cuboid_list(move: SingleRobotMove, obstacles: dict) -> list:
             cuboids.append(
                 Cuboid(
                     name=f"obs_{i}",
-                    pose=middle_point.tolist() + [1, 0, 0, 0],
+                    pose=[*middle_point.tolist(), 1, 0, 0, 0],
                     dims=scale.tolist(),
                 )
             )

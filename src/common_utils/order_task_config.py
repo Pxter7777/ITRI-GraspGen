@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 
 class ObjectBound(BaseModel):
-    """Define Obstacle class"""
+    """Define Obstacle class."""
 
     model_config = ConfigDict(extra="ignore")
 
@@ -23,8 +23,7 @@ class ObjectBound(BaseModel):
 
 
 class OrderTaskConfig(BaseModel):
-    """
-    For tm5s robot config
+    """For tm5s robot config
     its pose is fixed.
     we only need to record its jointstate.
     """

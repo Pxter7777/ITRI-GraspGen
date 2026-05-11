@@ -1,9 +1,10 @@
+import time
+
+from common_utils import network_config
 from common_utils.socket_communication import (
     NonBlockingJSONSender,
     # BlockingJSONReceiver,
 )
-from common_utils import network_config
-import time
 
 
 def scenario2():

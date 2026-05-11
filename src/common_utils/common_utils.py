@@ -1,13 +1,13 @@
-import json
-import datetime
-import logging
 import copy
+import datetime
+import json
+import logging
+from pathlib import Path
+
 import numpy as np
 
-from pathlib import Path
 from common_utils.actions_format_checker import ObstacleBound
 from common_utils.scene_data import SceneData
-
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ def create_obstacle_info(
     if extra_obstacles is None:
         extra_obstacles = {}
     new_scene_data = copy.deepcopy(scene_data)
-    new_scene_data.obstacle_infos = dict()
+    new_scene_data.obstacle_infos = {}
     for extra_obstacle_name in extra_obstacles:
         obstacle = extra_obstacles[extra_obstacle_name]
         new_scene_data.obstacle_infos[extra_obstacle_name] = obstacle
@@ -57,7 +57,7 @@ def create_obstacle_info(
 
 
 def load_extra_obstacles() -> dict[str, ObstacleBound]:
-    extra_obstacles: dict[str, ObstacleBound] = dict()
+    extra_obstacles: dict[str, ObstacleBound] = {}
     extra_obstacles_path = (
         PROJECT_ROOT_DIR / "configs" / "actions" / "extra_obstacles.json"
     )

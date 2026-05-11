@@ -2,7 +2,6 @@ import json
 
 from common_utils.order_task_config import OrderTaskConfig
 
-
 STANDARD_VALID_JSON = """
 {
   "robot_jointstate": [

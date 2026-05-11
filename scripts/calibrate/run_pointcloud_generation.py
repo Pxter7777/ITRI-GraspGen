@@ -3,9 +3,10 @@ import datetime
 import json
 import logging
 from pathlib import Path
-from pointcloud_generation.pointcloud_generation import PointCloudGenerator
+
 from common_utils import config
 from common_utils.custom_logger import CustomFormatter
+from pointcloud_generation.pointcloud_generation import PointCloudGenerator
 
 # root logger setup
 handler = logging.StreamHandler()

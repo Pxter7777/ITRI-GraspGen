@@ -1,8 +1,10 @@
-import os
-import cv2
-import logging
 import json
+import logging
+import os
 from pathlib import Path
+
+import cv2
+
 from pointcloud_generation.zed_utils import ZedCamera
 
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -23,7 +25,7 @@ def main():
             text = input("./data/zed_images/<name>/: ")
             if text == "end":
                 break
-            zed_status, left_image, right_image = zed.capture_images()
+            _zed_status, left_image, right_image = zed.capture_images()
             # mkdir and save the two images
             save_dir = PROJECT_ROOT_DIR / "data/zed_images/" / text
             os.makedirs(str(save_dir), exist_ok=True)

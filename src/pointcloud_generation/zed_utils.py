@@ -1,10 +1,11 @@
-import pyzed.sl as sl
-import numpy as np
-import cv2
 import json
-import zmq
 import logging
 from pathlib import Path
+
+import cv2
+import numpy as np
+import pyzed.sl as sl
+import zmq
 
 try:
     from common_utils import network_config
@@ -108,8 +109,7 @@ class ZedCamera:
     def capture_images_from_stream(
         self, port=STREAM_TO_ZED_PORT
     ) -> tuple[sl.ERROR_CODE, np.ndarray, np.ndarray]:
-        """
-        To capture image from stream, here we immediately connect, try to grab info, and disconnect + close the socket completely.
+        """To capture image from stream, here we immediately connect, try to grab info, and disconnect + close the socket completely.
         If it keeps the socket connect, but not actually grabbing info, the info will pile up and eventually cause out of memory.
         """
         ctx = zmq.Context()
@@ -119,7 +119,7 @@ class ZedCamera:
         self.sub.setsockopt(zmq.RCVTIMEO, 500)  # timeout 500ms
         try:
             self.sub.connect(f"tcp://127.0.0.1:{port}")
-            (topic, ts, l_shape, l_dtype, l_buf, r_shape, r_dtype, r_buf) = (
+            (_topic, ts, l_shape, l_dtype, l_buf, r_shape, r_dtype, r_buf) = (
                 self.sub.recv_multipart()
             )
         except zmq.Again as e:

@@ -2,18 +2,19 @@
 
 # one_arm_control_CPP.py
 
-import time
-import rclpy
-from rclpy.node import Node
-from tm_msgs.srv import SendScript, SetIO
-from tm_msgs.msg import FeedbackState
-from collections import deque
-import numpy as np
 import argparse
 import logging
 import sys
+import time
+from collections import deque
 from pathlib import Path
+
+import numpy as np
+import rclpy
+from rclpy.node import Node
 from send_traj_socket import send_traj
+from tm_msgs.msg import FeedbackState
+from tm_msgs.srv import SendScript, SetIO
 
 # Because this script isn't using itri-graspgen venv, we need to manually add the project root to sys.path
 
@@ -22,12 +23,12 @@ PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT_DIR))
 from common_utils import network_config  # noqa: E402
+from common_utils.custom_logger import CustomFormatter  # noqa: E402
+from common_utils.movesets import SingleRobotMove  # noqa: E402
 from common_utils.socket_communication import (  # noqa: E402
     NonBlockingJSONReceiver,
     NonBlockingJSONSender,
 )
-from common_utils.custom_logger import CustomFormatter  # noqa: E402
-from common_utils.movesets import SingleRobotMove  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -232,7 +233,7 @@ class TMRobotController(Node):
             self._handle_failure()
 
     def set_io(self, states: list):
-        """設定 End_DO0, End_DO1, End_DO2 狀態，例如 [1, 0, 0]"""
+        """設定 End_DO0, End_DO1, End_DO2 狀態，例如 [1, 0, 0]."""
         for pin, state in enumerate(states):
             req = SetIO.Request()
             req.module = 1  # End Module 夾爪

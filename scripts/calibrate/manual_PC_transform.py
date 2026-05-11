@@ -1,19 +1,18 @@
 import argparse
+import atexit
 import json
 import os
 import platform
 import signal
 import subprocess
 import time
-import webbrowser
-import atexit
 import tkinter as tk
-from threading import Thread
+import webbrowser
 from pathlib import Path
+from threading import Thread
 
 import numpy as np
 import pye57
-
 from grasp_gen.utils.meshcat_utils import (
     create_visualizer,
     visualize_pointcloud,
@@ -306,7 +305,7 @@ class ControlPanel:
         combined_pc = np.concatenate(pc_list, axis=0)
         combined_colors = np.concatenate(pc_color_list, axis=0)
 
-        e57_data = dict()
+        e57_data = {}
         e57_data["cartesianX"] = combined_pc[:, 0]
         e57_data["cartesianY"] = combined_pc[:, 1]
         e57_data["cartesianZ"] = combined_pc[:, 2]

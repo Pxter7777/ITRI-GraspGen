@@ -1,9 +1,11 @@
-import trimesh
 import logging
-import numpy as np
-from common_utils.qualification import get_left_up_and_front
-from dataclasses import dataclass, asdict, field
+from dataclasses import asdict, dataclass, field
 from typing import Literal
+
+import numpy as np
+import trimesh
+
+from common_utils.qualification import get_left_up_and_front
 from common_utils.scene_data import SceneData
 
 HOME_SIGNAL = [326.8, -140.2, 212.6, 90.0, 0, 90.0]
@@ -21,8 +23,7 @@ GripType = Literal["open", "close", "half_open", "close_tight"]
 
 @dataclass
 class SingleRobotMove:
-    """
-    This class will be used for all who handles robot move command, since I figured that many info can be reused.
+    """This class will be used for all who handles robot move command, since I figured that many info can be reused.
     So, basically, the scripts, including scripts/mia_server.py, isaacsim2real/sync_with_ROS2.py, ROS2_server/gripper_server.
     They don't need to fully translate it. They take what they need, and modify part of it.
     For example, sync_with_ROS2.py may accept single_pose_meter_quaternion type, and transfer it to sequence_joint_rad type based on the info.
@@ -80,13 +81,13 @@ def grab_and_pour_and_place_back(
             mass_center[1] + 150,
             mass_center[2] + 250,
         ]
-    ready_pour_pose = ready_pour_position + [90, 0, 90]
-    pour_pose = ready_pour_position + [-90, -55, -90]
+    ready_pour_pose = [*ready_pour_position, 90, 0, 90]
+    pour_pose = [*ready_pour_position, -90, -55, -90]
     before_grasp_position = [p - f * 60 for p, f in zip(position, front, strict=False)]
     grasp_position = [p + f * 60 for p, f in zip(position, front, strict=False)]
-    after_grasp_position = grasp_position[:2] + [grasp_position[2] + 250]
+    after_grasp_position = [*grasp_position[:2], grasp_position[2] + 250]
 
-    release_position = grasp_position[:2] + [grasp_position[2] + 5]
+    release_position = [*grasp_position[:2], grasp_position[2] + 5]
     after_release_position = before_grasp_position
     # moves.append({"type": "move_arm", "goal": HOME_SIGNAL,"wait_time": 0.0})
     moves.append(
@@ -177,15 +178,15 @@ def grab_and_pour_and_place_back_curobo(
             # mass_center[2] + 0.250,
             mass_center[2] + 0.150,
         ]
-    ready_pour_pose = ready_pour_position + [0.5, 0.5, 0.5, 0.5]
-    pour_pose = ready_pour_position + [-0.271, 0.653, -0.271, 0.653]
+    ready_pour_pose = [*ready_pour_position, 0.5, 0.5, 0.5, 0.5]
+    pour_pose = [*ready_pour_position, -0.271, 0.653, -0.271, 0.653]
     before_grasp_position = [
         p - f * 0.100 for p, f in zip(position, front, strict=False)
     ]
     grasp_position = [p + f * 0.060 for p, f in zip(position, front, strict=False)]
     # after_grasp_position = grasp_position[:2] + [grasp_position[2] + 0.250]
 
-    release_position = grasp_position[:2] + [grasp_position[2] + 0.005]
+    release_position = [*grasp_position[:2], grasp_position[2] + 0.005]
     after_release_position = before_grasp_position
     # moves.append({"type": "move_arm", "goal": HOME_SIGNAL,"wait_time": 0.0})
     moves.append(
@@ -334,7 +335,7 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
 
     # after_grasp_position = grasp_position[:2] + [grasp_position[2] + 0.250]
 
-    release_position = grasp_position[:2] + [grasp_position[2] + 0.005]
+    release_position = [*grasp_position[:2], grasp_position[2] + 0.005]
     after_release_position = before_grasp_position
     # moves.append({"type": "move_arm", "goal": HOME_SIGNAL,"wait_time": 0.0})
     moves.append(
@@ -404,9 +405,7 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
     moves.append(
         SingleRobotMove(
             type="single_pose_meter_quaternion",
-            single_pose_meter_quaternion_goal=after_release_position[:2]
-            + [after_release_position[2] + 0.1]
-            + quaternion_orientation,
+            single_pose_meter_quaternion_goal=[*after_release_position[:2], after_release_position[2] + 0.1, *quaternion_orientation],
             no_curobo=True,
             no_obstacles=True,
         )
@@ -430,7 +429,7 @@ def grab_and_drop(grasp: np.ndarray, args: list, scene_data: dict) -> list[dict]
 
     before_grasp_position = [p - f * 60 for p, f in zip(position, front, strict=False)]
     grasp_position = [p + f * 50 for p, f in zip(position, front, strict=False)]
-    after_grasp_position = grasp_position[:2] + [grasp_position[2] + 200]
+    after_grasp_position = [*grasp_position[:2], grasp_position[2] + 200]
     # forward_signal = HOME_SIGNAL
     # forward_signal[0] += 200
     # moves.append({"type": "move_arm", "goal": forward_signal, "wait_time": 0.0})

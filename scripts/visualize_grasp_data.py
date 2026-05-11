@@ -1,20 +1,22 @@
 import argparse
-import logging
-import numpy as np
 import json
+import logging
+from pathlib import Path
+
+import numpy as np
 import trimesh
 import trimesh.transformations as tra
-from pathlib import Path
-from common_utils.custom_logger import CustomFormatter
-from common_utils import config
-from common_utils.graspgen_utils import start_meshcat_server, open_meshcat_url
-from common_utils.order_task_config import OrderTaskConfig
 from grasp_gen.grasp_server import load_grasp_cfg
 from grasp_gen.utils.meshcat_utils import (
     create_visualizer,
     visualize_grasp,
     visualize_mesh,
 )
+
+from common_utils import config
+from common_utils.custom_logger import CustomFormatter
+from common_utils.graspgen_utils import open_meshcat_url, start_meshcat_server
+from common_utils.order_task_config import OrderTaskConfig
 
 # root logger setup
 handler = logging.StreamHandler()
@@ -91,7 +93,7 @@ def main():
     vis = create_visualizer()
 
     # Visualize all object meshes (target + obstacles) in world frame
-    for obj in [task.target] + task.obstacles:
+    for obj in [task.target, *task.obstacles]:
         mesh_file = Path(obj.obj_dir) / "mesh.obj"
         obj_mesh = trimesh.load(str(mesh_file), force="mesh", process=False)
         obj_mesh.apply_scale(obj.scale)

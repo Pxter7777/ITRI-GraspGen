@@ -1,16 +1,17 @@
 import argparse
 import logging
+from pathlib import Path
+
 import numpy as np
 import torch
-from pathlib import Path
-from common_utils import network_config
+
+from common_utils import config, network_config
 from common_utils.custom_logger import CustomFormatter
-from common_utils.workflow_control import BaseWorkflowController
 from common_utils.socket_communication import (
-    NonBlockingJSONSender,
     NonBlockingJSONReceiver,
+    NonBlockingJSONSender,
 )
-from common_utils import config
+from common_utils.workflow_control import BaseWorkflowController
 
 # root logger setup
 handler = logging.StreamHandler()

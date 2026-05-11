@@ -1,26 +1,26 @@
-import sys
-import torch
-import cv2
-import logging
-import open3d as o3d
-import numpy as np
-import pyzed.sl as sl
 import datetime
 import json
+import logging
+import sys
 from pathlib import Path
-from dataclasses import dataclass, field
 
-from pointcloud_generation.mouse_handlerv2 import MouseHandler
-from pointcloud_generation.grounding_dino_utils import GroundindDinoPredictor
-from pointcloud_generation.visualization import visualize_named_box, visualize_mask
+import cv2
+import numpy as np
+import open3d as o3d
+import pyzed.sl as sl
+import torch
 
-from pointcloud_generation import visualization  # noqa: E402
-from pointcloud_generation import sam_utils  # noqa: E402
-from pointcloud_generation.stereo_utils import FoundationStereoModel  # noqa: E402
-from pointcloud_generation.zed_utils import ZedCamera  # noqa: E402
-# from pointcloud_generation.yolo_inference import YOLOv5Detector  # noqa: E402
-
+# from pointcloud_generation.yolo_inference import YOLOv5Detector
 from common_utils.scene_data import SceneData
+from pointcloud_generation import (
+    sam_utils,
+    visualization,
+)
+from pointcloud_generation.grounding_dino_utils import GroundindDinoPredictor
+from pointcloud_generation.mouse_handlerv2 import MouseHandler
+from pointcloud_generation.stereo_utils import FoundationStereoModel
+from pointcloud_generation.visualization import visualize_mask, visualize_named_box
+from pointcloud_generation.zed_utils import ZedCamera
 
 logger = logging.getLogger(__name__)
 
@@ -587,25 +587,24 @@ class PointCloudGenerator:
         blockages: list | None = None,
         valid_region: list | None = None,
     ) -> SceneData:
-        """
-        bloackages[
+        """bloackages[
             [minX, minY, maxX, maxY],
             [minX, minY, maxX, maxY], ...
-        ]
+        ].
         """
         # blockage init
         if blockages is None:
             blockages = []
         # Target objects
         prompt = ""
-        target_boxes = dict()
+        target_boxes = {}
         for target in target_names:
             prompt += target + " ."
             target_boxes[target] = None
 
         # Capture image
         try:
-            zed_status, left_image, right_image = self.zed.capture_images()
+            _zed_status, left_image, right_image = self.zed.capture_images()
         except Exception as e:
             logger.exception(f"error{e}")
             return RuntimeError
@@ -666,7 +665,7 @@ class PointCloudGenerator:
         # stereo inference
         left_gray = cv2.cvtColor(left_image, cv2.COLOR_BGRA2GRAY)
         right_gray = cv2.cvtColor(right_image, cv2.COLOR_BGRA2GRAY)
-        depth, (H_scaled, W_scaled) = self.stereo_model.run_inference(
+        depth, (_H_scaled, _W_scaled) = self.stereo_model.run_inference(
             left_gray, right_gray, self.zed.K_left, self.zed.baseline
         )
 
@@ -778,7 +777,7 @@ class PointCloudGenerator:
                         self.mouse_handler.reset()
 
                     if key == 32 and len(self.mouse_handler.boxes) == 1:
-                        depth, (H_scaled, W_scaled) = self.stereo_model.run_inference(
+                        depth, (_H_scaled, _W_scaled) = self.stereo_model.run_inference(
                             left_gray, right_gray, self.zed.K_left, self.zed.baseline
                         )
                         result = generate_pointcloud(
@@ -880,7 +879,7 @@ class PointCloudGenerator:
                         mousehandler.reset()
 
                     if key == 32 and mousehandler.num_boxes > 0:
-                        depth, (H_scaled, W_scaled) = self.stereo_model.run_inference(
+                        depth, (_H_scaled, _W_scaled) = self.stereo_model.run_inference(
                             left_gray, right_gray, self.zed.K_left, self.zed.baseline
                         )
                         result = generate_pointcloud_multiple_obj(
@@ -988,7 +987,7 @@ class PointCloudGenerator:
                         mousehandler.reset()
 
                     if key == 32 and mousehandler.num_boxes > 0:
-                        depth, (H_scaled, W_scaled) = self.stereo_model.run_inference(
+                        depth, (_H_scaled, _W_scaled) = self.stereo_model.run_inference(
                             left_gray, right_gray, self.zed.K_left, self.zed.baseline
                         )
                         result = generate_pointcloud_multiple_obj(
@@ -1014,7 +1013,7 @@ class PointCloudGenerator:
 
     def interactive_grounding_test(self, target_names: list[str]):
         prompt = ""
-        target_boxes = dict()
+        target_boxes = {}
 
         for target in target_names:
             prompt += target + " ."
@@ -1032,7 +1031,7 @@ class PointCloudGenerator:
         text_threshold = 0.4
         while True:
             try:
-                zed_status, left_image, right_image = self.zed.capture_images()
+                zed_status, left_image, _right_image = self.zed.capture_images()
             except Exception as e:
                 logger.error("Something went wrong when capturing the image.")
                 raise e
@@ -1115,14 +1114,14 @@ class PointCloudGenerator:
     def silent_mode_multiple_grounding(self, target_names: list[str]):
         # Target objects
         prompt = ""
-        target_boxes = dict()
+        target_boxes = {}
 
         for target in target_names:
             prompt += target + " ."
             target_boxes[target] = None
         # Capture image
         try:
-            zed_status, left_image, right_image = self.zed.capture_images()
+            _zed_status, left_image, right_image = self.zed.capture_images()
         except Exception as e:
             logger.exception(f"error{e}")
             return RuntimeError
@@ -1133,7 +1132,7 @@ class PointCloudGenerator:
         # stereo inference
         left_gray = cv2.cvtColor(left_image, cv2.COLOR_BGRA2GRAY)
         right_gray = cv2.cvtColor(right_image, cv2.COLOR_BGRA2GRAY)
-        depth, (H_scaled, W_scaled) = self.stereo_model.run_inference(
+        depth, (_H_scaled, _W_scaled) = self.stereo_model.run_inference(
             left_gray, right_gray, self.zed.K_left, self.zed.baseline
         )
 
@@ -1188,14 +1187,14 @@ class PointCloudGenerator:
     def silent_mode_multiple_grounding_dict(self, target_names: list[str]):
         # Target objects
         prompt = ""
-        target_boxes = dict()
+        target_boxes = {}
 
         for target in target_names:
             prompt += target + " ."
             target_boxes[target] = None
         # Capture image
         try:
-            zed_status, left_image, right_image = self.zed.capture_images()
+            _zed_status, left_image, right_image = self.zed.capture_images()
         except Exception as e:
             logger.exception(f"error{e}")
             return RuntimeError
@@ -1206,7 +1205,7 @@ class PointCloudGenerator:
         # stereo inference
         left_gray = cv2.cvtColor(left_image, cv2.COLOR_BGRA2GRAY)
         right_gray = cv2.cvtColor(right_image, cv2.COLOR_BGRA2GRAY)
-        depth, (H_scaled, W_scaled) = self.stereo_model.run_inference(
+        depth, (_H_scaled, _W_scaled) = self.stereo_model.run_inference(
             left_gray, right_gray, self.zed.K_left, self.zed.baseline
         )
 
@@ -1261,7 +1260,7 @@ class PointCloudGenerator:
     def silent_mode(self):
         try:
             # Capture image
-            zed_status, left_image, right_image = self.zed.capture_images()
+            _zed_status, left_image, right_image = self.zed.capture_images()
             color_np = left_image[:, :, :3]  # Drop alpha channel
             color_np_org = color_np.copy()
 
@@ -1300,7 +1299,7 @@ class PointCloudGenerator:
             # zed inference
             left_gray = cv2.cvtColor(left_image, cv2.COLOR_BGRA2GRAY)
             right_gray = cv2.cvtColor(right_image, cv2.COLOR_BGRA2GRAY)
-            depth, (H_scaled, W_scaled) = self.stereo_model.run_inference(
+            depth, (_H_scaled, _W_scaled) = self.stereo_model.run_inference(
                 left_gray, right_gray, self.zed.K_left, self.zed.baseline
             )
 

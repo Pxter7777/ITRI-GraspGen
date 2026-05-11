@@ -1,4 +1,5 @@
 import numpy as np
+
 from common_utils.graspgen_utils import (
     flip_grasp,
     flip_upside_down_grasps,

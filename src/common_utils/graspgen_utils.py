@@ -1,26 +1,29 @@
-import numpy as np
+import atexit
 import logging
 import os
-import atexit
-import subprocess
-import signal
-import time
-import webbrowser
 import platform
-import tkinter as tk
-from threading import Thread
 import queue
+import signal
+import subprocess
+import time
+import tkinter as tk
+import webbrowser
+from threading import Thread
+
+import numpy as np
 from grasp_gen.grasp_server import GraspGenSampler, load_grasp_cfg
 from grasp_gen.robot import get_gripper_info
-from common_utils.qualification import is_qualified
 from grasp_gen.utils.meshcat_utils import (
     create_visualizer,
     visualize_grasp,
     visualize_pointcloud,
 )
 from grasp_gen.utils.point_cloud_utils import filter_colliding_grasps
+
 from common_utils.actions_format_checker import MoveItem
+from common_utils.qualification import is_qualified
 from common_utils.scene_data import SceneData
+
 logger = logging.getLogger(__name__)
 
 """
@@ -54,8 +57,7 @@ def is_qualified(grasp: np.array, mass_center, obj_std):
 
 
 def flip_grasp(grasp: np.ndarray) -> np.ndarray:
-    """
-    Flips a grasp by rotating it 180 degrees around its approach (front) axis.
+    """Flips a grasp by rotating it 180 degrees around its approach (front) axis.
     This negates the 'left' and 'up' vectors.
     """
     flipped_grasp = grasp.copy()
@@ -66,9 +68,7 @@ def flip_grasp(grasp: np.ndarray) -> np.ndarray:
 
 
 def flip_upside_down_grasps(grasps: np.ndarray) -> np.ndarray:
-    """
-    Flips grasps that are "upside down" (up vector's y-component is negative).
-    """
+    """Flips grasps that are "upside down" (up vector's y-component is negative)."""
     flipped_grasps = []
     for grasp in grasps:
         _grasp = grasp.copy()
@@ -96,7 +96,7 @@ class GraspGenerator:
             while True:
                 num_try += 1
                 logging.info(f"try #{num_try}")
-                grasps, grasp_conf = GraspGenSampler.run_inference(
+                grasps, _grasp_conf = GraspGenSampler.run_inference(
                     pointcloud,
                     self.grasp_sampler,
                     grasp_threshold=self.grasp_threshold,
@@ -340,7 +340,7 @@ def create_control_panel(
 
 def angle_offset_rad(grasp: np.ndarray) -> float:
     position = grasp[:3, 3].tolist()
-    left, up, front = get_left_up_and_front(grasp)
+    _left, _up, front = get_left_up_and_front(grasp)
     angle_front = np.arctan2(front[1], front[0])
     angle_position = np.arctan2(position[1], position[0])
     angle_diff = np.abs(angle_front - angle_position)
@@ -378,7 +378,7 @@ class GraspGeneratorUI:
         qualifier_name = self.move.qualifier
         # mass_center = np.mean(obj_pc, axis=0)
         # std = np.std(obj_pc, axis=0)
-        grasps, grasp_conf = GraspGenSampler.run_inference(
+        grasps, _grasp_conf = GraspGenSampler.run_inference(
             obj_pc,
             self.grasp_sampler,
             grasp_threshold=0.8,
@@ -440,9 +440,8 @@ class GraspGeneratorUI:
         return grasps, custom_filter_mask, collision_free_mask
 
     def _generate_grasp_silent(self) -> np.array:
-        """
-        Returns:
-            Qualified grasps, A list of that contains multiple np.ndarray s of shape(4, 4).
+        """Returns:
+        Qualified grasps, A list of that contains multiple np.ndarray s of shape(4, 4).
         """
         # GRASPS_BATCH_SIZE = 4 # stop using this method, just send all to curobo to try
         num_try = 0
@@ -461,9 +460,8 @@ class GraspGeneratorUI:
                 return qualified_grasps
 
     def generate_grasp(self, scene_data: dict, move: MoveItem) -> list[np.ndarray]:
-        """
-        Returns:
-            grasps: A list of shape(4, 4) np array. only single one elements if returned from self._generate_grasp_with_GUI(), while multiple elements if returned by self._generate_grasp_silent()
+        """Returns:
+        grasps: A list of shape(4, 4) np array. only single one elements if returned from self._generate_grasp_with_GUI(), while multiple elements if returned by self._generate_grasp_silent().
         """
         # reload scene_data and move
         self.scene_data = scene_data
@@ -476,9 +474,8 @@ class GraspGeneratorUI:
             return self._generate_grasp_silent()
 
     def _generate_grasp_with_GUI(self) -> list[np.ndarray]:
-        """
-        Returns:
-            A list of that contains only one element: np.ndarray of shape(4, 4).
+        """Returns:
+        A list of that contains only one element: np.ndarray of shape(4, 4).
         """
         self._visualize_scene()
         grasp_q = queue.Queue()

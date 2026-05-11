@@ -1,6 +1,7 @@
 import cv2
 import pytest
-from pointcloud_generation.mouse_handlerv2 import MouseHandler, BoundingBox
+
+from pointcloud_generation.mouse_handlerv2 import BoundingBox, MouseHandler
 
 
 @pytest.fixture

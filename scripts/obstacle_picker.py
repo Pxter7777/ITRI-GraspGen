@@ -1,19 +1,20 @@
-"""
-IMPORTANT!
+"""IMPORTANT!
 This script won't work, because the transform config logic and path changed a bit.
 also the task format was changed, so I will need to rewrite this anyway.
 move it to scripts/legacy later.
 """
 
 # use the zed camera to get the object's 3D bounding box
-import logging
 import argparse
+import logging
+
 import numpy as np
+
+from common_utils import config
 from common_utils.common_utils import save_json
 from common_utils.custom_logger import CustomFormatter
-from common_utils import config
-from pointcloud_generation.pointcloud_generation import PointCloudGenerator
 from pointcloud_generation.PC_transform import silent_transform
+from pointcloud_generation.pointcloud_generation import PointCloudGenerator
 
 # root logger setup
 handler = logging.StreamHandler()

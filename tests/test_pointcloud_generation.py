@@ -1,6 +1,8 @@
 import argparse
 from collections.abc import Generator
+
 import pytest
+
 from common_utils import config
 from pointcloud_generation.pointcloud_generation import PointCloudGenerator, SceneData
 

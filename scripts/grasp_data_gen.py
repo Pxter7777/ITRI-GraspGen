@@ -1,19 +1,21 @@
 import argparse
+import json
 import logging
+from pathlib import Path
+
 import numpy as np
 import torch
-import json
 import trimesh
 import trimesh.transformations as tra
-from pathlib import Path
-from common_utils.custom_logger import CustomFormatter
+from grasp_gen.grasp_server import GraspGenSampler, load_grasp_cfg
+from grasp_gen.robot import get_gripper_info
+from grasp_gen.utils.point_cloud_utils import filter_colliding_grasps
+
 from common_utils import config
+from common_utils.custom_logger import CustomFormatter
+from common_utils.grasp_data_format import GraspData, GraspPack
 from common_utils.graspgen_utils import GraspGeneratorUI, flip_upside_down_grasps
 from common_utils.order_task_config import OrderTaskConfig
-from grasp_gen.grasp_server import GraspGenSampler, load_grasp_cfg
-from grasp_gen.utils.point_cloud_utils import filter_colliding_grasps
-from grasp_gen.robot import get_gripper_info
-from common_utils.grasp_data_format import GraspPack, GraspData
 from common_utils.qualification import get_left_up_and_front
 
 
@@ -152,7 +154,7 @@ def parse_args():
 
 def angle_diff_rad(grasp: np.ndarray) -> float:
     position = grasp[:3, 3].tolist()
-    left, up, front = get_left_up_and_front(grasp)
+    _left, _up, front = get_left_up_and_front(grasp)
     position += front * 0.20  # offset
     # Rule: planar 2D angle between grasp approach (front) vector and grasp position vector should be small
     angle_front = np.arctan2(front[1], front[0])
@@ -168,7 +170,7 @@ def distance_meter(grasp: np.ndarray) -> float:
 
 
 def up_vector(grasp: np.ndarray) -> float:
-    left, up, front = get_left_up_and_front(grasp)
+    _left, _up, front = get_left_up_and_front(grasp)
     return front[2]
 
 
@@ -190,12 +192,11 @@ class ExperimentWorkflowController:
         logger.info("======Successfully initialized======")
 
     def __enter__(self):
-        """Allows the use of 'with GraspGenController(args) as controller:'"""
+        """Allows the use of 'with GraspGenController(args) as controller:'."""
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """
-        Automatically called when the 'with' block ends.
+        """Automatically called when the 'with' block ends.
         Even if an exception occurs, this method runs.
         """
         if exc_type:

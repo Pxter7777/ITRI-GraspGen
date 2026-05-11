@@ -1,21 +1,21 @@
-import logging
 import json
+import logging
 import time
 from pathlib import Path
-from pointcloud_generation.pointcloud_generation import PointCloudGenerator, SceneData
+
+from common_utils.actions_format_checker import ObstacleBound, TaskConfig
+from common_utils.common_utils import create_obstacle_info, load_extra_obstacles
+from common_utils.csv_traj_handler import csv_act
+from common_utils.graspgen_utils import GraspGeneratorUI
+from common_utils.movesets import act_with_name
+from common_utils.socket_communication import (
+    NonBlockingJSONReceiver,
+    NonBlockingJSONSender,
+)
 from pointcloud_generation.PC_transform import (
     silent_transform_multiple_obj_with_name_dict,
 )
-
-from common_utils.graspgen_utils import GraspGeneratorUI
-from common_utils.actions_format_checker import TaskConfig, ObstacleBound
-from common_utils.movesets import act_with_name
-from common_utils.socket_communication import (
-    NonBlockingJSONSender,
-    NonBlockingJSONReceiver,
-)
-from common_utils.common_utils import create_obstacle_info, load_extra_obstacles
-from common_utils.csv_traj_handler import csv_act
+from pointcloud_generation.pointcloud_generation import PointCloudGenerator, SceneData
 
 logger = logging.getLogger(__name__)
 
@@ -53,12 +53,11 @@ class BaseWorkflowController:
         )
 
     def __enter__(self):
-        """Allows the use of 'with GraspGenController(args) as controller:'"""
+        """Allows the use of 'with GraspGenController(args) as controller:'."""
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """
-        Automatically called when the 'with' block ends.
+        """Automatically called when the 'with' block ends.
         Even if an exception occurs, this method runs.
         """
         if exc_type:
@@ -219,7 +218,7 @@ class BaseWorkflowController:
         if text in filenames:
             return "csv", text, no_need_curobo
         else:
-            avail_commands = ["Grasp_and_Dump"] + filenames
+            avail_commands = ["Grasp_and_Dump", *filenames]
             print(
                 f"There's no such command called {text}. \nAvailable commands are {avail_commands}"
             )

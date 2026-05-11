@@ -1,9 +1,9 @@
 import json
+
 import pytest
-
 from pydantic import ValidationError
-from common_utils.actions_format_checker import TaskConfig
 
+from common_utils.actions_format_checker import TaskConfig
 
 STANDARD_VALID_JSON = """
 {

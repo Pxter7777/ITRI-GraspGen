@@ -1,6 +1,7 @@
-import time
-import torch
 import logging
+import time
+
+import torch
 
 
 class UsageInspector:

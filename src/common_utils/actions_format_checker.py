@@ -1,12 +1,13 @@
 import logging
-from typing import Any, Annotated
+from typing import Annotated, Any
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 logger = logging.getLogger(__name__)
 
 
 class ObstacleBound(BaseModel):
-    """Define Obstacle class"""
+    """Define Obstacle class."""
 
     # max and min must be a list of float with exact 3 elements (X, Y, Z)
     max: list[float] = Field(..., min_length=3, max_length=3)
@@ -14,7 +15,7 @@ class ObstacleBound(BaseModel):
 
 
 class MoveItem(BaseModel):
-    """Define Move class format"""
+    """Define Move class format."""
 
     model_config = ConfigDict(extra="forbid")  # Forbid unexpected keys.
 
@@ -31,7 +32,7 @@ FourIntList = Annotated[list[int], Field(min_length=4, max_length=4)]
 
 
 class TaskConfig(BaseModel):
-    """Define the whole JSON task file structure"""
+    """Define the whole JSON task file structure."""
 
     model_config = ConfigDict(extra="forbid")  # Forbid unexpected keys.
 

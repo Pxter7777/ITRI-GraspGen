@@ -1,13 +1,14 @@
 import csv
 import logging
-import numpy as np
+from collections import defaultdict
+from dataclasses import asdict, dataclass
 from enum import Enum
 from pathlib import Path
-from common_utils.movesets import SingleRobotMove
-from dataclasses import dataclass, asdict
-from collections import defaultdict
+
+import numpy as np
 
 from common_utils.actions_format_checker import ObstacleBound
+from common_utils.movesets import SingleRobotMove
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ def load_trajectory_from_csv(command: str) -> list[Movement]:
     index = 0
     gripper_prev = None
 
-    with open(file_path, "r", newline="") as file:
+    with open(file_path, newline="") as file:
         reader = csv.reader(file, delimiter=",")
         for row in reader:
             if index == 0:

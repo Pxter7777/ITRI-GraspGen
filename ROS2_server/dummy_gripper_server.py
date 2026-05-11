@@ -1,24 +1,23 @@
 # Run this python script when no real TM5S robot available.
-"""
-Original gripper_server's behavior:
+"""Original gripper_server's behavior:
     gripper_server accept signals from isaac sim script, run it, and responds {"message": "Success"} back to isaacsim script when the actual robot reaches the goal. (if wait_time is not 0.0, it will delay the response.)
-This script aims to imitate that behavior, only that all signal will only process for a fixed time, and also delay the wait_time, before the response {"message": "Success"}
+This script aims to imitate that behavior, only that all signal will only process for a fixed time, and also delay the wait_time, before the response {"message": "Success"}.
 """
 
-import time
 import logging
 import sys
+import time
 from pathlib import Path
 
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 SRC_DIR = PROJECT_ROOT_DIR / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
+from common_utils import network_config  # noqa: E402
 from common_utils.socket_communication import (  # noqa: E402
     NonBlockingJSONReceiver,
     NonBlockingJSONSender,
 )
-from common_utils import network_config  # noqa: E402
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(

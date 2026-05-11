@@ -1,5 +1,6 @@
-import cv2
 from dataclasses import dataclass
+
+import cv2
 
 
 @dataclass(frozen=True)

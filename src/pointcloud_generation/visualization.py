@@ -1,6 +1,7 @@
 import cv2
-from common_utils import config
 import numpy as np
+
+from common_utils import config
 from pointcloud_generation.grounding_dino_utils import DetectedBoxInfo
 
 
@@ -19,9 +20,7 @@ def draw_box(frame, start_point, end_point):
 
 
 def vis_disparity(disp, vmax_percent=95):
-    """
-    vmax: max value of disparity
-    """
+    """vmax: max value of disparity."""
     disp_vis = disp.copy()
     disp_vis[disp_vis == np.inf] = 0
 
@@ -37,9 +36,7 @@ def vis_disparity(disp, vmax_percent=95):
 
 
 def vis_depth(depth, vmax_percent=95):
-    """
-    vmax: max value of depth
-    """
+    """vmax: max value of depth."""
     depth_vis = depth.copy()
     depth_vis[depth_vis == np.inf] = 0
 

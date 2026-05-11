@@ -1,6 +1,7 @@
 import logging
-import numpy as np
 from typing import Literal
+
+import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 logger = logging.getLogger(__name__)

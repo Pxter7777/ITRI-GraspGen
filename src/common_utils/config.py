@@ -1,5 +1,6 @@
-import torch
 from pathlib import Path
+
+import torch
 
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[2]
 # ------------------- Path Config -------------------
