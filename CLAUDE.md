@@ -53,9 +53,56 @@ handler.setFormatter(CustomFormatter())
 logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
 ```
 
-## Ruff Configuration Notes
+## Code Quality Tools
 
-`ruff` excludes `third_party` and `isaac-sim2real/isaacsim_utils/helper.py`. Ignored rules include `E501` (line length), `I001` (import sorting), `C901` (complexity), `E721`, `E731`, `C408`, `W605` — do not "fix" existing violations of these outside your task scope.
+Three tools enforce code quality. Run all before committing:
+
+1. **Ruff** — linter and formatter. Enforces pycodestyle, pyflakes, isort, pep8-naming, pyupgrade, flake8-bugbear, flake8-annotations, pydocstyle (Google convention), flake8-comprehensions, and ruff-specific rules.
+2. **pydoclint** — validates docstring completeness against function signatures.
+3. **pyright** — static type checker in strict mode.
+
+CI runs all three on every push and PR.
+
+```bash
+uv run ruff check
+uv run ruff check --fix
+uv run ruff format
+uv run pydoclint .
+uv run pyright
+```
+
+`ruff`, `pydoclint`, and `pyright` all exclude `third_party` and `isaac-sim2real/isaacsim_utils/helper.py`. Do not "fix" existing violations outside your task scope.
+
+## Style Guide
+
+Follow the [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html). Key rules not enforced by tooling:
+
+- Use descriptive names over comments to explain intent
+- Keep docstrings imperative ("Fetch rows" not "Fetches rows")
+
+### Docstrings (enforced by pydoclint)
+
+- Include `Args:`, `Returns:`, and `Raises:` sections when applicable
+- All args/returns must include type hints in docstring: `arg_name (type): Description.`
+- `__init__` should NOT have its own docstring — put `Args:` in the class docstring instead
+- Class `Attributes:` section must include type hints: `attr_name (type): Description.`
+
+### Type Annotations (enforced by ruff ANN + pyright strict)
+
+- All functions require type annotations for parameters and return values
+- Declare class attributes as class-level type annotations (not only in `__init__`)
+- Always explicitly annotate class attributes, even when the type is inferrable from the value
+- Prefix private/internal class attributes with `_` (these don't need docstring coverage)
+- When a string parameter has a known set of allowed values, use `Literal` types instead of bare `str`:
+
+```python
+from typing import Literal
+
+Direction = Literal["up", "down", "left", "right"]
+
+def move(direction: Direction) -> None:
+    ...
+```
 
 ## Temporary Output
 

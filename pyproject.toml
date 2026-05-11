@@ -59,10 +59,6 @@ build-backend = "uv_build"
 [tool.uv.build-backend]
 module-name = ["pointcloud_generation", "common_utils"]
 
-# Without this [tool.pyright] section, pylance will red-line the import even though it works well in runtime.
-[tool.pyright]
-extraPaths = ["src", "third_party/GraspGen", "third_party/GroundingDINO", "third_party/FoundationStereo/src"]
-typeCheckingMode = "strict"
 
 [tool.uv]
 override-dependencies = [
@@ -113,27 +109,42 @@ exclude = [
 target-version = "py311"
 
 [tool.ruff.lint]
-extend-select = [
-  "B",
-  "C",
-  "I",
-  "W",
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "ANN",  # flake8-annotations
+    "D",    # pydocstyle
+    "RUF",  # ruff-specific rules
+    "C4",   # flake8-comprehensions
 ]
 ignore = [
-	"E501", # Line too long
-	"E721", # Do not compare types, use `isinstance`
-	"E731", # Do not assign a `lambda` expression, use a `def`
-	
-	"I001", # Import block is un-sorted or un-formatted
-	"C901", # Function is too complex
-	"C408", # Rewrite as a literal
-	"W605", # invalid escape sequence, messes with some docstrings
+    "D107",  # pydoclint requires __init__ args in class docstring instead
 ]
 
-# Not really sure what this is.
-[tool.ruff.lint.flake8-bugbear]
-# Allow default arguments like, e.g., `data: List[str] = fastapi.Query(None)`.
-extend-immutable-calls = ["fastapi.Depends", "fastapi.security.HTTPBasic"]
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.flake8-annotations]
+mypy-init-return = true
+suppress-none-returning = true
+
+[tool.pydoclint]
+style = "google"
+exclude = '\.git|\.tox|\.venv|third_party|isaac-sim2real/isaacsim_utils/helper\.py'
+skip-checking-short-docstrings = false
+
+
+[tool.pyright]
+extraPaths = ["third_party/GraspGen", "third_party/GroundingDINO", "third_party/FoundationStereo/src"] # Without this, pyright can't find these editable-installed package even though it works well at runtime.
+exclude = ["third_party", "isaac-sim2real/isaacsim_utils/helper.py"]
+venvPath = "."
+venv = ".venv"
+typeCheckingMode = "strict"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
