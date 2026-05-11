@@ -276,7 +276,7 @@ class ExperimentWorkflowController:
         xyz = np.array(xyz, dtype=np.float32)
 
         # Center the point cloud (GraspGen expects centered input)
-        T_subtract_mean = tra.translation_matrix(-xyz.mean(axis=0))
+        T_subtract_mean = tra.translation_matrix(-xyz.mean(axis=0))  # noqa: N806
         xyz = tra.transform_points(xyz, T_subtract_mean)
 
         # Run grasp inference
@@ -309,9 +309,9 @@ class ExperimentWorkflowController:
         )
 
         # Transform grasps from centered mesh frame → target local frame → world frame
-        T_restore = tra.inverse_matrix(T_subtract_mean)
+        T_restore = tra.inverse_matrix(T_subtract_mean)  # noqa: N806
         qx, qy, qz, qw = task.target.pose_meter_quat[3:]
-        T_target_world = tra.quaternion_matrix([qw, qx, qy, qz])
+        T_target_world = tra.quaternion_matrix([qw, qx, qy, qz])  # noqa: N806
         T_target_world[:3, 3] = task.target.pose_meter_quat[:3]
         grasps = np.array([T_target_world @ T_restore @ g for g in grasps])
 
@@ -324,7 +324,7 @@ class ExperimentWorkflowController:
             obs_pts, _ = trimesh.sample.sample_surface(obs_obj, 500)
             obs_pts = np.array(obs_pts, dtype=np.float32)
             qx, qy, qz, qw = obstacle.pose_meter_quat[3:]
-            T_obs_world = tra.quaternion_matrix([qw, qx, qy, qz])
+            T_obs_world = tra.quaternion_matrix([qw, qx, qy, qz])  # noqa: N806
             T_obs_world[:3, 3] = obstacle.pose_meter_quat[:3]
             obstacle_clouds.append(tra.transform_points(obs_pts, T_obs_world))
         xyz_scene = (

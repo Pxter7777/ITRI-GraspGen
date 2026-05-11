@@ -108,7 +108,7 @@ class PointCloudGenerator:
 
         color_np = left_image[:, :, :3]  # Drop alpha channel
         color_np_org = color_np.copy()
-        color_np_for_GroundingDINO = color_np.copy()
+        color_np_for_GroundingDINO = color_np.copy()  # noqa: N806
         # replace the blockage region with black
         for blockage in blockages:
             cv2.rectangle(
@@ -162,7 +162,7 @@ class PointCloudGenerator:
         # stereo inference
         left_gray = cv2.cvtColor(left_image, cv2.COLOR_BGRA2GRAY)
         right_gray = cv2.cvtColor(right_image, cv2.COLOR_BGRA2GRAY)
-        depth, (_H_scaled, _W_scaled) = self.stereo_model.run_inference(
+        depth, (_H_scaled, _W_scaled) = self.stereo_model.run_inference(  # noqa: N806
             left_gray, right_gray, self.zed.K_left, self.zed.baseline
         )
 
@@ -278,7 +278,7 @@ class PointCloudGenerator:
                         self.mouse_handler.reset()
 
                     if key == 32 and len(self.mouse_handler.boxes) == 1:
-                        depth, (_H_scaled, _W_scaled) = self.stereo_model.run_inference(
+                        depth, (_H_scaled, _W_scaled) = self.stereo_model.run_inference(  # noqa: N806
                             left_gray, right_gray, self.zed.K_left, self.zed.baseline
                         )
                         result = PointCloudGenerator._generate_pointcloud(
@@ -302,10 +302,12 @@ class PointCloudGenerator:
             )
             return None
     @staticmethod
-    def _generate_pointcloud(depth, color_np_org, mask, K_cam, scale, max_depth) -> SceneData | None:
+    def _generate_pointcloud(
+        depth, color_np_org, mask, K_cam, scale, max_depth  # noqa: N803
+    ) -> SceneData | None:
         logging.info("generating scene and object...")
 
-        K_scaled_cam = K_cam.copy()
+        K_scaled_cam = K_cam.copy()  # noqa: N806
         K_scaled_cam[:2, :] *= scale
 
         xyz_map = PointCloudGenerator._depth2xyzmap(depth, K_scaled_cam)
@@ -350,7 +352,7 @@ class PointCloudGenerator:
         object_points = []
         object_colors = []
 
-        H_color, W_color = color_np_org.shape[:2]
+        H_color, W_color = color_np_org.shape[:2]  # noqa: N806
 
         for i in range(len(projected_points_uv)):
             u, v = int(projected_points_uv[i, 0]), int(projected_points_uv[i, 1])
@@ -400,11 +402,11 @@ class PointCloudGenerator:
         )
     @staticmethod
     def _generate_pointcloud_multiple_obj_with_name_dict(
-        depth, color_np_org, named_masks: list[NamedMask], K_cam, scale, max_depth
+        depth, color_np_org, named_masks: list[NamedMask], K_cam, scale, max_depth  # noqa: N803
     ) -> SceneData:
         logging.info("generating scene and object...")
 
-        K_scaled_cam = K_cam.copy()
+        K_scaled_cam = K_cam.copy()  # noqa: N806
         K_scaled_cam[:2, :] *= scale
 
         xyz_map = PointCloudGenerator._depth2xyzmap(depth, K_scaled_cam)
@@ -447,7 +449,7 @@ class PointCloudGenerator:
         scene_points_acc: list[np.ndarray] = []
         scene_colors_acc: list[np.ndarray] = []
 
-        H_color, W_color = color_np_org.shape[:2]
+        H_color, W_color = color_np_org.shape[:2]  # noqa: N806
 
         for i in range(len(projected_points_uv)):
             u, v = int(projected_points_uv[i, 0]), int(projected_points_uv[i, 1])
@@ -503,7 +505,7 @@ class PointCloudGenerator:
         )
 
     @staticmethod
-    def _depth2xyzmap(depth, K) -> np.ndarray:
+    def _depth2xyzmap(depth, K) -> np.ndarray:  # noqa: N803
         vy, vx = np.meshgrid(
             np.arange(depth.shape[0]), np.arange(depth.shape[1]), indexing="ij"
         )

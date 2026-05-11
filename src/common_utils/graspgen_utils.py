@@ -396,7 +396,7 @@ class GraspGeneratorUI:
         grasp_threshold,
         num_grasps,
         topk_num_grasps,
-        need_GUI=False,
+        need_GUI=False,  # noqa: N803
     ):
         self.grasp_cfg = load_grasp_cfg(gripper_config)
         self.gripper_name: str = self.grasp_cfg.data.gripper_name
@@ -454,7 +454,7 @@ class GraspGeneratorUI:
                 )
                 logger.debug(f"Scene points after: {xyz_scene.shape[0]}")
         # VIZ_BOUNDS
-        VIZ_BOUNDS = [[-1.5, -1.25, -0.15], [1.5, 1.25, 2.0]]
+        VIZ_BOUNDS = [[-1.5, -1.25, -0.15], [1.5, 1.25, 2.0]]  # noqa: N806
         mask_within_bounds = np.all((xyz_scene > VIZ_BOUNDS[0]), 1)
         mask_within_bounds = np.logical_and(
             mask_within_bounds, np.all((xyz_scene < VIZ_BOUNDS[1]), 1)
@@ -579,7 +579,7 @@ class GraspGeneratorUI:
                 (xyz_scene_color, self.scene_data["object_infos"][obj_name]["colors"])
             )
 
-        VIZ_BOUNDS = [[-1.5, -1.25, -0.15], [1.5, 1.25, 2.0]]
+        VIZ_BOUNDS = [[-1.5, -1.25, -0.15], [1.5, 1.25, 2.0]]  # noqa: N806
         mask_within_bounds = np.all((xyz_scene > VIZ_BOUNDS[0]), 1)
         mask_within_bounds = np.logical_and(
             mask_within_bounds, np.all((xyz_scene < VIZ_BOUNDS[1]), 1)

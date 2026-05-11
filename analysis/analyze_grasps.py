@@ -165,11 +165,11 @@ def plot_success_rate_by_bin(records):
 
 def train_and_evaluate(records):
     """Train logistic regression and XGBoost, evaluate with cross-validation."""
-    X = np.array([[r[f] for f in FEATURE_NAMES] for r in records])
+    X = np.array([[r[f] for f in FEATURE_NAMES] for r in records])  # noqa: N806
     y = np.array([r["success"] for r in records])
 
     scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
+    X_scaled = scaler.fit_transform(X)  # noqa: N806
 
     class_weights = compute_class_weight("balanced", classes=np.array([0, 1]), y=y)
     cw_dict = {0: class_weights[0], 1: class_weights[1]}
@@ -227,7 +227,7 @@ def topk_table(records, lr, scaler, xgb):
         scenes.setdefault(key, []).append(r)
     scene_keys = list(scenes.keys())
 
-    K_VALUES = [1, 3, 5, 10, 20]
+    K_VALUES = [1, 3, 5, 10, 20]  # noqa: N806
     results = {k: {"disc": [], "lr": [], "xgb": []} for k in K_VALUES}
     disc_attempts, lr_attempts, xgb_attempts = [], [], []
     disc_times, lr_times, xgb_times = [], [], []
@@ -253,14 +253,14 @@ def topk_table(records, lr, scaler, xgb):
         ]
         test_grasps = scenes[held_out_key]
 
-        X_train = np.array([[r[f] for f in FEATURE_NAMES] for r in train_records])
+        X_train = np.array([[r[f] for f in FEATURE_NAMES] for r in train_records])  # noqa: N806
         y_train = np.array([r["success"] for r in train_records])
-        X_test = np.array([[r[f] for f in FEATURE_NAMES] for r in test_grasps])
+        X_test = np.array([[r[f] for f in FEATURE_NAMES] for r in test_grasps])  # noqa: N806
 
         # Logistic regression (needs scaling)
         scaler_cv = StandardScaler().fit(X_train)
-        X_train_s = scaler_cv.transform(X_train)
-        X_test_s = scaler_cv.transform(X_test)
+        X_train_s = scaler_cv.transform(X_train)  # noqa: N806
+        X_test_s = scaler_cv.transform(X_test)  # noqa: N806
         cw = compute_class_weight("balanced", classes=np.array([0, 1]), y=y_train)
         clf_lr = LogisticRegression(
             class_weight={0: cw[0], 1: cw[1]}, max_iter=1000, random_state=42
@@ -306,8 +306,8 @@ def topk_table(records, lr, scaler, xgb):
         lr_times.append(time_to_first_success(grasps_lr))
         xgb_times.append(time_to_first_success(grasps_xgb))
 
-    COLORS = {"disc": "#2196F3", "lr": "#FF9800", "xgb": "#4CAF50"}
-    LABELS = {"disc": "Discriminator", "lr": "Logistic Reg.", "xgb": "XGBoost"}
+    COLORS = {"disc": "#2196F3", "lr": "#FF9800", "xgb": "#4CAF50"}  # noqa: N806
+    LABELS = {"disc": "Discriminator", "lr": "Logistic Reg.", "xgb": "XGBoost"}  # noqa: N806
 
     print("\n--- Top-K Success Rate Table ---")
     print(f"{'k':<6} {'Discriminator':>15} {'Logistic Reg.':>15} {'XGBoost':>10}")

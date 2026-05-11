@@ -39,7 +39,7 @@ class FoundationStereoModel:
         self.model.cuda().eval()
 
     def run_inference(
-        self, ir1_np: np.ndarray, ir2_np: np.ndarray, K: np.ndarray, baseline: float
+        self, ir1_np: np.ndarray, ir2_np: np.ndarray, K: np.ndarray, baseline: float  # noqa: N803
     ) -> tuple[np.ndarray, tuple[int, int]]:
         """Runs stereo inference on a pair of images and returns a depth map.
 
@@ -61,7 +61,7 @@ class FoundationStereoModel:
         img1 = cv2.resize(
             ir2_np_bgr, fx=self.args.scale, fy=self.args.scale, dsize=None
         )
-        H_scaled, W_scaled = img0.shape[:2]
+        H_scaled, W_scaled = img0.shape[:2]  # noqa: N806
 
         img0_t = torch.as_tensor(img0).cuda().float()[None].permute(0, 3, 1, 2)
         img1_t = torch.as_tensor(img1).cuda().float()[None].permute(0, 3, 1, 2)

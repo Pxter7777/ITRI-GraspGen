@@ -102,7 +102,7 @@ def main():
         obj_mesh = trimesh.load(str(mesh_file), force="mesh", process=False)
         obj_mesh.apply_scale(obj.scale)
         qx, qy, qz, qw = obj.pose_meter_quat[3:]
-        T_world = tra.quaternion_matrix([qw, qx, qy, qz])
+        T_world = tra.quaternion_matrix([qw, qx, qy, qz])  # noqa: N806
         T_world[:3, 3] = obj.pose_meter_quat[:3]
         obj_mesh.apply_transform(T_world)
         visualize_mesh(vis, f"scene/{obj.instance_id}", obj_mesh)
