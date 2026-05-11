@@ -24,7 +24,7 @@ def load_sam_model():
         sys.exit(1)
 
 
-def run_sam2(predictor, image_rgb, box:BoundingBox, iterations=6):
+def run_sam2(predictor, image_rgb, box: BoundingBox, iterations=6):
     predictor.set_image(image_rgb)
     input_point = np.array([[(box.x_min + box.x_max) / 2, (box.y_min + box.y_max) / 2]])
     input_label = np.array([1])

@@ -10,9 +10,10 @@ import json
 from pathlib import Path
 from dataclasses import dataclass, field
 
-from pointcloud_generation.mouse_handlerv2 import MouseHandler, BoundingBox
+from pointcloud_generation.mouse_handlerv2 import MouseHandler
 from pointcloud_generation.grounding_dino_utils import GroundindDinoPredictor
 from pointcloud_generation.visualization import visualize_named_box, visualize_mask
+
 # from pointcloud_generation import mouse_handler  # noqa: E402
 from pointcloud_generation import visualization  # noqa: E402
 from pointcloud_generation import sam_utils  # noqa: E402
@@ -31,17 +32,18 @@ class NamedMask:
         self.mask = mask
 
 
-
 @dataclass
 class SceneData:
     @dataclass
     class ObjectInfo:
         points: np.ndarray
         colors: np.ndarray
+
     @dataclass
     class SceneInfo:
         pc_color: list[np.ndarray]
         img_color: list[np.ndarray]
+
     @dataclass
     class GraspInfo:
         grasp_poses: list[np.ndarray] = field(default_factory=list[np.ndarray])
@@ -49,7 +51,9 @@ class SceneData:
 
     object_infos: dict[str, ObjectInfo]
     scene_info: SceneInfo
-    obstacle_infos: dict[str, ObstacleBound] = field(default_factory=dict[str, ObstacleBound])
+    obstacle_infos: dict[str, ObstacleBound] = field(
+        default_factory=dict[str, ObstacleBound]
+    )
     grasp_info: GraspInfo = field(default_factory=GraspInfo)
 
     def to_dict(self) -> dict:
@@ -162,10 +166,12 @@ def generate_pointcloud(depth, color_np_org, mask, K_cam, scale, max_depth):
         scene_colors_arr = scene_colors_arr[:, ::-1]
 
     return SceneData(
-        object_infos={"object": SceneData.ObjectInfo(
-            points=np.array(object_points),
-            colors=object_colors_arr,
-        )},
+        object_infos={
+            "object": SceneData.ObjectInfo(
+                points=np.array(object_points),
+                colors=object_colors_arr,
+            )
+        },
         scene_info=SceneData.SceneInfo(
             pc_color=[np.array(scene_points)],
             img_color=[scene_colors_arr],
@@ -247,9 +253,9 @@ def generate_pointcloud_multiple_obj(
         scene_colors_arr = scene_colors_arr[:, ::-1]
 
     object_infos: dict[str, SceneData.ObjectInfo] = {}
-    for i, (object_points, object_colors) in enumerate(zip(
-        objects_points, objects_colors, strict=False
-    )):
+    for i, (object_points, object_colors) in enumerate(
+        zip(objects_points, objects_colors, strict=False)
+    ):
         if not object_points:
             logging.warning(
                 "The selected mask contains no points from the point cloud. Nothing to save."
@@ -368,7 +374,9 @@ def generate_pointcloud_multiple_obj_with_name(
     # Final construct
     return SceneData(
         object_infos={
-            named_mask.name: SceneData.ObjectInfo(points=object_points, colors=object_colors)
+            named_mask.name: SceneData.ObjectInfo(
+                points=object_points, colors=object_colors
+            )
             for object_points, object_colors, named_mask in zip(
                 objects_points, objects_colors, named_masks, strict=False
             )
@@ -411,7 +419,9 @@ def generate_pointcloud_multiple_obj_with_name_dict(
     valid_depth_mask = points_post_filter[:, 2] < max_depth
     points_post_filter = points_post_filter[valid_depth_mask]
     if not points_post_filter.size:
-        raise ValueError(f"No points remaining after filtering with max_depth={max_depth}")
+        raise ValueError(
+            f"No points remaining after filtering with max_depth={max_depth}"
+        )
 
     # Since the depth map is already in the color camera's frame, no transformation is needed.
     # We just need to map points to pixels to get their color and check the mask.
@@ -476,6 +486,7 @@ def generate_pointcloud_multiple_obj_with_name_dict(
             img_color=[scene_colors],
         ),
     )
+
 
 def save_zed_point_cloud(
     scale,
@@ -562,6 +573,7 @@ def save_zed_point_cloud(
         scene_colors,
     )
 
+
 def save_json_object_and_scene(
     object_points,
     object_colors,
@@ -595,6 +607,7 @@ def save_json_object_and_scene(
     with open(json_filepath, "w") as f:
         json.dump(scene_data, f, indent=4)
     logging.info(f"Scene saved to {json_filepath}")
+
 
 class PointCloudGenerator:
     def __init__(self, args):
@@ -772,14 +785,22 @@ class PointCloudGenerator:
                     if self.mouse_handler.temp_box is not None:
                         visualization.draw_box(
                             display_frame,
-                            (self.mouse_handler.temp_box.x_min, self.mouse_handler.temp_box.y_min),
-                            (self.mouse_handler.temp_box.x_max, self.mouse_handler.temp_box.y_max),
+                            (
+                                self.mouse_handler.temp_box.x_min,
+                                self.mouse_handler.temp_box.y_min,
+                            ),
+                            (
+                                self.mouse_handler.temp_box.x_max,
+                                self.mouse_handler.temp_box.y_max,
+                            ),
                         )
 
                     if len(self.mouse_handler.boxes) == 1:
                         box = self.mouse_handler.boxes[0]
                         visualization.draw_box(
-                            display_frame, (box.x_min, box.y_min), (box.x_max, box.y_max)
+                            display_frame,
+                            (box.x_min, box.y_min),
+                            (box.x_max, box.y_max),
                         )
 
                         color_np_rgb = cv2.cvtColor(color_np, cv2.COLOR_BGR2RGB)

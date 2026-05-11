@@ -26,7 +26,9 @@ def save_json(dir: str, prefix: str, data) -> True:  # save json data for test
 
 
 def create_obstacle_info(
-    scene_data: SceneData,  ob: ObstacleBound, extra_obstacles: dict[str, ObstacleBound] | None = None,
+    scene_data: SceneData,
+    ob: ObstacleBound,
+    extra_obstacles: dict[str, ObstacleBound] | None = None,
 ) -> SceneData:
     # Copy from .json
     if extra_obstacles is None:
@@ -48,8 +50,9 @@ def create_obstacle_info(
         mod_width = np.array([width[0] * 1.6, width[1] * 1.6, width[2] * 1.9])
         pc_max = middle_point + mod_width
         pc_min = middle_point - mod_width
-        new_scene_data.obstacle_infos[object_name] = ObstacleBound(max=pc_max.tolist(), min=pc_min.tolist())
-
+        new_scene_data.obstacle_infos[object_name] = ObstacleBound(
+            max=pc_max.tolist(), min=pc_min.tolist()
+        )
 
     return new_scene_data
 

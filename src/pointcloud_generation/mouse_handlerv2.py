@@ -1,6 +1,7 @@
 import cv2
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
 class BoundingBox:
     x_min: int
@@ -14,12 +15,17 @@ class MouseHandler:
         self.boxes: list[BoundingBox] = []
         self._current_start: tuple | None = None
         self._current_end: tuple | None = None
-    
+
     @property
     def temp_box(self) -> BoundingBox | None:
         if self._current_start is None or self._current_end is None:
             return None
-        return self._create_box(self._current_start[0], self._current_start[1], self._current_end[0], self._current_end[1])
+        return self._create_box(
+            self._current_start[0],
+            self._current_start[1],
+            self._current_end[0],
+            self._current_end[1],
+        )
 
     def handle_event(self, event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
@@ -31,7 +37,9 @@ class MouseHandler:
         elif event == cv2.EVENT_LBUTTONUP:
             if self._current_start is None:
                 raise RuntimeError("LBUTTONUP received without a preceding LBUTTONDOWN")
-            new_box = self._create_box(self._current_start[0], self._current_start[1], x, y)
+            new_box = self._create_box(
+                self._current_start[0], self._current_start[1], x, y
+            )
             if new_box is not None:
                 self.boxes.append(new_box)
             self._current_start = None

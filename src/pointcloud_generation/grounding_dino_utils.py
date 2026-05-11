@@ -53,7 +53,12 @@ class GroundindDinoPredictor:
             coords = xyxy_boxes[i].numpy().astype(int).tolist()
             results.append(
                 DetectedBoxInfo(
-                    box=BoundingBox(x_min=coords[0], y_min=coords[1], x_max=coords[2], y_max=coords[3]),
+                    box=BoundingBox(
+                        x_min=coords[0],
+                        y_min=coords[1],
+                        x_max=coords[2],
+                        y_max=coords[3],
+                    ),
                     phrase=phrases[i],
                     logits=logits[i].item(),
                 )

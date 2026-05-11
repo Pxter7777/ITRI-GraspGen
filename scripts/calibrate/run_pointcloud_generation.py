@@ -13,6 +13,7 @@ handler.setFormatter(CustomFormatter())
 logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
 logger = logging.getLogger(__name__)
 
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
     parser.add_argument(
@@ -69,6 +70,7 @@ def parse_args():
     )
     return parser.parse_args()
 
+
 def main():
     args = parse_args()
     pc_generator = PointCloudGenerator(args)
@@ -81,6 +83,7 @@ def main():
         json.dump(scene_data.to_dict(), f, indent=4)
     logger.info(f"Scene saved to {json_filepath}")
     pc_generator.close()
+
 
 if __name__ == "__main__":
     main()
