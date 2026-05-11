@@ -4,6 +4,7 @@ import json
 import logging
 import time
 from pathlib import Path
+from typing import Self
 
 from common_utils.actions_format_checker import ObstacleBound, TaskConfig
 from common_utils.common_utils import create_obstacle_info, load_extra_obstacles
@@ -63,11 +64,11 @@ class BaseWorkflowController:
             " command, through CLI input or socket"
         )
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         """Allows the use of 'with GraspGenController(args) as controller:'."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
         """Clean up resources when the context manager exits."""
         if exc_type:
             logger.error(f"Exiting due to error: {exc_val}")

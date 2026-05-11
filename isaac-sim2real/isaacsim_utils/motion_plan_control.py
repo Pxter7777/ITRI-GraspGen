@@ -7,7 +7,7 @@ import sys
 import time
 from dataclasses import asdict
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Self
 
 import numpy as np
 from curobo.geom.sdf.world import CollisionCheckerType
@@ -304,11 +304,11 @@ class MotionPlanController:
                         self.task_queue.append((dir_name, json_path.stem))
             logger.info(f"Automate mode: {len(self.task_queue)} tasks queued")
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         """Enter the context manager."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
         """Exit the context manager and clean up resources."""
         if exc_type:
             logger.error(f"Exiting due to error: {exc_val}")

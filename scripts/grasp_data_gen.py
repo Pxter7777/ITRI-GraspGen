@@ -4,6 +4,7 @@ import argparse
 import json
 import logging
 from pathlib import Path
+from typing import Self
 
 import numpy as np
 import torch
@@ -213,11 +214,11 @@ class ExperimentWorkflowController:
         self.gripper_collision_mesh = gripper_info.collision_mesh
         logger.info("======Successfully initialized======")
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         """Allows the use of 'with GraspGenController(args) as controller:'."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
         """Automatically called when the 'with' block ends.
 
         Even if an exception occurs, this method runs.
