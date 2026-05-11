@@ -148,6 +148,7 @@ reportUnknownVariableType = false
 reportUnknownArgumentType = false
 reportUnknownParameterType = false
 reportUnknownLambdaType = false
+reportMissingTypeStubs = false
 venvPath = "."
 venv = ".venv"
 typeCheckingMode = "strict"
