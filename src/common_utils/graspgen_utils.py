@@ -12,6 +12,7 @@ import tkinter as tk
 import webbrowser
 from threading import Thread
 
+import meshcat
 import numpy as np
 from grasp_gen.grasp_server import GraspGenSampler, load_grasp_cfg
 from grasp_gen.robot import get_gripper_info
@@ -107,26 +108,34 @@ class GraspGenerator:
         self.num_grasps = num_grasps
         self.topk_num_grasps = topk_num_grasps
 
-    def auto_select_valid_cup_grasp(self, pointcloud: np.array) -> np.array:
+    def auto_select_valid_cup_grasp(
+        self, pointcloud: np.ndarray, qualifier: str = "cup"
+    ) -> np.ndarray | None:
         """Repeatedly sample grasps until a qualified one is found."""
-        mass_center = np.mean(pointcloud, axis=0)
-        std = np.std(pointcloud, axis=0)
+        min_point = np.percentile(pointcloud, 3, axis=0)
+        max_point = np.percentile(pointcloud, 97, axis=0)
         try:
             num_try = 0
             while True:
                 num_try += 1
                 logging.info(f"try #{num_try}")
-                grasps, _grasp_conf = GraspGenSampler.run_inference(
-                    pointcloud,
-                    self.grasp_sampler,
-                    grasp_threshold=self.grasp_threshold,
-                    num_grasps=self.num_grasps,
-                    topk_num_grasps=self.topk_num_grasps,
+                grasps, _grasp_conf = (  # type: ignore[reportAssignmentType]
+                    GraspGenSampler.run_inference(
+                        pointcloud,
+                        self.grasp_sampler,
+                        grasp_threshold=self.grasp_threshold,
+                        num_grasps=self.num_grasps,
+                        topk_num_grasps=self.topk_num_grasps,
+                    )
                 )
                 grasps = grasps.cpu().numpy()
                 grasps[:, 3, 3] = 1
                 qualified_grasps = np.array(
-                    [grasp for grasp in grasps if is_qualified(grasp, mass_center, std)]
+                    [
+                        grasp
+                        for grasp in grasps
+                        if is_qualified(grasp, qualifier, min_point, max_point)
+                    ]
                 )
                 if len(qualified_grasps) > 0:
                     return qualified_grasps[0]
@@ -135,7 +144,7 @@ class GraspGenerator:
             return None
 
 
-def start_meshcat_server() -> subprocess.Popen:
+def start_meshcat_server() -> subprocess.Popen[bytes]:
     """Starts the meshcat-server and registers a cleanup function."""
     print("Starting meshcat-server...")
     meshcat_server_process = subprocess.Popen(
@@ -143,7 +152,7 @@ def start_meshcat_server() -> subprocess.Popen:
     )
 
     @atexit.register
-    def cleanup_meshcat_server() -> None:
+    def cleanup_meshcat_server() -> None:  # type: ignore[reportUnusedFunction]
         if meshcat_server_process.poll() is None:
             print("Terminating meshcat-server...")
             os.killpg(os.getpgid(meshcat_server_process.pid), signal.SIGTERM)
@@ -173,7 +182,7 @@ def open_meshcat_url(url: str) -> None:
 
 
 def get_left_up_and_front(
-    grasp: np.array,
+    grasp: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Extract left, up, and front direction vectors from a 4x4 grasp matrix."""
     left = grasp[:3, 0]
@@ -193,12 +202,18 @@ class ControlPanel:
         gripper_name: Name of the gripper model for visualization.
     """
 
+    all_grasps: np.ndarray
+    custom_filter_mask: np.ndarray
+    collision_free_mask: np.ndarray
+    current_grasp_pool: np.ndarray
+    current_index: int
+
     def __init__(
         self,
         root: tk.Tk,
-        vis: object,
-        grasp_queue: queue.Queue,
-        grasps_to_handle_queue: queue.Queue,
+        vis: meshcat.Visualizer,
+        grasp_queue: queue.Queue[np.ndarray | None],
+        grasps_to_handle_queue: queue.Queue[tuple[np.ndarray, np.ndarray, np.ndarray]],
         gripper_name: str,
     ) -> None:
         self.root = root
@@ -213,19 +228,23 @@ class ControlPanel:
 
         # select_button
         select_button = tk.Button(
-            self.root, text="Select Grasp", command=self._return_grasp_and_destroy
+            self.root,
+            text="Select Grasp",
+            command=self._return_grasp_and_destroy,
         )
         select_button.pack(padx=20, pady=5)
         # retry button
         retry_button = tk.Button(
-            self.root, text="Retry", command=self._return_none_and_retry
+            self.root,
+            text="Retry",
+            command=self._return_none_and_retry,
         )
         retry_button.pack(padx=20, pady=5)
 
         self.apply_custom_filter_checkbox = tk.Checkbutton(
             self.root,
             text="Apply Custom Filter",
-            var=self.apply_custom_filter_var,
+            variable=self.apply_custom_filter_var,
             command=self.toggle_grasp_display,
         )
         self.apply_custom_filter_checkbox.pack(pady=5)
@@ -233,7 +252,7 @@ class ControlPanel:
         self.apply_collision_filter_checkbox = tk.Checkbutton(
             self.root,
             text="Apply Collision Filter",
-            var=self.apply_collision_filter_var,
+            variable=self.apply_collision_filter_var,
             command=self.toggle_grasp_display,
         )
         self.apply_collision_filter_checkbox.pack(pady=5)
@@ -269,7 +288,7 @@ class ControlPanel:
 
     def toggle_grasp_display(self) -> None:
         """Recompute the visible grasp pool based on active filter checkboxes."""
-        grasps_mask = np.array([True for grasp in self.all_grasps])
+        grasps_mask = np.array([True for _grasp in self.all_grasps])
         if self.apply_custom_filter_var.get():
             grasps_mask = grasps_mask & self.custom_filter_mask
         if self.apply_collision_filter_var.get():
@@ -352,25 +371,19 @@ class ControlPanel:
 
 
 def create_control_panel(
-    vis: object,
-    grasp_sampler: GraspGenSampler,
+    vis: meshcat.Visualizer,
+    grasp_queue: queue.Queue[np.ndarray | None],
+    grasps_to_handle_queue: queue.Queue[tuple[np.ndarray, np.ndarray, np.ndarray]],
     gripper_name: str,
-    grasp_threshold: float,
-    num_grasps: int,
-    topk_num_grasps: int,
-    grasp_queue: queue.Queue,
 ) -> None:
     """Creates and runs the tkinter control panel."""
     root = tk.Tk()
     panel = ControlPanel(
         root,
         vis,
-        grasp_sampler,
-        gripper_name,
-        grasp_threshold,
-        num_grasps,
-        topk_num_grasps,
         grasp_queue,
+        grasps_to_handle_queue,
+        gripper_name,
     )
     panel.run()
 
@@ -390,6 +403,11 @@ def angle_offset_rad(grasp: np.ndarray) -> float:
 class GraspGeneratorUI:
     """GraspGen inference with optional meshcat visualization and tkinter GUI.
 
+    Attributes:
+        scene_data (SceneData): Scene data for the current grasp generation.
+        move (MoveItem): The current move item to generate grasps for.
+        vis (meshcat.Visualizer): The meshcat visualizer instance.
+
     Args:
         gripper_config: Path to the gripper YAML config.
         grasp_threshold: Minimum confidence score for generated grasps.
@@ -397,6 +415,10 @@ class GraspGeneratorUI:
         topk_num_grasps: Number of top-scoring grasps to keep.
         need_GUI: Whether to launch the meshcat server and tkinter panel.
     """
+
+    scene_data: SceneData
+    move: MoveItem
+    vis: meshcat.Visualizer
 
     def __init__(
         self,
@@ -413,18 +435,23 @@ class GraspGeneratorUI:
         self.num_grasps: int = num_grasps
         self.topk_num_grasps: int = topk_num_grasps
         self.need_GUI: bool = need_GUI
-        self.scene_data: SceneData
         ## Main init starts here
         if self.need_GUI:
             start_meshcat_server()
             open_meshcat_url("http://127.0.0.1:7000/static/")
             self.vis = create_visualizer()
 
-    def _generate_grasps(self) -> tuple[np.array, np.array]:
+    def _generate_grasps(
+        self,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Run one batch of grasp inference and return masks for filtering."""
         obj_name = self.move.target_name
+        if obj_name is None:
+            raise ValueError("target_name must not be None")
         obj_pc = self.scene_data.object_infos[obj_name].points
         qualifier_name = self.move.qualifier
+        if qualifier_name is None:
+            raise ValueError("qualifier must not be None")
         # mass_center = np.mean(obj_pc, axis=0)
         # std = np.std(obj_pc, axis=0)
         grasps, _grasp_conf = GraspGenSampler.run_inference(
@@ -447,7 +474,7 @@ class GraspGeneratorUI:
                 for grasp in grasps
             ]
         )
-        collision_free_mask = np.array([True for grasp in grasps])
+        collision_free_mask = np.array([True for _grasp in grasps])
 
         gripper_info = get_gripper_info(self.gripper_name)
         gripper_collision_mesh = gripper_info.collision_mesh
@@ -491,15 +518,14 @@ class GraspGeneratorUI:
         )
         return grasps, custom_filter_mask, collision_free_mask
 
-    def _generate_grasp_silent(self) -> np.array:
+    def _generate_grasp_silent(self) -> list[np.ndarray]:
         """Return qualified grasps without GUI interaction.
 
         Returns:
             A list of shape(4, 4) np.ndarray grasp matrices.
         """
-        # GRASPS_BATCH_SIZE = 4 # stop using this method, just send all to curobo to try
         num_try = 0
-        qualified_grasps = []
+        qualified_grasps: list[np.ndarray] = []
         while True:
             num_try += 1
             logger.info(f"try #{num_try}")
@@ -513,7 +539,7 @@ class GraspGeneratorUI:
                 qualified_grasps = sorted(qualified_grasps, key=angle_offset_rad)
                 return qualified_grasps
 
-    def generate_grasp(self, scene_data: dict, move: MoveItem) -> list[np.ndarray]:
+    def generate_grasp(self, scene_data: SceneData, move: MoveItem) -> list[np.ndarray]:
         """Generate grasps for the given scene and move, with or without GUI.
 
         Returns:
@@ -536,8 +562,10 @@ class GraspGeneratorUI:
             A single-element list containing the selected 4x4 grasp matrix.
         """
         self._visualize_scene()
-        grasp_q = queue.Queue()
-        grasps_to_handle_queue = queue.Queue()
+        grasp_q: queue.Queue[np.ndarray | None] = queue.Queue()
+        grasps_to_handle_queue: queue.Queue[
+            tuple[np.ndarray, np.ndarray, np.ndarray]
+        ] = queue.Queue()
         gui_thread = Thread(
             target=self._create_control_panel,
             args=(grasp_q, grasps_to_handle_queue),
@@ -562,8 +590,8 @@ class GraspGeneratorUI:
 
     def _create_control_panel(
         self,
-        grasp_queue: queue.Queue,
-        grasps_to_handle_queue: queue.Queue,
+        grasp_queue: queue.Queue[np.ndarray | None],
+        grasps_to_handle_queue: queue.Queue[tuple[np.ndarray, np.ndarray, np.ndarray]],
     ) -> None:
         """Creates and runs the tkinter control panel."""
         root = tk.Tk()
@@ -578,23 +606,20 @@ class GraspGeneratorUI:
 
     def _visualize_scene(self) -> None:
         """Loads scene data, processes point clouds, and visualizes them."""
-        # self.vis.delete()
-        scene_info = self.scene_data["scene_info"]
-        xyz_scene = np.array(scene_info["pc_color"])[0]
-        xyz_scene_color = np.array(scene_info["img_color"]).reshape(1, -1, 3)[0, :, :]
+        xyz_scene = np.array(self.scene_data.scene_info.pc_color)[0]
+        xyz_scene_color = np.array(self.scene_data.scene_info.img_color).reshape(
+            1, -1, 3
+        )[0, :, :]
 
-        for obj_name in self.scene_data["object_infos"]:
-            xyz_scene = np.vstack(
-                (xyz_scene, self.scene_data["object_infos"][obj_name]["points"])
-            )
-            xyz_scene_color = np.vstack(
-                (xyz_scene_color, self.scene_data["object_infos"][obj_name]["colors"])
-            )
+        for obj_info in self.scene_data.object_infos.values():
+            xyz_scene = np.vstack((xyz_scene, obj_info.points))
+            xyz_scene_color = np.vstack((xyz_scene_color, obj_info.colors))
 
         VIZ_BOUNDS = [[-1.5, -1.25, -0.15], [1.5, 1.25, 2.0]]  # noqa: N806
         mask_within_bounds = np.all((xyz_scene > VIZ_BOUNDS[0]), 1)
         mask_within_bounds = np.logical_and(
-            mask_within_bounds, np.all((xyz_scene < VIZ_BOUNDS[1]), 1)
+            mask_within_bounds,
+            np.all((xyz_scene < VIZ_BOUNDS[1]), 1),
         )
         xyz_scene = xyz_scene[mask_within_bounds]
         xyz_scene_color = xyz_scene_color[mask_within_bounds]
@@ -604,6 +629,11 @@ class GraspGeneratorUI:
         )
 
     def _visualize_target(self) -> None:
-        obj_pc = self.scene_data["object_infos"][self.move.target_name]["points"]
-        obj_pc_color = self.scene_data["object_infos"][self.move.target_name]["colors"]
-        visualize_pointcloud(self.vis, "pc_obj", obj_pc, obj_pc_color, size=0.005)
+        """Visualize the target object point cloud."""
+        target_name = self.move.target_name
+        if target_name is None:
+            raise ValueError("target_name must not be None")
+        target = self.scene_data.object_infos[target_name]
+        visualize_pointcloud(
+            self.vis, "pc_obj", target.points, target.colors, size=0.005
+        )

@@ -5,6 +5,7 @@ import logging
 import select
 import socket
 import struct
+from collections.abc import Mapping, Sequence
 
 # Some example joint configurations to send
 
@@ -48,10 +49,11 @@ class NonBlockingJSONSender:
         self.socket = None
         self._connect_on_init()  # Attempt connection during initialization
 
-    def _connect_on_init(self) -> bool | None:
+    def _connect_on_init(self) -> bool:
         """Establish a TCP connection to the receiver.
 
-        Returns True on success, False otherwise.
+        Returns:
+            bool: True on success, False otherwise.
         """
         if self.socket:
             self.disconnect()
@@ -83,7 +85,7 @@ class NonBlockingJSONSender:
         self.disconnect()
         return self._connect_on_init()
 
-    def send_data(self, data: dict | list) -> bool:
+    def send_data(self, data: Mapping[str, object] | Sequence[object]) -> bool:
         """Send a JSON payload, reconnecting automatically on failure.
 
         Returns True on successful send, False otherwise.
@@ -92,6 +94,9 @@ class NonBlockingJSONSender:
             logger.info("Connection not established. Attempting to reconnect.")
             if not self.reconnect():
                 return False
+
+        if self.socket is None:
+            raise RuntimeError("Socket is None after successful reconnect")
 
         # Check if the socket is still alive before sending
         try:
@@ -118,14 +123,6 @@ class NonBlockingJSONSender:
             else:
                 return False
 
-        except Exception as e:
-            logger.exception(f"An error occurred while checking socket status: {e}")
-            return False
-
-        if not (isinstance(data, dict) or isinstance(data, list)):
-            logger.error("data is not a dict or a list")
-            return False
-
         message_bytes = json.dumps(data).encode("utf-8")
         header = struct.pack(">I", len(message_bytes))
 
@@ -138,9 +135,6 @@ class NonBlockingJSONSender:
             logger.warning("Connection lost while sending. Attempting to reconnect.")
             if self.reconnect():  # Try to reconnect
                 return self.send_data(data)  # Retry sending
-            return False
-        except Exception as e:
-            logger.exception(f"An error occurred while sending: {e}")
             return False
 
 
@@ -159,10 +153,11 @@ class NonBlockingJSONReceiver:
         self.msg_len = None
         self._connect_on_init()  # Attempt connection during initialization
 
-    def _connect_on_init(self) -> bool | None:
+    def _connect_on_init(self) -> bool:
         """Bind and listen on the configured port in non-blocking mode.
 
-        Returns True on success, False otherwise.
+        Returns:
+            bool: True on success, False otherwise.
         """
         if self.socket:
             self.disconnect()
@@ -196,15 +191,22 @@ class NonBlockingJSONReceiver:
             self.conn = None
         logger.info("receiver disconnected")
 
-    def capture_data(self) -> dict | list | None:
+    def capture_data(
+        self,
+    ) -> dict[str, object] | list[object] | None:
         """Poll for a complete JSON message, returning None if unavailable."""
-        try:
-            if self.conn is None:
+        if self.conn is None:
+            if self.socket is None:
+                raise RuntimeError("Socket is None, cannot accept connections")
+            try:
                 self.conn, addr = self.socket.accept()
                 self.conn.setblocking(False)
                 self.buffer = b""
                 self.msg_len = None
                 logger.info(f"Accepted connection from {addr}")
+            except BlockingIOError:
+                return None  # No incoming connection yet
+        try:
             while True:
                 data = self.conn.recv(4096)
                 if not data:
@@ -215,12 +217,6 @@ class NonBlockingJSONReceiver:
                 self.buffer += data
         except BlockingIOError:
             pass  # No data available
-        except Exception as e:
-            logger.exception(f"Socket server error on recv: {e}")
-            if self.conn:
-                self.conn.close()
-            self.conn = None
-            return None
 
         # Process buffer for a complete message
         if self.msg_len is None:
@@ -260,10 +256,11 @@ class BlockingJSONReceiver:
         self.conn = None
         self._connect_on_init()  # Attempt connection during initialization
 
-    def _connect_on_init(self) -> bool | None:
+    def _connect_on_init(self) -> bool:
         """Bind and listen on the configured port in blocking mode.
 
-        Returns True on success, False otherwise.
+        Returns:
+            bool: True on success, False otherwise.
         """
         if self.socket:
             self.disconnect()
@@ -298,6 +295,8 @@ class BlockingJSONReceiver:
 
     def _read_blocking(self, n: int) -> bytes | None:
         """Read exactly n bytes from the blocking socket."""
+        if self.conn is None:
+            raise RuntimeError("Connection is None, cannot read")
         data = b""
         while len(data) < n:
             packet = self.conn.recv(n - len(data))
@@ -306,13 +305,17 @@ class BlockingJSONReceiver:
             data += packet
         return data
 
-    def capture_data(self) -> dict | list | None:
+    def capture_data(
+        self,
+    ) -> dict[str, object] | list[object] | None:
         """Block until a complete JSON message is received."""
-        try:
-            if self.conn is None:
-                self.conn, addr = self.socket.accept()
-                logger.info(f"Accepted connection from {addr}")
+        if self.conn is None:
+            if self.socket is None:
+                raise RuntimeError("Socket is None, cannot accept connections")
+            self.conn, addr = self.socket.accept()
+            logger.info(f"Accepted connection from {addr}")
 
+        try:
             header_data = self._read_blocking(4)
             if not header_data:
                 logger.warning("Sender disconnected. Re-accepting... ")
@@ -332,12 +335,6 @@ class BlockingJSONReceiver:
             return json.loads(message_bytes.decode("utf-8"))
         except (json.JSONDecodeError, struct.error) as e:
             logger.exception(f"Data format error: {e}")
-            if self.conn:
-                self.conn.close()
-            self.conn = None
-            return None
-        except Exception as e:
-            logger.exception(f"Socket server error: {e}")
             if self.conn:
                 self.conn.close()
             self.conn = None

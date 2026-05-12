@@ -49,7 +49,7 @@ def test_mousemove_updates_current_end_while_drawing(handler: MouseHandler):
     handler.handle_event(cv2.EVENT_LBUTTONDOWN, 0, 0, 0, None)
     handler.handle_event(cv2.EVENT_MOUSEMOVE, 25, 25, 0, None)
     handler.handle_event(cv2.EVENT_MOUSEMOVE, 50, 50, 0, None)
-    assert handler._current_end == (50, 50)
+    assert handler._current_end == (50, 50)  # type: ignore[reportPrivateUsage]
     handler.handle_event(cv2.EVENT_LBUTTONUP, 50, 50, 0, None)
     assert handler.boxes == [BoundingBox(0, 0, 50, 50)]
 
@@ -59,14 +59,14 @@ def test_reset_clears_all_state(handler: MouseHandler):
     draw_box(handler, 0, 0, 50, 50)
     handler.reset()
     assert handler.boxes == []
-    assert handler._current_start is None
-    assert handler._current_end is None
+    assert handler._current_start is None  # type: ignore[reportPrivateUsage]
+    assert handler._current_end is None  # type: ignore[reportPrivateUsage]
 
 
 def test_mousemove_ignored_when_not_drawing(handler: MouseHandler):
     """Ignore mouse-move events when no drag is in progress."""
     handler.handle_event(cv2.EVENT_MOUSEMOVE, 99, 99, 0, None)
-    assert handler._current_end is None
+    assert handler._current_end is None  # type: ignore[reportPrivateUsage]
 
 
 def test_lbuttonup_without_lbuttondown_raises(handler: MouseHandler):

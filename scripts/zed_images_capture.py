@@ -2,7 +2,6 @@
 
 import json
 import logging
-import os
 from pathlib import Path
 
 import cv2
@@ -31,9 +30,15 @@ def main():
             _zed_status, left_image, right_image = zed.capture_images()
             # mkdir and save the two images
             save_dir = PROJECT_ROOT_DIR / "data/zed_images/" / text
-            os.makedirs(str(save_dir), exist_ok=True)
-            cv2.imwrite(str(save_dir / "left.png"), left_image.get_data())
-            cv2.imwrite(str(save_dir / "right.png"), right_image.get_data())
+            save_dir.mkdir(parents=True, exist_ok=True)
+            cv2.imwrite(
+                str(save_dir / "left.png"),
+                left_image,
+            )
+            cv2.imwrite(
+                str(save_dir / "right.png"),
+                right_image,
+            )
 
             # ZED INFO
             camera_data = {"K_left": zed.K_left.tolist(), "baseline": zed.baseline}

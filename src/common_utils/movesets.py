@@ -62,8 +62,11 @@ class SingleRobotMove:
 
 
 def grab_and_pour_and_place_back_curobo_by_rotation(
-    target_name: str, grasp: np.ndarray, args: list, scene_data: SceneData
-) -> dict:
+    target_name: str,
+    grasp: np.ndarray,
+    args: list[object],
+    scene_data: SceneData,
+) -> dict[str, object]:
     """Generate a grab-pour-release move sequence using rotational pouring."""
     obstacles = scene_data.obstacle_infos
     moves: list[SingleRobotMove] = []
@@ -84,14 +87,12 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
     if isinstance(args[0], list):
         middle_point = np.array(args[0])
     elif isinstance(args[0], str):
-        obj_bounding_box = scene_data["obstacles"][args[0]]
-        middle_point = np.mean(
-            [
-                obj_bounding_box["max"],
-                obj_bounding_box["min"],
-            ],
-            axis=0,
+        obj_bounding_box = scene_data.obstacle_infos[args[0]]
+        middle_point = np.array(
+            np.mean([obj_bounding_box.max, obj_bounding_box.min], axis=0)
         )
+    else:
+        raise TypeError(f"Unexpected args[0] type: {type(args[0])}")
     ## Ready pour position
     grasp_angle = np.arctan2(grasp_position[1], grasp_position[0])
     target_angle = np.arctan2(middle_point[1], middle_point[0])
@@ -231,37 +232,43 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
         )
     )
 
-    full_act = {
+    full_act: dict[str, object] = {
         "moves": [asdict(move) for move in moves],
         "obstacles": {name: obs.model_dump() for name, obs in obstacles.items()},
     }
     return full_act
 
 
-def joints_rad_move_to_curobo(args: list, scene_data: SceneData) -> dict:
+def joints_rad_move_to_curobo(
+    args: list[object], scene_data: SceneData
+) -> dict[str, object]:
     """Generate a single joint-space move through cuRobo."""
     joints_goal = args[0]
     obstacles = scene_data.obstacle_infos
     moves: list[SingleRobotMove] = []
     moves.append(
         SingleRobotMove(
-            type="single_pose_joint_rad", single_pose_joint_rad_goal=joints_goal
+            type="single_pose_joint_rad",
+            single_pose_joint_rad_goal=joints_goal,  # type: ignore[reportArgumentType]
         )
     )
     moves.append(SingleRobotMove(type="gripper"))
-    full_act = {
+    full_act: dict[str, object] = {
         "moves": [asdict(move) for move in moves],
         "obstacles": {name: obs.model_dump() for name, obs in obstacles.items()},
     }
     return full_act
 
 
-def open_grip() -> dict:
+def open_grip() -> dict[str, object]:
     """Generate a gripper-open command."""
-    obstacles = []
-    moves = []
+    obstacles: list[object] = []
+    moves: list[SingleRobotMove] = []
     moves.append(SingleRobotMove(type="gripper", grip_type="open", wait_time=1.0))
-    full_act = {"moves": [asdict(move) for move in moves], "obstacles": obstacles}
+    full_act: dict[str, object] = {
+        "moves": [asdict(move) for move in moves],
+        "obstacles": obstacles,
+    }
     return full_act
 
 
@@ -276,11 +283,11 @@ action_dict = {
 
 def act_with_name(
     action: str,
-    args: list | None = None,
+    args: list[object] | None = None,
     grasps: list[np.ndarray] | None = None,
-    scene_data: dict | None = None,
+    scene_data: SceneData | None = None,
     target_name: str | None = None,
-) -> list[dict]:
+) -> list[dict[str, object]]:
     """Dispatch a named action to the appropriate move generator."""
     if action == "grab_and_pour_and_place_back_curobo":
         if grasps is None:
@@ -303,7 +310,10 @@ def act_with_name(
             )
         return [
             grab_and_pour_and_place_back_curobo_by_rotation(
-                target_name, grasp, args, scene_data
+                target_name,
+                grasp,
+                args,
+                scene_data,
             )
             for grasp in grasps
         ]
@@ -314,7 +324,12 @@ def act_with_name(
             raise ValueError(
                 "joints_rad_move_to_curobo doesn't allow scene_data to be None"
             )
-        return [joints_rad_move_to_curobo(args, scene_data)]
+        return [
+            joints_rad_move_to_curobo(
+                args,
+                scene_data,
+            )
+        ]
     elif action == "open_grip":
         return [open_grip()]
     else:

@@ -33,11 +33,11 @@ class YOLOv5Detector:
         conf: float = 0.6,
     ) -> None:
         print("🔹 Loading model, please wait...")
-        self.device = torch.device(device if torch.cuda.is_available() else "cpu")
+        self.device = torch.device(device if torch.cuda.is_available() else "cpu")  # type: ignore[reportPrivateImportUsage]
         self.model = torch.hub.load("ultralytics/yolov5", "custom", path=model_path)
-        self.model.to(self.device)
-        self.model.eval()
-        self.model.conf = conf  # confidence threshold setting
+        self.model.to(self.device)  # type: ignore[reportAttributeAccessIssue]
+        self.model.eval()  # type: ignore[reportAttributeAccessIssue]
+        self.model.conf = conf  # type: ignore[reportAttributeAccessIssue]
         print("✅ Model loaded successfully!")
 
     def infer(self, image: np.ndarray | str) -> pd.DataFrame:
@@ -47,7 +47,7 @@ class YOLOv5Detector:
         """
         if isinstance(image, str):
             image = cv2.imread(image)
-        results = self.model(image)
+        results = self.model(image)  # type: ignore[reportCallIssue]
         df = results.pandas().xyxy[0]
         # 只取 class == 41 的資料
         df = df[df["class"] == 41]
@@ -57,7 +57,7 @@ class YOLOv5Detector:
         """Run inference and display results in an OpenCV window."""
         if isinstance(image, str):
             image = cv2.imread(image)
-        results = self.model(image)
+        results = self.model(image)  # type: ignore[reportCallIssue]
         df = results.pandas().xyxy[0]
 
         # 只取 class == 41 的資料

@@ -80,6 +80,10 @@ def main() -> None:
     args = parse_args()
     pc_generator = PointCloudGenerator(args)
     scene_data = pc_generator.interactive_gui_mode()
+    if scene_data is None:
+        logger.warning("No scene data generated.")
+        pc_generator.close()
+        return
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     json_filename = f"scene_{timestamp}.json"
     json_filepath = Path("./data/calibrate/output_pointcloud/") / json_filename

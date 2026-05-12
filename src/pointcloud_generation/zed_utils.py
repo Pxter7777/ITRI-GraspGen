@@ -12,9 +12,11 @@ import zmq
 try:
     from common_utils import network_config
 
-    STREAM_TO_ZED_PORT = network_config.STREAM_TO_ZED_PORT
+    _stream_port = network_config.STREAM_TO_ZED_PORT
 except ModuleNotFoundError:
-    STREAM_TO_ZED_PORT = 9091
+    _stream_port = 9091
+
+STREAM_TO_ZED_PORT: int = _stream_port
 logger = logging.getLogger(__name__)
 
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[2]
@@ -23,14 +25,20 @@ PROJECT_ROOT_DIR = Path(__file__).resolve().parents[2]
 class ZedCamera:
     """A class to interface with a ZED camera."""
 
+    baseline: float
+    camera: sl.Camera
+    ext_ir1_to_color: np.ndarray
+    K_left: np.ndarray
+    W: int
+    H: int
+    left_image: sl.Mat
+    right_image: sl.Mat
+    png_dir: Path | None
+    from_stream: bool
+    sub: zmq.Socket[bytes]
+
     def __init__(self, use_png: str = "", from_stream: bool = False) -> None:
         """Initializes the ZedCamera object."""
-        self.baseline: float
-        self.camera: sl.Camera
-        self.ext_ir1_to_color: np.ndarray
-        self.K_left: np.ndarray
-        self.W: int
-        self.H: int
         self.left_image = sl.Mat()
         self.right_image = sl.Mat()
         self.png_dir = None
@@ -83,10 +91,10 @@ class ZedCamera:
             / 1000.0
         )
 
-        self.W = (
+        self.W = (  # type: ignore[reportConstantRedefinition]
             self.camera.get_camera_information().camera_configuration.resolution.width
         )
-        self.H = (
+        self.H = (  # type: ignore[reportConstantRedefinition]
             self.camera.get_camera_information().camera_configuration.resolution.height
         )
 
@@ -95,8 +103,8 @@ class ZedCamera:
     def initialize_zed_using_existing_png(self, use_png: str) -> None:
         """Initialize camera parameters from saved PNG images and calibration data."""
         self.png_dir = PROJECT_ROOT_DIR / "data" / "zed_images" / use_png
-        self.baseline = 0
-        self.K_left = 0
+        self.baseline = 0.0
+        self.K_left = np.zeros((3, 3))
         left_image_np = cv2.imread(str(self.png_dir / "left.png"))
         right_image_np = cv2.imread(str(self.png_dir / "right.png"))
         h, w = left_image_np.shape[:2]

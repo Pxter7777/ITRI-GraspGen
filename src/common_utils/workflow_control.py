@@ -109,7 +109,7 @@ class BaseWorkflowController:
         no_need_curobo: bool = False,
     ) -> None:
         while True:
-            full_acts: list[dict] = csv_act(
+            full_acts: list[dict[str, object]] = csv_act(
                 command, extra_obstacles, no_need_curobo=no_need_curobo
             )
             success = self._run_isaacsim(full_acts)
@@ -140,7 +140,7 @@ class BaseWorkflowController:
             for move in task.moves:
                 current_target = move.target_name
                 while True:
-                    full_acts: list[dict] = []
+                    full_acts: list[dict[str, object]] = []
                     if move.move_type in [  # Don't need GraspGen
                         "move_to_curobo",
                         "joints_rad_move_to_curobo",
@@ -178,14 +178,19 @@ class BaseWorkflowController:
             )
             raise e
 
-    def _run_isaacsim(self, full_acts: list[dict]) -> bool:
+    def _run_isaacsim(self, full_acts: list[dict[str, object]]) -> bool:
         response = self.receiver.capture_data()
-        if response is not None and response["message"] == "Abort":
-            raise InterruptedError("aborted by isaacsim, stop current action")
+        if response is not None:
+            if not isinstance(response, dict):
+                raise TypeError(f"Expected dict, got {type(response)}")
+            if response["message"] == "Abort":
+                raise InterruptedError("aborted by isaacsim, stop current action")
         self.sender.send_data(full_acts)
         # wait for isaacsim's good news
         while response is None:
             response = self.receiver.capture_data()
+        if not isinstance(response, dict):
+            raise TypeError(f"Expected dict, got {type(response)}")
         if response["message"] == "Success":
             logger.warning("Success")
             return True

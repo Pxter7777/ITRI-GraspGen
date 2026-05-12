@@ -4,7 +4,7 @@ import argparse
 import json
 import logging
 from pathlib import Path
-from typing import Self
+from typing import Any, Self
 
 import numpy as np
 import torch
@@ -25,11 +25,11 @@ from common_utils.qualification import get_left_up_and_front
 class NumpyEncoder(json.JSONEncoder):
     """JSON encoder that convert numpy arrays to lists."""
 
-    def default(self, obj: object) -> object:
+    def default(self, o: Any) -> Any:  # noqa: ANN401
         """Serialize numpy arrays as Python lists."""
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        return super().default(obj)
+        if isinstance(o, np.ndarray):
+            return o.tolist()
+        return super().default(o)
 
 
 # root logger setup
@@ -182,7 +182,7 @@ def angle_diff_rad(grasp: np.ndarray) -> float:
 
 def distance_meter(grasp: np.ndarray) -> float:
     """Return the Euclidean distance from the origin to the grasp position."""
-    return np.linalg.norm(grasp[:3, 3])
+    return float(np.linalg.norm(grasp[:3, 3]))
 
 
 def up_vector(grasp: np.ndarray) -> float:
@@ -259,7 +259,7 @@ class ExperimentWorkflowController:
                 if grasp_data_pack is None:
                     continue
                 output_dir = json_path.parent.parent / "grasp_data"
-                output_dir.mkdir(exist_ok=True)
+                output_dir.mkdir(parents=True, exist_ok=True)
                 output_file = output_dir / json_path.name
                 with open(output_file, "w") as f:
                     json.dump(
@@ -276,9 +276,13 @@ class ExperimentWorkflowController:
         mesh_file = Path(task.target.obj_dir) / "mesh.obj"
         logger.info(f"Loading mesh: {mesh_file}")
         obj = trimesh.load(str(mesh_file), force="mesh", process=False)
+        if not isinstance(obj, trimesh.Trimesh):
+            raise TypeError(f"Expected Trimesh, got {type(obj)}")
         obj.apply_scale(task.target.scale)
 
-        xyz, _ = trimesh.sample.sample_surface(obj, 2000)
+        xyz, _ = trimesh.sample.sample_surface(  # type: ignore[reportAssignmentType]
+            obj, 2000
+        )
         xyz = np.array(xyz, dtype=np.float32)
 
         # Center the point cloud (GraspGen expects centered input)
@@ -326,8 +330,12 @@ class ExperimentWorkflowController:
         for obstacle in task.obstacles:
             obs_mesh_file = Path(obstacle.obj_dir) / "mesh.obj"
             obs_obj = trimesh.load(str(obs_mesh_file), force="mesh", process=False)
+            if not isinstance(obs_obj, trimesh.Trimesh):
+                raise TypeError(f"Expected Trimesh, got {type(obs_obj)}")
             obs_obj.apply_scale(obstacle.scale)
-            obs_pts, _ = trimesh.sample.sample_surface(obs_obj, 500)
+            obs_pts, _ = trimesh.sample.sample_surface(  # type: ignore[reportAssignmentType]
+                obs_obj, 500
+            )
             obs_pts = np.array(obs_pts, dtype=np.float32)
             qx, qy, qz, qw = obstacle.pose_meter_quat[3:]
             T_obs_world = tra.quaternion_matrix([qw, qx, qy, qz])  # noqa: N806

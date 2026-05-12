@@ -100,6 +100,8 @@ def main() -> None:
     for obj in [task.target, *task.obstacles]:
         mesh_file = Path(obj.obj_dir) / "mesh.obj"
         obj_mesh = trimesh.load(str(mesh_file), force="mesh", process=False)
+        if not isinstance(obj_mesh, trimesh.Trimesh):
+            raise TypeError(f"Expected Trimesh, got {type(obj_mesh)}")
         obj_mesh.apply_scale(obj.scale)
         qx, qy, qz, qw = obj.pose_meter_quat[3:]
         T_world = tra.quaternion_matrix([qw, qx, qy, qz])  # noqa: N806

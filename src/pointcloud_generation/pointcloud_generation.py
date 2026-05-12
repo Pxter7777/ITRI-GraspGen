@@ -1,5 +1,6 @@
 """Point cloud generation from stereo images and segmentation masks."""
 
+import argparse
 import logging
 import sys
 
@@ -59,7 +60,7 @@ class PointCloudGenerator:
         mouse_handler (MouseHandler): Mouse input handler.
     """
 
-    def __init__(self, args: object) -> None:
+    def __init__(self, args: argparse.Namespace) -> None:
         # Init
         torch.autograd.set_grad_enabled(False)
         # Init configs
@@ -80,8 +81,8 @@ class PointCloudGenerator:
     def generate_pointcloud(
         self,
         target_names: list[str],
-        blockages: list | None = None,
-        valid_region: list | None = None,
+        blockages: list[list[int]] | None = None,
+        valid_region: list[int] | None = None,
     ) -> SceneData:
         """Generate a point cloud for the given target objects.
 
@@ -103,7 +104,7 @@ class PointCloudGenerator:
             _zed_status, left_image, right_image = self.zed.capture_images()
         except Exception as e:
             logger.exception(f"error{e}")
-            return RuntimeError
+            raise RuntimeError from e
 
         color_np = left_image[:, :, :3]  # Drop alpha channel
         color_np_org = color_np.copy()
@@ -206,7 +207,7 @@ class PointCloudGenerator:
         )
         return result_scene_data
 
-    def interactive_gui_mode(self) -> None:
+    def interactive_gui_mode(self) -> SceneData | None:
         """Run an interactive GUI for manual box selection."""
         # ---------- Window and Mouse Callback Setup ----------
         win_name = "RGB + Mask | Depth"

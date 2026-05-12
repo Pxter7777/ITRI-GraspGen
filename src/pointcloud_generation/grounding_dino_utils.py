@@ -41,8 +41,8 @@ class GroundindDinoPredictor:
 
     def __init__(self) -> None:
         self.model = load_model(
-            config.GROUNDINGDINO_CFG,
-            config.GROUNDINGDINO_CKPT,
+            str(config.GROUNDINGDINO_CFG),
+            str(config.GROUNDINGDINO_CKPT),
         )
 
     def predict_boxes(
@@ -97,4 +97,4 @@ class GroundindDinoPredictor:
 def main() -> None:
     """Run a quick smoke test of the predictor."""
     predictor = GroundindDinoPredictor()
-    predictor.predict_boxes("")
+    predictor.predict_boxes(np.zeros((100, 100, 3), dtype=np.uint8), "")

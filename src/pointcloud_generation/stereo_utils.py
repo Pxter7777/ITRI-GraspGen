@@ -1,5 +1,6 @@
 """Wrapper around FoundationStereo for stereo depth inference."""
 
+import argparse
 import logging
 from pathlib import Path
 
@@ -14,20 +15,20 @@ from omegaconf import OmegaConf
 class FoundationStereoModel:
     """A class to encapsulate the FoundationStereo model and its inference."""
 
-    def __init__(self, args: OmegaConf):
+    def __init__(self, args: OmegaConf | argparse.Namespace):
         """Initializes the FoundationStereoModel.
 
         Args:
             args: The configuration arguments.
         """
         logging.info("Loading FoundationStereo model...")
-        ckpt_dir = args.ckpt_dir
+        ckpt_dir = args.ckpt_dir  # type: ignore[reportAttributeAccessIssue]
         cfg = OmegaConf.load(Path(ckpt_dir).parent / "cfg.yaml")
         if "vit_size" not in cfg:
-            cfg["vit_size"] = "vitl"
+            cfg["vit_size"] = "vitl"  # type: ignore[reportArgumentType]
         for key in args.__dict__:
             if key not in cfg:  # prevent overriding config from command line
-                cfg[key] = args.__dict__[key]
+                cfg[key] = args.__dict__[key]  # type: ignore[reportArgumentType]
 
         self.args = OmegaConf.create(cfg)
         logging.info(f"args:\n{self.args}")
@@ -35,8 +36,8 @@ class FoundationStereoModel:
         self.model = FoundationStereo(self.args)
         ckpt = torch.load(ckpt_dir, weights_only=False)
         logging.info(f"ckpt global_step:{ckpt['global_step']}, epoch:{ckpt['epoch']}")
-        self.model.load_state_dict(ckpt["model"])
-        self.model.cuda().eval()
+        self.model.load_state_dict(ckpt["model"])  # type: ignore[reportAttributeAccessIssue]
+        self.model.cuda().eval()  # type: ignore[reportAttributeAccessIssue]
 
     def run_inference(
         self,
@@ -67,13 +68,13 @@ class FoundationStereoModel:
         )
         H_scaled, W_scaled = img0.shape[:2]  # noqa: N806
 
-        img0_t = torch.as_tensor(img0).cuda().float()[None].permute(0, 3, 1, 2)
-        img1_t = torch.as_tensor(img1).cuda().float()[None].permute(0, 3, 1, 2)
+        img0_t = torch.as_tensor(img0).cuda().float()[None].permute(0, 3, 1, 2)  # type: ignore[reportPrivateImportUsage]
+        img1_t = torch.as_tensor(img1).cuda().float()[None].permute(0, 3, 1, 2)  # type: ignore[reportPrivateImportUsage]
         padder = InputPadder(img0_t.shape, divis_by=32, force_square=False)
         img0_t, img1_t = padder.pad(img0_t, img1_t)
 
-        with torch.cuda.amp.autocast(True):
-            disp = self.model.forward(
+        with torch.cuda.amp.autocast(True):  # type: ignore[reportDeprecated]
+            disp = self.model.forward(  # type: ignore[reportAttributeAccessIssue]
                 img0_t, img1_t, iters=self.args.valid_iters, test_mode=True
             )
 

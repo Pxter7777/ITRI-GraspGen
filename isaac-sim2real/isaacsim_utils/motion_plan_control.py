@@ -698,7 +698,7 @@ class MotionPlanController:
             / task_class
             / "result_data"
         )
-        result_dir.mkdir(exist_ok=True)
+        result_dir.mkdir(parents=True, exist_ok=True)
         result_file = result_dir / f"{task_name}.json"
         with open(result_file, "w") as f:
             json.dump(grasp_pack.model_dump(), f, cls=NumpyEncoder, indent=2)

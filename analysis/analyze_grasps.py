@@ -19,7 +19,7 @@ from xgboost import XGBClassifier
 
 DATA_ROOT = Path(__file__).resolve().parents[1] / "data" / "order_experiment_data"
 OUTPUT_DIR = Path(__file__).resolve().parent / "figures"
-OUTPUT_DIR.mkdir(exist_ok=True)
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 SCENARIOS = ["in_basket", "on_shelf", "on_table"]
 FEATURE_NAMES = [
@@ -38,7 +38,7 @@ FEATURE_LABELS = {
 }
 
 
-def load_all_data() -> list[dict]:
+def load_all_data() -> list[dict[str, object]]:
     """Load grasp records from all scenario JSON files."""
     records = []
     for scenario in SCENARIOS:
@@ -65,7 +65,7 @@ def load_all_data() -> list[dict]:
     return records
 
 
-def plot_feature_distributions(records: list[dict]) -> None:
+def plot_feature_distributions(records: list[dict[str, object]]) -> None:
     """Box plots: feature distributions for success vs fail grasps."""
     success = [r for r in records if r["success"] == 1]
     fail = [r for r in records if r["success"] == 0]
@@ -96,7 +96,7 @@ def plot_feature_distributions(records: list[dict]) -> None:
     plt.close()
 
 
-def plot_success_rate_by_bin(records: list[dict]) -> None:
+def plot_success_rate_by_bin(records: list[dict[str, object]]) -> None:
     """Success rate across binned feature values."""
     fig, axes = plt.subplots(1, len(FEATURE_NAMES), figsize=(18, 4))
     fig.suptitle(
@@ -164,7 +164,7 @@ def plot_success_rate_by_bin(records: list[dict]) -> None:
 
 
 def train_and_evaluate(
-    records: list[dict],
+    records: list[dict[str, object]],
 ) -> tuple[LogisticRegression, StandardScaler, XGBClassifier]:
     """Train logistic regression and XGBoost, evaluate with cross-validation."""
     X = np.array([[r[f] for f in FEATURE_NAMES] for r in records])  # noqa: N806
@@ -216,7 +216,7 @@ def train_and_evaluate(
 
 
 def topk_table(
-    records: list[dict],
+    records: list[dict[str, object]],
     lr: LogisticRegression,
     scaler: StandardScaler,
     xgb: XGBClassifier,
@@ -239,16 +239,16 @@ def topk_table(
     disc_attempts, lr_attempts, xgb_attempts = [], [], []
     disc_times, lr_times, xgb_times = [], [], []
 
-    def first_success(gs: list[dict]) -> int:
+    def first_success(gs: list[dict[str, object]]) -> int:
         for i, g in enumerate(gs):
             if g["success"]:
                 return i + 1
         return len(gs) + 1
 
-    def time_to_first_success(gs: list[dict]) -> float:
+    def time_to_first_success(gs: list[dict[str, object]]) -> float:
         total = 0.0
         for g in gs:
-            total += g["motion_plan_time"]
+            total += float(g["motion_plan_time"])  # type: ignore[reportArgumentType]
             if g["success"]:
                 return total
         return total
@@ -423,8 +423,8 @@ def main() -> None:
     records = load_all_data()
     print(
         f"Loaded {len(records)} grasps, "
-        f"{sum(r['success'] for r in records)} successes "
-        f"({100 * sum(r['success'] for r in records) / len(records):.1f}%)"
+        f"{sum(bool(r['success']) for r in records)} successes "
+        f"({100 * sum(bool(r['success']) for r in records) / len(records):.1f}%)"
     )
 
     print("\n--- Point-biserial correlation with curobo_success ---")

@@ -14,12 +14,13 @@ from common_utils.graspgen_utils import get_left_up_and_front
 logger = logging.getLogger(__name__)
 
 
-def pack_grasp_euler(grasp: np.array) -> str:
+def pack_grasp_euler(grasp: np.ndarray) -> str:
     """Pack a 4x4 grasp matrix into a JSON temp file with Euler angles."""
     position = grasp[:3, 3].tolist()
 
-    euler_orientation = list(trimesh.transformations.euler_from_matrix(grasp))
-    euler_orientation = np.rad2deg(euler_orientation).tolist()
+    euler_orientation = np.rad2deg(
+        np.array(trimesh.transformations.euler_from_matrix(grasp))
+    ).tolist()
     _, _, front = get_left_up_and_front(grasp)
     data = {
         "position": position,
@@ -35,7 +36,7 @@ def pack_grasp_euler(grasp: np.array) -> str:
         return tmp.name
 
 
-def pack_moves(moves: list[dict]) -> str:
+def pack_moves(moves: list[dict[str, object]]) -> str:
     """Write a list of move dicts to a JSON temp file."""
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".json", delete=False, dir="/tmp"
@@ -45,7 +46,7 @@ def pack_moves(moves: list[dict]) -> str:
         return tmp.name
 
 
-def send_cup_grasp_to_robot(grasp: np.array) -> None:
+def send_cup_grasp_to_robot(grasp: np.ndarray) -> None:
     """Send a single grasp pose to the robot via quick_grip.py."""
     temp_grasp_file = pack_grasp_euler(grasp)
     # Construct the absolute path to quick_grip.py
@@ -63,7 +64,7 @@ def send_cup_grasp_to_robot(grasp: np.array) -> None:
     logging.info("quick_grip.py executed successfully and temp file removed.")
 
 
-def send_moves_to_robot(moves: list[dict]) -> None:
+def send_moves_to_robot(moves: list[dict[str, object]]) -> None:
     """Send a list of moves to the robot via quick_grip2.py."""
     temp_moves_file = pack_moves(moves)
     quick_grip2_path = str(Path(__file__).resolve().parent / "quick_grip2.py")

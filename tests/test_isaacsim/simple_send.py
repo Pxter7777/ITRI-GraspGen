@@ -9,7 +9,7 @@ from common_utils.socket_communication import (
     NonBlockingJSONSender,
 )
 
-PROJECT_ROOT_DIR = PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
+PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 
 logger = logging.getLogger(__name__)
 

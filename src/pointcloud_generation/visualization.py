@@ -32,10 +32,8 @@ def vis_disparity(disp: np.ndarray, vmax_percent: int = 95) -> np.ndarray:
     disp_vis = disp.copy()
     disp_vis[disp_vis == np.inf] = 0
 
-    if vmax_percent != 100:
-        vmax = np.percentile(disp_vis, vmax_percent)
-        disp_vis[disp_vis > vmax] = vmax
-
+    vmax = np.percentile(disp_vis, vmax_percent)
+    disp_vis[disp_vis > vmax] = vmax
     disp_vis = disp_vis / (vmax + 1e-6)
     disp_vis = (disp_vis * 255).astype(np.uint8)
     disp_vis = cv2.applyColorMap(disp_vis, cv2.COLORMAP_JET)
@@ -48,10 +46,8 @@ def vis_depth(depth: np.ndarray, vmax_percent: int = 95) -> np.ndarray:
     depth_vis = depth.copy()
     depth_vis[depth_vis == np.inf] = 0
 
-    if vmax_percent != 100:
-        vmax = np.percentile(depth_vis, vmax_percent)
-        depth_vis[depth_vis > vmax] = vmax
-
+    vmax = np.percentile(depth_vis, vmax_percent)
+    depth_vis[depth_vis > vmax] = vmax
     depth_vis = depth_vis / (vmax + 1e-6)
     depth_vis = (depth_vis * 255).astype(np.uint8)
     depth_vis = cv2.applyColorMap(depth_vis, cv2.COLORMAP_JET)
@@ -62,8 +58,8 @@ def vis_depth(depth: np.ndarray, vmax_percent: int = 95) -> np.ndarray:
 def visualize_named_box(display_frame: np.ndarray, box: DetectedBoxInfo) -> np.ndarray:
     """Draw a labeled detection box on a display frame."""
     overlay = display_frame.copy()
-    start_point = (int(box.box[0]), int(box.box[1]))
-    end_point = (int(box.box[2]), int(box.box[3]))
+    start_point = (int(box.box.x_min), int(box.box.y_min))
+    end_point = (int(box.box.x_max), int(box.box.y_max))
     cv2.rectangle(overlay, start_point, end_point, (0, 255, 0), 2)
     label = f"{box.phrase}: {box.logits:.2f}"
     cv2.putText(

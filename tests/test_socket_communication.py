@@ -1,5 +1,7 @@
 """Test JSON socket sender and receiver classes."""
 
+from __future__ import annotations
+
 import logging
 import time
 from multiprocessing import Process, Queue
@@ -25,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 def blocking_receiver_loop(
-    port: int, receiver_type: str, data_queue: Queue, error_queue: Queue
+    port: int, receiver_type: str, data_queue: Queue[object], error_queue: Queue[object]
 ) -> None:
     """Run a receiver loop that blocks on each capture_data call."""
     receiver = None
@@ -33,6 +35,8 @@ def blocking_receiver_loop(
         receiver = NonBlockingJSONReceiver(port=port)
     elif receiver_type == "blocking_receiver":
         receiver = BlockingJSONReceiver(port=port)
+    if receiver is None:
+        raise TypeError(f"Unknown receiver_type: {receiver_type}")
     start_time = time.time()
     while time.time() - start_time < TIMEOUT:
         data = receiver.capture_data()
@@ -48,7 +52,7 @@ def blocking_receiver_loop(
 
 
 def responsive_receiver_loop(
-    port: int, receiver_type: str, data_queue: Queue, error_queue: Queue
+    port: int, receiver_type: str, data_queue: Queue[object], error_queue: Queue[object]
 ) -> None:
     """Simulate a responsive 60 FPS application loop while checking for socket data.
 
@@ -61,6 +65,8 @@ def responsive_receiver_loop(
         receiver = NonBlockingJSONReceiver(port=port)
     elif receiver_type == "blocking_receiver":
         receiver = BlockingJSONReceiver(port=port)
+    if receiver is None:
+        raise TypeError(f"Unknown receiver_type: {receiver_type}")
     target_frame_duration = 1.0 / 60.0  # for ~60 FPS
     start_time = time.time()
     while time.time() - start_time < TIMEOUT:
@@ -85,15 +91,15 @@ def responsive_receiver_loop(
 
 def receiver_process(
     port: int, task_type: str, receiver_type: str
-) -> tuple[Process, Queue, Queue]:
+) -> tuple[Process, Queue[object], Queue[object]]:
     """Set up a DataReceiver in a separate background process.
 
     Yields:
         tuple: A tuple containing the multiprocessing Queue for results
                and the port number used by the receiver.
     """
-    data_queue = Queue()
-    error_queue = Queue()
+    data_queue: Queue[object] = Queue()
+    error_queue: Queue[object] = Queue()
     # Create and start the receiver process
     if task_type == "non-blocking_task":
         process = Process(
@@ -105,6 +111,8 @@ def receiver_process(
             target=blocking_receiver_loop,
             args=(port, receiver_type, data_queue, error_queue),
         )
+    else:
+        raise ValueError(f"Unknown task_type: {task_type}")
     process.start()
 
     # Give the process a moment to initialize the socket

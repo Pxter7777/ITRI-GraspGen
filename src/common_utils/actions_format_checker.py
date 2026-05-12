@@ -55,21 +55,23 @@ class TaskConfig(BaseModel):
         for move in self.moves:
             if move.target_name is None:
                 continue
-            if self.track is None:
+            if not self.track:
                 raise ValueError(
-                    f"'target_name' is {move.target_name} yet 'track' is None"
+                    f"'target_name' is {move.target_name} yet 'track' is empty"
                 )
             if move.target_name not in self.track:
                 raise ValueError(f"'{move.target_name}' is not in 'track'")
         return self
 
 
-def is_actions_format_valid(actions: list | dict) -> bool:
+def is_actions_format_valid(actions: list[object] | dict[str, object]) -> bool:
     """Check whether the legacy action list has valid structure."""
     try:
         if not isinstance(actions, list):
             return False
         for action in actions:
+            if not isinstance(action, dict):
+                return False
             if not isinstance(action["target_name"], str):
                 return False
             if not isinstance(action["qualifier"], str):
@@ -83,7 +85,7 @@ def is_actions_format_valid(actions: list | dict) -> bool:
         return False
 
 
-def is_actions_format_valid_v1028(actions: dict) -> bool:
+def is_actions_format_valid_v1028(actions: dict[str, object]) -> bool:
     """Check whether the v1028 action dict has valid structure."""
     try:
         if not isinstance(actions["track"], list):

@@ -2,6 +2,7 @@
 
 import argparse
 import atexit
+import copy
 import json
 import os
 import platform
@@ -13,64 +14,46 @@ import webbrowser
 from pathlib import Path
 from threading import Thread
 
+import meshcat
 import numpy as np
-import pye57
 from grasp_gen.utils.meshcat_utils import (
     create_visualizer,
     visualize_pointcloud,
 )
 from scipy.spatial.transform import Rotation
 
+from common_utils.scene_data import SceneData
+
 OUTPUT_PC_DIR = Path("data/calibrate/output_pointcloud")
 OUTPUT_TC_DIR = Path("data/calibrate/output_transform_config")
 
 
 class AppState:
-    """Mutable global state for point clouds and the current transformation."""
+    """Mutable global state for point clouds and the current transformation.
+
+    Attributes:
+        original (SceneData | None): Original scene data before transformation.
+        current (SceneData | None): Current (transformed) scene data.
+        transformation (np.ndarray): Current 4x4 transformation matrix.
+    """
+
+    original: SceneData | None
+    current: SceneData | None
+    transformation: np.ndarray
 
     def __init__(self) -> None:
-        self.object_pc = None
-        self.object_pc_color = None
-        self.original_object_pc = None
-        self.scene_pc = None
-        self.scene_pc_color = None
-        self.original_scene_pc = None
+        self.original = None
+        self.current = None
         self.transformation = np.identity(4)
-
-
-class PCInfo:
-    """Hold object and scene point cloud data."""
-
-    def __init__(self) -> None:
-        self.object_pc = None
-        self.object_pc_color = None
-        self.scene_pc = None
-        self.scene_pc_color = None
 
 
 app_state = AppState()
 
 
-def save_pointcloud(info: PCInfo, output_path: Path) -> None:
-    """Save object and scene point clouds to a JSON file."""
-    data_to_save = {
-        "object_info": {
-            "pc": info.object_pc.tolist() if info.object_pc is not None else [],
-            "pc_color": info.object_pc_color.tolist()
-            if info.object_pc_color is not None
-            else [],
-        },
-        "scene_info": {
-            "pc_color": [info.scene_pc.tolist()] if info.scene_pc is not None else [],
-            "img_color": [info.scene_pc_color.tolist()]
-            if info.scene_pc_color is not None
-            else [],
-        },
-        "grasp_info": {"grasp_poses": [], "grasp_conf": []},
-    }
-
+def save_pointcloud(scene_data: SceneData, output_path: Path) -> None:
+    """Save scene data to a JSON file."""
     with open(output_path, "w") as f:
-        json.dump(data_to_save, f, indent=4)
+        json.dump(scene_data.to_dict(), f, indent=4)
     print(f"Saved transformed point cloud and matrix to {output_path}")
 
 
@@ -98,7 +81,7 @@ class ControlPanel:
     def __init__(
         self,
         root: tk.Tk,
-        vis: object,
+        vis: meshcat.Visualizer,
         json_files: list[str],
         args: argparse.Namespace,
     ) -> None:
@@ -145,10 +128,6 @@ class ControlPanel:
         )
         self.save_button.pack(padx=20, pady=5)
 
-        self.save_e57_button = tk.Button(
-            self.root, text="Save as .e57", command=self.save_as_e57
-        )
-        self.save_e57_button.pack(padx=20, pady=5)
         self.save_transform_button = tk.Button(
             self.root,
             text="Save Transform Config (JSON)",
@@ -194,7 +173,7 @@ class ControlPanel:
 
     def apply_transform(self) -> None:
         """Build and apply the current transformation to both point clouds."""
-        if app_state.original_object_pc is None and app_state.original_scene_pc is None:
+        if app_state.original is None or app_state.current is None:
             return
 
         # Get values from sliders
@@ -216,47 +195,21 @@ class ControlPanel:
 
         app_state.transformation = translation_matrix @ rotation_matrix
 
-        # Apply transformation to object pc
-        if app_state.original_object_pc is not None:
-            app_state.object_pc = transform(
-                app_state.original_object_pc, app_state.transformation
+        for name in app_state.original.object_infos:
+            app_state.current.object_infos[name].points = transform(
+                app_state.original.object_infos[name].points,
+                app_state.transformation,
             )
-            """
-            original_object_pc_homogeneous = np.hstack(
-                (
-                    app_state.original_object_pc,
-                    np.ones((app_state.original_object_pc.shape[0], 1)),
-                )
+        for i, pc in enumerate(app_state.original.scene_info.pc_color):
+            app_state.current.scene_info.pc_color[i] = transform(
+                pc, app_state.transformation
             )
-            transformed_object_pc_homogeneous = (
-                app_state.transformation @ original_object_pc_homogeneous.T
-            ).T
-            app_state.object_pc = transformed_object_pc_homogeneous[:, :3]
-            """
 
-        # Apply transformation to scene pc
-        if app_state.original_scene_pc is not None:
-            app_state.scene_pc = transform(
-                app_state.original_scene_pc, app_state.transformation
-            )
-            """            original_scene_pc_homogeneous = np.hstack(
-                (
-                    app_state.original_scene_pc,
-                    np.ones((app_state.original_scene_pc.shape[0], 1)),
-                )
-            )
-            transformed_scene_pc_homogeneous = (
-                app_state.transformation @ original_scene_pc_homogeneous.T
-            ).T
-            app_state.scene_pc = transformed_scene_pc_homogeneous[:, :3]
-            """
-
-        # Update visualization
         update_visualization(self.vis)
 
     def save_transformed_pc(self) -> None:
         """Save the transformed point cloud to a JSON file."""
-        if app_state.object_pc is None and app_state.scene_pc is None:
+        if app_state.current is None:
             print("No point cloud to save.")
             return
 
@@ -266,26 +219,8 @@ class ControlPanel:
 
         OUTPUT_PC_DIR.mkdir(parents=True, exist_ok=True)
 
-        data_to_save = {
-            "transformation_matrix": app_state.transformation.tolist(),
-            "object_info": {
-                "pc": app_state.object_pc.tolist()
-                if app_state.object_pc is not None
-                else [],
-                "pc_color": app_state.object_pc_color.tolist()
-                if app_state.object_pc_color is not None
-                else [],
-            },
-            "scene_info": {
-                "pc_color": [app_state.scene_pc.tolist()]
-                if app_state.scene_pc is not None
-                else [],
-                "img_color": [app_state.scene_pc_color.tolist()]
-                if app_state.scene_pc_color is not None
-                else [],
-            },
-            "grasp_info": {"grasp_poses": [], "grasp_conf": []},
-        }
+        data_to_save = app_state.current.to_dict()
+        data_to_save["transformation_matrix"] = app_state.transformation.tolist()
 
         with open(output_path, "w") as f:
             json.dump(data_to_save, f, indent=4)
@@ -293,7 +228,7 @@ class ControlPanel:
 
     def save_transform_config(self) -> None:
         """Save the current translation and rotation values to a config JSON."""
-        if app_state.object_pc is None and app_state.scene_pc is None:
+        if app_state.current is None:
             print("No point cloud to save.")
             return
 
@@ -314,43 +249,6 @@ class ControlPanel:
         with open(output_path, "w") as f:
             json.dump(data_to_save, f, indent=4)
         print(f"Saved transforme config {output_path}")
-
-    def save_as_e57(self) -> None:
-        """Save the combined transformed point cloud as an E57 file."""
-        if app_state.object_pc is None and app_state.scene_pc is None:
-            print("No point cloud to save.")
-            return
-
-        input_path = Path(self.selected_file.get())
-        output_filename = f"{input_path.stem}_transformed.e57"
-        output_path = OUTPUT_PC_DIR / output_filename
-
-        OUTPUT_PC_DIR.mkdir(parents=True, exist_ok=True)
-
-        pc_list = []
-        pc_color_list = []
-        if app_state.object_pc is not None:
-            pc_list.append(app_state.object_pc)
-            pc_color_list.append(app_state.object_pc_color)
-        if app_state.scene_pc is not None:
-            pc_list.append(app_state.scene_pc)
-            pc_color_list.append(app_state.scene_pc_color)
-
-        combined_pc = np.concatenate(pc_list, axis=0)
-        combined_colors = np.concatenate(pc_color_list, axis=0)
-
-        e57_data = {}
-        e57_data["cartesianX"] = combined_pc[:, 0]
-        e57_data["cartesianY"] = combined_pc[:, 1]
-        e57_data["cartesianZ"] = combined_pc[:, 2]
-        e57_data["colorRed"] = combined_colors[:, 0]
-        e57_data["colorGreen"] = combined_colors[:, 1]
-        e57_data["colorBlue"] = combined_colors[:, 2]
-
-        with pye57.E57(str(output_path), mode="w") as e57_write:
-            e57_write.write_scan_raw(e57_data)
-
-        print(f"Saved combined transformed point cloud to {output_path}")
 
     def run(self) -> None:
         """Start the tkinter main loop."""
@@ -394,7 +292,7 @@ def start_meshcat_server() -> subprocess.Popen[bytes]:
     )
 
     @atexit.register
-    def cleanup_meshcat_server() -> None:
+    def cleanup_meshcat_server() -> None:  # pyright: ignore[reportUnusedFunction]
         if meshcat_server_process.poll() is None:
             print("Terminating meshcat-server...")
             os.killpg(os.getpgid(meshcat_server_process.pid), signal.SIGTERM)
@@ -423,73 +321,70 @@ def open_meshcat_url(url: str) -> None:
         pass
 
 
-def load_scene(json_file: str | Path) -> PCInfo:
+def load_scene(json_file: str | Path) -> SceneData:
     """Load object and scene point clouds from a JSON file."""
     print(f"Loading scene from {json_file}")
     with open(json_file, "rb") as f:
         data = json.load(f)
-    info = PCInfo()
 
+    object_infos: dict[str, SceneData.ObjectInfo] = {}
     if (
         "object_info" in data
         and "pc" in data["object_info"]
         and len(data["object_info"]["pc"]) > 0
     ):
-        info.object_pc = np.array(data["object_info"]["pc"])
-        info.object_pc_color = np.array(data["object_info"]["pc_color"])
+        object_infos["object"] = SceneData.ObjectInfo(
+            points=np.array(data["object_info"]["pc"]),
+            colors=np.array(data["object_info"]["pc_color"]),
+        )
 
+    pc_color_list: list[np.ndarray] = []
+    img_color_list: list[np.ndarray] = []
     if (
         "scene_info" in data
         and "pc_color" in data["scene_info"]
         and len(data["scene_info"]["pc_color"]) > 0
     ):
-        info.scene_pc = np.array(data["scene_info"]["pc_color"][0])
-        info.scene_pc_color = np.array(data["scene_info"]["img_color"][0])
+        pc_color_list = [np.array(pc) for pc in data["scene_info"]["pc_color"]]
+        img_color_list = [np.array(img) for img in data["scene_info"]["img_color"]]
 
-    if info.object_pc is None and info.scene_pc is None:
+    if not object_infos and not pc_color_list:
         print("Could not find point cloud data in JSON file.")
         exit(1)
 
-    return info
+    return SceneData(
+        object_infos=object_infos,
+        scene_info=SceneData.SceneInfo(
+            pc_color=pc_color_list, img_color=img_color_list
+        ),
+    )
 
 
-def load_and_process_scene(vis: object, json_file: str | Path) -> None:
+def load_and_process_scene(vis: meshcat.Visualizer, json_file: str | Path) -> None:
     """Load a scene, reset app state, and update the visualizer."""
-    # print(f"Loading scene from {json_file}")
-    vis.delete()
+    vis.delete()  # type: ignore[reportAttributeAccessIssue]
 
-    # with open(json_file, "rb") as f:
-    #    data = json.load(f)
-
-    # Reset state
-    app_state.object_pc = None
-    app_state.object_pc_color = None
-    app_state.original_object_pc = None
-    app_state.scene_pc = None
-    app_state.scene_pc_color = None
-    app_state.original_scene_pc = None
-
-    info = load_scene(json_file)
-    app_state.object_pc = info.object_pc
-    app_state.object_pc_color = info.object_pc_color
-    app_state.original_object_pc = info.object_pc
-    app_state.scene_pc = info.scene_pc
-    app_state.scene_pc_color = info.scene_pc_color
-    app_state.original_scene_pc = info.scene_pc
+    scene_data = load_scene(json_file)
+    app_state.original = scene_data
+    app_state.current = copy.deepcopy(scene_data)
 
     update_visualization(vis)
 
 
-def update_visualization(vis: object) -> None:
+def update_visualization(vis: meshcat.Visualizer) -> None:
     """Refresh the meshcat visualizer with the current point clouds."""
+    if app_state.current is None:
+        return
+
     pc_list = []
     pc_color_list = []
-    if app_state.object_pc is not None:
-        pc_list.append(app_state.object_pc)
-        pc_color_list.append(app_state.object_pc_color)
-    if app_state.scene_pc is not None:
-        pc_list.append(app_state.scene_pc)
-        pc_color_list.append(app_state.scene_pc_color)
+    for info in app_state.current.object_infos.values():
+        pc_list.append(info.points)
+        pc_color_list.append(info.colors)
+    for pc in app_state.current.scene_info.pc_color:
+        pc_list.append(pc)
+    for img in app_state.current.scene_info.img_color:
+        pc_color_list.append(img)
 
     if not pc_list:
         return
@@ -497,12 +392,11 @@ def update_visualization(vis: object) -> None:
     pc = np.concatenate(pc_list, axis=0)
     pc_color = np.concatenate(pc_color_list, axis=0)
 
-    if pc is not None:
-        visualize_pointcloud(vis, "pointcloud", pc, pc_color, size=0.005)
+    visualize_pointcloud(vis, "pointcloud", pc, pc_color, size=0.005)
 
 
 def create_control_panel(
-    vis: object,
+    vis: meshcat.Visualizer,
     json_files: list[str],
     args: argparse.Namespace,
 ) -> None:
@@ -548,16 +442,20 @@ def quick_transform(args: argparse.Namespace) -> None:
         print("Please provide poincloud filename")
         exit(1)
     pointcloud_filepath = Path(args.sample_data_dir) / args.filename
-    info = load_scene(pointcloud_filepath)
-    info.object_pc = transform(info.object_pc, transformation)
-    info.scene_pc = transform(info.scene_pc, transformation)
+    scene_data = load_scene(pointcloud_filepath)
+    for name in scene_data.object_infos:
+        scene_data.object_infos[name].points = transform(
+            scene_data.object_infos[name].points, transformation
+        )
+    for i, pc in enumerate(scene_data.scene_info.pc_color):
+        scene_data.scene_info.pc_color[i] = transform(pc, transformation)
 
     # save
     output_filename = f"{pointcloud_filepath.stem}_transformed.json"
     output_path = OUTPUT_PC_DIR / output_filename
 
     OUTPUT_PC_DIR.mkdir(parents=True, exist_ok=True)
-    save_pointcloud(info, output_path)
+    save_pointcloud(scene_data, output_path)
 
 
 def main() -> None:

@@ -20,10 +20,9 @@ PROJECT_ROOT_DIR = Path(__file__).resolve().parents[2]
 def save_json(dir: str, prefix: str, data: object) -> None:
     """Save data as a timestamped JSON file for debugging."""
     current_time_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    filepath = (
-        PROJECT_ROOT_DIR / "data_for_test" / dir / (prefix + current_time_str + ".json")
-    )
+    filepath = PROJECT_ROOT_DIR / "data" / dir / (prefix + current_time_str + ".json")
     logger.info(f"save to {filepath}")
+    filepath.parent.mkdir(parents=True, exist_ok=True)
     with open(filepath, "w") as f:
         json.dump(data, f, indent=4)
 

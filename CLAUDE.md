@@ -104,6 +104,8 @@ def move(direction: Direction) -> None:
     ...
 ```
 
+- When a third-party function returns an ambiguous type (e.g. `trimesh.load` → `Geometry | list[Geometry]`), prefer an explicit runtime type check over `# type: ignore`. Use `if not isinstance(...): raise TypeError(...)` (not `assert`, which is stripped by `python -O`). Only fall back to `# type: ignore` when the ambiguity is in the return tuple shape or something that can't be narrowed at runtime.
+
 ## Temporary Output
 
 Put debug files, dumps, and generated artifacts in `output/`, not the repo root.

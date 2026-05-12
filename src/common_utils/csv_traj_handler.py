@@ -72,30 +72,22 @@ def load_trajectory_from_csv(command: str) -> list[Movement]:
                 joint_values_float.append(float(joint))
 
             if joint_values_float[6:9] == status_open:  # fully open
-                if gripper_prev is None or (
-                    gripper_prev is not None and gripper_prev != status_open
-                ):
+                if gripper_prev is None or gripper_prev != status_open:
                     move = Movement(Mode.OPEN)
                 else:
                     move = Movement(Mode.MOVE, joint_values_float[0:6])
             elif joint_values_float[6:9] == status_close:  # fully close
-                if gripper_prev is None or (
-                    gripper_prev is not None and gripper_prev != status_close
-                ):
+                if gripper_prev is None or gripper_prev != status_close:
                     move = Movement(Mode.CLOSE)
                 else:
                     move = Movement(Mode.MOVE, joint_values_float[0:6])
             elif joint_values_float[6:9] == status_half_open:  # half open
-                if gripper_prev is None or (
-                    gripper_prev is not None and gripper_prev != status_half_open
-                ):
+                if gripper_prev is None or gripper_prev != status_half_open:
                     move = Movement(Mode.HALF_OPEN)
                 else:
                     move = Movement(Mode.MOVE, joint_values_float[0:6])
-            elif joint_values_float[6:9] == status_close_tight:  # half open
-                if gripper_prev is None or (
-                    gripper_prev is not None and gripper_prev != status_close_tight
-                ):
+            elif joint_values_float[6:9] == status_close_tight:  # close tight
+                if gripper_prev is None or gripper_prev != status_close_tight:
                     move = Movement(Mode.CLOSE_TIGHT)
                 else:
                     move = Movement(Mode.MOVE, joint_values_float[0:6])
@@ -147,8 +139,10 @@ SPEED_PARAM_DICT["go_to_default"] = SpeedParam(vel=100, acc=500)
 
 
 def run_trajectory(
-    command: str, obstacles: list | None = None, no_need_curobo: bool = False
-) -> list[dict]:
+    command: str,
+    obstacles: list[object] | None = None,
+    no_need_curobo: bool = False,
+) -> list[dict[str, object]]:
     """Convert a CSV trajectory into a list of SingleRobotMove dicts."""
     if obstacles is None:
         obstacles = []
@@ -160,6 +154,8 @@ def run_trajectory(
     last_is_move = False
     for node in nodes:
         if node.mode == Mode.MOVE:
+            if node.joint_value is None:
+                raise TypeError(f"Expected list[float], got {type(node.joint_value)}")
             if last_is_move:
                 parsed_nodes[-1].joints_values.append(
                     list(np.deg2rad(node.joint_value))
@@ -226,7 +222,7 @@ def csv_act(
     command: str,
     obstacles: dict[str, ObstacleBound] | None = None,
     no_need_curobo: bool = False,
-) -> list[dict]:
+) -> list[dict[str, object]]:
     """Run a named CSV trajectory and wrap it as a sendable action list."""
     if obstacles is None:
         obstacles = {}

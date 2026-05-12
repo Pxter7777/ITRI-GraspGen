@@ -39,7 +39,7 @@ class SceneData:
     )
     grasp_info: GraspInfo = field(default_factory=GraspInfo)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, object]:
         """Serialize to a JSON-compatible dictionary."""
         return {
             "object_infos": {

@@ -152,6 +152,8 @@ class MiaWorkflowController(BaseWorkflowController):
         response = self.receiver.capture_data()
         while response is None:
             response = self.receiver.capture_data()
+        if not isinstance(response, dict):
+            raise TypeError(f"Expected dict, got {type(response)}")
         if response["message"] == "EOF and ROS2 Complete":
             logger.warning("Success")
             self.main_sender.send_data({"message": "Success"})
@@ -172,12 +174,14 @@ class MiaWorkflowController(BaseWorkflowController):
             task_signal = self.main_receiver.capture_data()
             if task_signal is None:
                 continue
+            if not isinstance(task_signal, dict):
+                raise TypeError(f"Expected dict, got {type(task_signal)}")
             text = task_signal.get("actions")
             no_need_curobo = False
             if task_signal.get("no_curobo"):
                 no_need_curobo = True
-            if text is None:
-                raise ValueError(f"received weird signal {task_signal}")
+            if not isinstance(text, str):
+                raise TypeError(f"Expected str, got {type(text)}")
             return text, no_need_curobo
 
 

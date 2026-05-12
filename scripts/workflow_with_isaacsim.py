@@ -146,6 +146,8 @@ class CLIWorkflowController(BaseWorkflowController):
         response = self.receiver.capture_data()
         while response is None:
             response = self.receiver.capture_data()
+        if not isinstance(response, dict):
+            raise TypeError(f"Expected dict, got {type(response)}")
         if response["message"] == "EOF and ROS2 Complete":
             logger.warning("Success")
         elif response["message"] == "Abort":
