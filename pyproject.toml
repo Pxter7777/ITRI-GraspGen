@@ -141,8 +141,8 @@ skip-checking-short-docstrings = false
 
 [tool.pyright]
 extraPaths = ["src", "third_party/GraspGen", "third_party/GroundingDINO", "third_party/FoundationStereo/src"] # Without this, pyright can't find these editable-installed package even though it works well at runtime.
-include = ["src", "scripts", "tests", "analysis"]
-exclude = ["third_party", "isaac-sim2real", "ROS2_server"]
+include = ["src", "scripts", "tests", "analysis", "isaac-sim2real", "ROS2_server"]
+exclude = ["third_party"]
 reportUnknownMemberType = false
 reportUnknownVariableType = false
 reportUnknownArgumentType = false
@@ -152,6 +152,10 @@ reportMissingTypeStubs = false
 venvPath = "."
 venv = ".venv"
 typeCheckingMode = "strict"
+executionEnvironments = [
+    { root = "isaac-sim2real", reportMissingImports = false },
+    { root = "ROS2_server", reportMissingImports = false },
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
