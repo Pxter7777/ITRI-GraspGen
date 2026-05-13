@@ -46,9 +46,14 @@ try:
             continue
         logger.info("Received data!")
         try:
+            if not isinstance(data, dict):
+                raise TypeError(f"Expected dict, got {type(data)}")
             if data["type"] == "sequence_joint_rad":
                 time.sleep(2)
-            time.sleep(data["wait_time"])
+            wait_time = data["wait_time"]
+            if not isinstance(wait_time, (int, float)):
+                raise TypeError(f"Expected number for wait_time, got {type(wait_time)}")
+            time.sleep(wait_time)
         except KeyError as e:
             logger.exception(
                 f"{e}, key error, please make sure the signal format is correct."

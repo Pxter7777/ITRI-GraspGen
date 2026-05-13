@@ -36,19 +36,19 @@ from common_utils.socket_communication import (  # noqa: E402
 logger = logging.getLogger(__name__)
 
 
-def mrad_to_mmdeg(cartesian_pose: list) -> list:
+def mrad_to_mmdeg(cartesian_pose: list[float]) -> list[float]:
     """Convert meter-radian pose to millimeter-degree pose."""
     position = [p * 1000 for p in cartesian_pose[:3]]
     euler_orientation_deg = np.rad2deg(cartesian_pose[3:]).tolist()
     return position + euler_orientation_deg
 
 
-def is_joint_vel_near_zero(joint_vel: list) -> bool:
+def is_joint_vel_near_zero(joint_vel: list[float]) -> bool:
     """Check if all joint velocities are near zero."""
     return all(abs(v) < 0.001 for v in joint_vel)
 
 
-def is_pose_identical(joints1: list, joints2: list) -> bool:
+def is_pose_identical(joints1: list[float] | None, joints2: list[float] | None) -> bool:
     """Check if two joint poses are identical within tolerance."""
     if joints1 is None or joints2 is None:
         return False
@@ -61,7 +61,7 @@ def is_pose_identical(joints1: list, joints2: list) -> bool:
 successs = 0
 
 
-class TMRobotController(Node):
+class TMRobotController(Node):  # type: ignore[reportUntypedBaseClass]
     """ROS2 node that controls the TM robot arm and communicates with Isaac Sim.
 
     Args:
@@ -116,8 +116,9 @@ class TMRobotController(Node):
         if isaacsim_data is None:
             return
         logger.warning("---new command from isaacsim---")
-        data_dict = isaacsim_data
-        move = SingleRobotMove(**data_dict)
+        if not isinstance(isaacsim_data, dict):
+            raise TypeError(f"Expected dict, got {type(isaacsim_data)}")
+        move = SingleRobotMove(**isaacsim_data)  # type: ignore[reportArgumentType]
         logger.info("received new data")
         self.num_response_to_send_back += 1
         logger.debug(f"{self.num_response_to_send_back}")
@@ -131,6 +132,8 @@ class TMRobotController(Node):
 
         commands_to_sim = []
         if move.type == "sequence_joint_rad":
+            if move.sequence_joint_rad_goals is None:
+                raise ValueError("sequence_joint_rad_goals is None")
             self.goal_joints = move.sequence_joint_rad_goals[-1]
             joints_values_degree = [
                 np.rad2deg(joints) for joints in move.sequence_joint_rad_goals
@@ -172,14 +175,10 @@ class TMRobotController(Node):
         if self.real2sim:
             try:
                 send_traj(commands_to_sim)
-            except (
-                OSError
-            ) as e:  # maybe, when the isaac-sim display pc is not reachable
-                logger.error(f"OSError, send_traj failed, not connected: {e}")
-            except (
-                TimeoutError
-            ) as e:  # maybe when the isaac-sim display pc is not listening
+            except TimeoutError as e:
                 logger.error(f"TimeoutError, send_traj failed, not listening: {e}")
+            except OSError as e:
+                logger.error(f"OSError, send_traj failed, not connected: {e}")
 
     def setup_services(self) -> None:
         """Initialize ROS2 service clients and subscribe to feedback states."""
@@ -247,7 +246,7 @@ class TMRobotController(Node):
             logger.error("Stuck detected.")
             self._handle_failure()
 
-    def set_io(self, states: list) -> None:
+    def set_io(self, states: list[int]) -> None:
         """設定 End_DO0, End_DO1, End_DO2 狀態,例如 [1, 0, 0]."""
         for pin, state in enumerate(states):
             req = SetIO.Request()
@@ -256,11 +255,11 @@ class TMRobotController(Node):
             req.pin = pin
             req.state = float(state)
 
-            future = self.io_cli.call_async(req)
+            future = self.io_cli.call_async(req)  # type: ignore[reportOptionalMemberAccess]
 
             def _done(fut: object, pin: int = pin) -> None:
                 try:
-                    result = fut.result()
+                    result = fut.result()  # type: ignore[reportAttributeAccessIssue]
                     if result.ok:
                         logger.info(f"✅ End_DO{pin} 設定成功,等待 feedback 確認")
                         # 只設定一次 target 狀態即可
@@ -268,7 +267,7 @@ class TMRobotController(Node):
                             self.target_ee_output = states
                             self.waiting_for_gripper = True
                     else:
-                        logger.warn(f"⚠️ End_DO{pin} 設定失敗,略過等待")
+                        logger.warning(f"⚠️ End_DO{pin} 設定失敗,略過等待")
                         self._busy = False
                 except Exception as e:
                     logger.error(f"[SetIO 失敗] {e}")
@@ -276,14 +275,14 @@ class TMRobotController(Node):
 
             future.add_done_callback(_done)
 
-    def append_gripper_states(self, states: list) -> None:
+    def append_gripper_states(self, states: list[int]) -> None:
         """Append a gripper IO command to the TCP queue."""
         logger.debug(f"{self.current_IO_states} -> {states}")
         if self.current_IO_states == states:
             logger.info("set wait time to 0 since gripper already in target state")
             self._handle_success()
             return
-        if not (isinstance(states, (list, tuple)) and len(states) == 3):
+        if len(states) != 3:
             logger.error("IO 狀態必須為長度 3 的 list,例如 [1,0,0]")
             return
         self.tcp_queue.append(
@@ -292,7 +291,7 @@ class TMRobotController(Node):
 
     def append_ptp(
         self,
-        ptp_values: list,
+        ptp_values: list[float],
         vel: int = 20,
         acc: int = 20,
         coord: int = 80,
@@ -317,7 +316,7 @@ class TMRobotController(Node):
 
     def append_jpp(
         self,
-        joint_values: list,
+        joint_values: list[float],
         vel: int,
         acc: int,
         coord: int = 80,

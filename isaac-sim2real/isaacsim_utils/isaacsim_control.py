@@ -30,6 +30,7 @@ from curobo.wrap.reacher.motion_gen import (
     MotionGenPlanConfig,
     PoseCostMetric,
 )
+from isaacsim_utils.data_types import PlannedAction
 from isaacsim_utils.helper import add_extensions, add_robot_to_scene
 from omni.isaac.core import World
 from omni.isaac.core.objects import cuboid, sphere
@@ -72,7 +73,7 @@ def init_pose_matric(
     return pose_metric
 
 
-def get_cuboid_list(move: SingleRobotMove, obstacles: dict) -> list:
+def get_cuboid_list(move: SingleRobotMove, obstacles: dict[str, Any]) -> list[Cuboid]:
     """Build a list of cuRobo Cuboid obstacles from move and obstacle data."""
     cuboids = []
     cuboids.append(Cuboid(name="table", pose=[0, 0, -1.97, 1, 0, 0, 0], dims=[4, 4, 4]))
@@ -194,6 +195,37 @@ class IsaacSimController:
         args (argparse.Namespace): Parsed command-line arguments.
         simulation_app (SimulationApp): The Isaac Sim app instance.
     """
+
+    args: argparse.Namespace
+    simulation_app: object
+    my_world: World
+    j_names: list[str]
+    default_config: list[float]
+    robot_prim_path: str
+    tensor_args: TensorDeviceType
+    motion_gen: MotionGen
+    plan_config: MotionGenPlanConfig
+    usd_help: UsdHelper
+    zero_obstacles: WorldConfig
+    pose_metric: PoseCostMetric | None
+    planned_action_queue: queue.Queue[PlannedAction]
+    ROS2_fail_queue: queue.Queue[dict[str, object]]
+    cmd_plan_positions: list[list[float]] | None
+    cmd_idx: int
+    tick: int
+    wait_ros2: bool
+    graspgen_receiver: NonBlockingJSONReceiver
+    graspgen_sender: NonBlockingJSONSender
+    ros2_receiver: NonBlockingJSONReceiver
+    ros2_sender: NonBlockingJSONSender
+    sim_js_names: list[str]
+    planned_action_moves: list[SingleRobotMove]
+    idx_list: list[int]
+    temp_cuboid_paths: list[str]
+    last_joint_states: list[float]
+    common_js_names: list[str]
+    graspgen_eof: bool
+    ros2state: ROS2StateType
 
     def __init__(
         self,
@@ -339,6 +371,7 @@ class IsaacSimController:
         for graspgen_data in graspgen_datas:
             before_move_joints = self.last_joint_states
             processed_moves: list[SingleRobotMove] = []
+            cuboids: list[Cuboid] = []
             for move_dict in graspgen_data["moves"]:
                 graspgen_move = SingleRobotMove(**move_dict)
                 cuboids = get_cuboid_list(graspgen_move, graspgen_data["obstacles"])
@@ -421,6 +454,8 @@ class IsaacSimController:
                         joints_goal.unsqueeze(0),
                         self.plan_config,
                     )
+                else:
+                    raise ValueError(f"Unknown move type: {graspgen_move.type}")
 
                 succ = result.success.item()
                 if succ:
@@ -440,6 +475,8 @@ class IsaacSimController:
                         )
                     positions = cmd_to_move(new_cmd_plan)
                     if graspgen_move.type == "sequence_joint_rad":
+                        if graspgen_move.sequence_joint_rad_goals is None:
+                            raise ValueError("sequence_joint_rad_goals is None")
                         graspgen_move.sequence_joint_rad_goals = (
                             positions + graspgen_move.sequence_joint_rad_goals
                         )
@@ -456,7 +493,7 @@ class IsaacSimController:
                 print("-------------Successfully handled new action--------------")
                 self.graspgen_sender.send_data({"message": "Success"})
                 self.planned_action_queue.put(
-                    {"moves": processed_moves, "obstacles": cuboids}
+                    PlannedAction(moves=processed_moves, obstacles=cuboids)
                 )
                 break
         else:
@@ -464,9 +501,11 @@ class IsaacSimController:
 
     def _communicate_with_ros2(self) -> None:
         if self.ros2state == "Busy":
-            ros2_response: dict = self.ros2_receiver.capture_data()
+            ros2_response = self.ros2_receiver.capture_data()
             if ros2_response is None:
                 return
+            if not isinstance(ros2_response, dict):
+                raise TypeError(f"Expected dict, got {type(ros2_response)}")
             message = ros2_response.get("message")
             if message == "Success":
                 self.ros2state = "Ready"
@@ -484,12 +523,12 @@ class IsaacSimController:
                 and not self.planned_action_queue.empty()
             ):
                 planned_action = self.planned_action_queue.get()
-                self.planned_action_moves = planned_action["moves"]
+                self.planned_action_moves = planned_action.moves
                 if self.temp_cuboid_paths:
                     for path in self.temp_cuboid_paths:
                         self.stage.RemovePrim(path)
                     self.temp_cuboid_paths = []
-                for i, cube in enumerate(planned_action["obstacles"]):
+                for i, cube in enumerate(planned_action.obstacles):
                     prim_path = f"/World/temp_obstacle_{i}"
                     cuboid.VisualCuboid(
                         prim_path=prim_path,
@@ -524,7 +563,7 @@ class IsaacSimController:
             self.last_joint_states = self.default_config
             self.robot.set_joint_positions(self.default_config, self.idx_list)
             self.robot._articulation_view.set_max_efforts(
-                values=np.array([5000 for i in range(len(self.idx_list))]),
+                values=np.array([5000 for _ in range(len(self.idx_list))]),
                 joint_indices=self.idx_list,
             )
             self.cmd_plan_positions = None
@@ -539,11 +578,13 @@ class IsaacSimController:
             )
 
     def _communicate_with_graspgen(self) -> None:
-        graspgen_datas: list = self.graspgen_receiver.capture_data()
+        graspgen_datas = self.graspgen_receiver.capture_data()
 
         if graspgen_datas is None:
             return
-        elif graspgen_datas[0] == "EOF":
+        if not isinstance(graspgen_datas, list):
+            raise TypeError(f"Expected list, got {type(graspgen_datas)}")
+        if graspgen_datas[0] == "EOF":
             self.graspgen_eof = True
             return
         elif graspgen_datas[0] == "Reset_to_default":
@@ -551,7 +592,7 @@ class IsaacSimController:
             return
         else:
             logger.info("Receiving new action.")
-            self._process_graspgen_commands(graspgen_datas)
+            self._process_graspgen_commands(graspgen_datas)  # type: ignore[reportArgumentType]
 
     def _step_physics_and_visualize(self) -> None:
         self.my_world.step(render=True)
@@ -568,7 +609,7 @@ class IsaacSimController:
             self.idx_list = [self.robot.get_dof_index(x) for x in self.j_names]
             self.robot.set_joint_positions(self.default_config, self.idx_list)
             self.robot._articulation_view.set_max_efforts(
-                values=np.array([5000 for i in range(len(self.idx_list))]),
+                values=np.array([5000 for _ in range(len(self.idx_list))]),
                 joint_indices=self.idx_list,
             )
         if step_index < 20:
@@ -624,7 +665,7 @@ class IsaacSimController:
 
     def simulation_loop(self) -> None:
         """Run the main simulation loop until the application stops."""
-        while self.simulation_app.is_running():
+        while self.simulation_app.is_running():  # type: ignore[reportAttributeAccessIssue]
             self._communicate_with_ros2()
             self._communicate_with_graspgen()
             self._step_physics_and_visualize()

@@ -31,6 +31,7 @@ from curobo.wrap.reacher.motion_gen import (
     MotionGenPlanConfig,
     PoseCostMetric,
 )
+from isaacsim_utils.data_types import PlannedAction
 from isaacsim_utils.helper import add_extensions, add_robot_to_scene
 from omni.isaac.core import World
 from omni.isaac.core.objects import cuboid, sphere
@@ -55,11 +56,11 @@ logger = logging.getLogger(__name__)
 class NumpyEncoder(json.JSONEncoder):
     """JSON encoder that converts numpy arrays to lists."""
 
-    def default(self, obj: object) -> object:
+    def default(self, o: object) -> object:
         """Serialize numpy arrays as Python lists."""
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        return super().default(obj)
+        if isinstance(o, np.ndarray):
+            return o.tolist()
+        return super().default(o)
 
 
 def cmd_to_move(cmd_plan: JointState) -> list[list[float]]:
@@ -85,7 +86,7 @@ def init_pose_matric(
     return pose_metric
 
 
-def get_cuboid_list(move: SingleRobotMove, obstacles: dict) -> list:
+def get_cuboid_list(move: SingleRobotMove, obstacles: dict[str, Any]) -> list[Cuboid]:
     """Build a list of cuRobo Cuboid obstacles from move and obstacle data."""
     cuboids = []
     cuboids.append(Cuboid(name="table", pose=[0, 0, -1.97, 1, 0, 0, 0], dims=[4, 4, 4]))
@@ -204,7 +205,66 @@ class MotionPlanController:
     Args:
         args (argparse.Namespace): Parsed command-line arguments.
         simulation_app (SimulationApp): The Isaac Sim application instance.
+
+    Attributes:
+        args (argparse.Namespace): Parsed command-line arguments.
+        simulation_app (object): The Isaac Sim application instance.
+        j_names (list[str]): Joint names from robot config.
+        default_config (list[float]): Default joint configuration.
+        tensor_args (TensorDeviceType): Tensor device configuration.
+        motion_gen (MotionGen): Motion generation instance.
+        plan_config (MotionGenPlanConfig): Motion generation plan config.
+        usd_help (UsdHelper): USD helper for stage management.
+        zero_obstacles (WorldConfig): Collision world with no custom obstacles.
+        pose_metric (PoseCostMetric | None): Pose cost metric for planning.
+        planned_action_queue (queue.Queue[PlannedAction]): Queue of planned actions.
+        ROS2_fail_queue (queue.Queue[dict[str, str]]): Queue of ROS2 failure notices.
+        cmd_plan_positions (list[list[float]] | None): Current command plan positions.
+        cmd_idx (int): Current command index in the plan.
+        tick (int): Simulation tick counter.
+        wait_ros2 (bool): Whether waiting for ROS2 response.
+        graspgen_receiver (NonBlockingJSONReceiver): Receiver from GraspGen.
+        graspgen_sender (NonBlockingJSONSender): Sender to GraspGen.
+        ros2_receiver (NonBlockingJSONReceiver): Receiver from ROS2.
+        ros2_sender (NonBlockingJSONSender): Sender to ROS2.
+        planned_action_moves (list[SingleRobotMove]): Current action's moves.
+        idx_list (list[int]): Joint DOF indices.
+        temp_cuboid_paths (list[str]): Paths of temporary obstacle cuboids.
+        last_joint_states (list[float]): Last known joint states.
+        common_js_names (list[str]): Common joint names.
+        graspgen_eof (bool): Whether GraspGen sent EOF.
+        ros2state (ROS2StateType): Current ROS2 communication state.
+        task_queue (list[tuple[str, str]]): Queue of automation tasks.
     """
+
+    args: argparse.Namespace
+    simulation_app: object
+    j_names: list[str]
+    default_config: list[float]
+    tensor_args: TensorDeviceType
+    motion_gen: MotionGen
+    plan_config: MotionGenPlanConfig
+    usd_help: UsdHelper
+    zero_obstacles: WorldConfig
+    pose_metric: PoseCostMetric | None
+    planned_action_queue: queue.Queue[PlannedAction]
+    ROS2_fail_queue: queue.Queue[dict[str, str]]
+    cmd_plan_positions: list[list[float]] | None
+    cmd_idx: int
+    tick: int
+    wait_ros2: bool
+    graspgen_receiver: NonBlockingJSONReceiver
+    graspgen_sender: NonBlockingJSONSender
+    ros2_receiver: NonBlockingJSONReceiver
+    ros2_sender: NonBlockingJSONSender
+    planned_action_moves: list[SingleRobotMove]
+    idx_list: list[int]
+    temp_cuboid_paths: list[str]
+    last_joint_states: list[float]
+    common_js_names: list[str]
+    graspgen_eof: bool
+    ros2state: ROS2StateType
+    task_queue: list[tuple[str, str]]
 
     def __init__(
         self,
@@ -265,8 +325,8 @@ class MotionPlanController:
         self.pose_metric = init_pose_matric(self.args, self.motion_gen)
 
         # State tracking queues
-        self.planned_action_queue = queue.Queue()
-        self.ROS2_fail_queue = queue.Queue()
+        self.planned_action_queue: queue.Queue[PlannedAction] = queue.Queue()
+        self.ROS2_fail_queue: queue.Queue[dict[str, str]] = queue.Queue()
         self.cmd_plan_positions = None
         self.cmd_idx = 0
         self.articulation_controller = self.robot.get_articulation_controller()
@@ -367,6 +427,7 @@ class MotionPlanController:
         for graspgen_data in graspgen_datas:
             before_move_joints = self.last_joint_states
             processed_moves: list[SingleRobotMove] = []
+            cuboids: list[Cuboid] = []
             for move_dict in graspgen_data["moves"]:
                 graspgen_move = SingleRobotMove(**move_dict)
                 cuboids = get_cuboid_list(graspgen_move, graspgen_data["obstacles"])
@@ -449,6 +510,8 @@ class MotionPlanController:
                         joints_goal.unsqueeze(0),
                         self.plan_config,
                     )
+                else:
+                    raise ValueError(f"Unknown move type: {graspgen_move.type}")
 
                 succ = result.success.item()
                 if succ:
@@ -468,6 +531,8 @@ class MotionPlanController:
                         )
                     positions = cmd_to_move(new_cmd_plan)
                     if graspgen_move.type == "sequence_joint_rad":
+                        if graspgen_move.sequence_joint_rad_goals is None:
+                            raise ValueError("sequence_joint_rad_goals is None")
                         graspgen_move.sequence_joint_rad_goals = (
                             positions + graspgen_move.sequence_joint_rad_goals
                         )
@@ -484,7 +549,7 @@ class MotionPlanController:
                 print("-------------Successfully handled new action--------------")
                 self.graspgen_sender.send_data({"message": "Success"})
                 self.planned_action_queue.put(
-                    {"moves": processed_moves, "obstacles": cuboids}
+                    PlannedAction(moves=processed_moves, obstacles=cuboids)
                 )
                 break
         else:
@@ -492,9 +557,11 @@ class MotionPlanController:
 
     def _communicate_with_ros2(self) -> None:
         if self.ros2state == "Busy":
-            ros2_response: dict = self.ros2_receiver.capture_data()
+            ros2_response = self.ros2_receiver.capture_data()
             if ros2_response is None:
                 return
+            if not isinstance(ros2_response, dict):
+                raise TypeError(f"Expected dict, got {type(ros2_response)}")
             message = ros2_response.get("message")
             if message == "Success":
                 self.ros2state = "Ready"
@@ -512,12 +579,12 @@ class MotionPlanController:
                 and not self.planned_action_queue.empty()
             ):
                 planned_action = self.planned_action_queue.get()
-                self.planned_action_moves = planned_action["moves"]
+                self.planned_action_moves = planned_action.moves
                 if self.temp_cuboid_paths:
                     for path in self.temp_cuboid_paths:
                         self.stage.RemovePrim(path)
                     self.temp_cuboid_paths = []
-                for i, cube in enumerate(planned_action["obstacles"]):
+                for i, cube in enumerate(planned_action.obstacles):
                     prim_path = f"/World/temp_obstacle_{i}"
                     cuboid.VisualCuboid(
                         prim_path=prim_path,
@@ -552,7 +619,7 @@ class MotionPlanController:
             self.last_joint_states = self.default_config
             self.robot.set_joint_positions(self.default_config, self.idx_list)
             self.robot._articulation_view.set_max_efforts(
-                values=np.array([5000 for i in range(len(self.idx_list))]),
+                values=np.array([5000 for _ in range(len(self.idx_list))]),
                 joint_indices=self.idx_list,
             )
             self.cmd_plan_positions = None
@@ -719,7 +786,7 @@ class MotionPlanController:
             self.idx_list = [self.robot.get_dof_index(x) for x in self.j_names]
             self.robot.set_joint_positions(self.default_config, self.idx_list)
             self.robot._articulation_view.set_max_efforts(
-                values=np.array([5000 for i in range(len(self.idx_list))]),
+                values=np.array([5000 for _ in range(len(self.idx_list))]),
                 joint_indices=self.idx_list,
             )
         if step_index < 20:
@@ -775,7 +842,7 @@ class MotionPlanController:
 
     def simulation_loop(self) -> None:
         """Run the main simulation loop until the application stops."""
-        while self.simulation_app.is_running():
+        while self.simulation_app.is_running():  # type: ignore[reportAttributeAccessIssue]
             self._communicate_with_ros2()
             self._handle_task()
             self._step_physics_and_visualize()

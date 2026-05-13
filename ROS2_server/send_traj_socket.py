@@ -6,7 +6,7 @@ import sys
 import time
 from pathlib import Path
 
-import keyboard
+import keyboard  # type: ignore[reportMissingModuleSource]
 
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT_DIR) not in sys.path:
@@ -35,7 +35,7 @@ TEST_ROWS = [
 ]
 
 
-def send_traj(rows: list) -> None:
+def send_traj(rows: list[list[float]]) -> None:
     """Send trajectory rows to the remote Isaac Sim display server."""
     payload = {
         "type": "traj",
@@ -71,6 +71,6 @@ if __name__ == "__main__":
         elif key == "1" and sent:
             # 若你希望每次按 1 都能重送,註解掉 sent 機制即可
             print("[Info] Already sent once. (Remove 'sent' flag to allow re-send.)")
-        elif key.lower() == "q" or key == "esc":
+        elif str(key).lower() == "q" or key == "esc":
             print("Exit.")
             break
