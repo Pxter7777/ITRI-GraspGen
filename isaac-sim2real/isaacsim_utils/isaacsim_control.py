@@ -37,7 +37,7 @@ from isaacsim_utils.helper import add_extensions, add_robot_to_scene
 from omni.isaac.core import World
 from omni.isaac.core.objects import cuboid, sphere
 from omni.isaac.core.utils.types import ArticulationAction
-
+from omni.isaac.core.utils.stage import add_reference_to_stage
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT_DIR / "src"))
@@ -354,7 +354,16 @@ class IsaacSimController:
             -1.48792809,
             3.09947786,
         ]
-        self.robot, self.robot_prim_path = add_robot_to_scene(robot_cfg, self.my_world)
+        # self.robot, self.robot_prim_path = add_robot_to_scene(robot_cfg, self.my_world)
+        # --- 載入自訂 USD ---
+        my_custom_usd_path = "/home/j300/SyncRealScene/SyncRealScene_0410.usd"
+        add_reference_to_stage(usd_path=my_custom_usd_path, prim_path="/World/MyCustomScene")
+        self.robot_prim_path = "/World/MyCustomScene/ObjMovie_20260303/_208_all/_204_ALL_1/_126_ALL/_126_1/_813_tm5s_eelink/tm5s/body"
+        
+        from omni.isaac.core.articulations import Articulation
+        self.robot = Articulation(prim_path=self.robot_prim_path, name="usd_robot")
+        self.my_world.scene.add(self.robot)
+        # -------------------
 
         world_cfg = basic_world_config()
         self.tensor_args = TensorDeviceType()
@@ -370,7 +379,7 @@ class IsaacSimController:
 
         self.usd_help = UsdHelper()
         self.usd_help.load_stage(self.my_world.stage)
-        self.usd_help.add_world_to_stage(world_cfg, base_frame="/World")
+        # self.usd_help.add_world_to_stage(world_cfg, base_frame="/World")
         self.zero_obstacles = zero_obstacle_world_config(
             self.usd_help, self.robot_prim_path
         )
@@ -631,19 +640,19 @@ class IsaacSimController:
             ):
                 planned_action = self.planned_action_queue.get()
                 self.planned_action_moves = planned_action.moves
-                if self.temp_cuboid_paths:
-                    for path in self.temp_cuboid_paths:
-                        self.stage.RemovePrim(path)
-                    self.temp_cuboid_paths = []
-                for i, cube in enumerate(planned_action.obstacles):
-                    prim_path = f"/World/temp_obstacle_{i}"
-                    cuboid.VisualCuboid(
-                        prim_path=prim_path,
-                        position=np.array(cube.pose[:3]),
-                        scale=np.array(cube.dims),
-                        color=np.array([0.0, 0.0, 1.0]),
-                    )
-                    self.temp_cuboid_paths.append(prim_path)
+                # if self.temp_cuboid_paths:
+                #     for path in self.temp_cuboid_paths:
+                #         self.stage.RemovePrim(path)
+                #     self.temp_cuboid_paths = []
+                # for i, cube in enumerate(planned_action.obstacles):
+                #     prim_path = f"/World/temp_obstacle_{i}"
+                #     cuboid.VisualCuboid(
+                #         prim_path=prim_path,
+                #         position=np.array(cube.pose[:3]),
+                #         scale=np.array(cube.dims),
+                #         color=np.array([0.0, 0.0, 1.0]),
+                #     )
+                #     self.temp_cuboid_paths.append(prim_path)
             # Continue to handle Success message
             if len(self.planned_action_moves) > 0:
                 move: SingleRobotMove = self.planned_action_moves.pop(0)
@@ -712,8 +721,10 @@ class IsaacSimController:
             return
 
         if step_index < 10:
-            self.robot._articulation_view.initialize()
-            self.idx_list = [self.robot.get_dof_index(x) for x in self.j_names]
+            # self.robot._articulation_view.initialize()
+            # self.idx_list = [self.robot.get_dof_index(x) for x in self.j_names]
+            self.robot.initialize()
+            self.idx_list = [0, 1, 2, 3, 4, 5]
             self.robot.set_joint_positions(self.default_config, self.idx_list)
             self.robot._articulation_view.set_max_efforts(
                 values=np.array([5000 for _ in range(len(self.idx_list))]),
@@ -726,11 +737,15 @@ class IsaacSimController:
         if self.sim_js is None:
             print("sim_js is None")
             return
-        self.sim_js_names = self.robot.dof_names
-        if np.any(np.isnan(self.sim_js.positions)):
+            
+        # --- 名稱欺騙與擷取前 6 軸 ---
+        self.sim_js_names = self.j_names 
+        arm_positions = self.sim_js.positions[:6] 
+        
+        if np.any(np.isnan(arm_positions)):
             log_error("isaac sim has returned NAN joint position values.")
         cu_js = still_joint_states(
-            self.sim_js.positions, self.tensor_args, self.sim_js_names
+            arm_positions, self.tensor_args, self.sim_js_names
         )
 
         cu_js.velocity *= 0.0
