@@ -46,7 +46,7 @@ def send_traj(rows: list[list[float]]) -> None:
         "unit": "deg",
         "data": rows,
     }
-    msg = json.dumps(payload)
+    msg = json.dumps(payload) + "\n"
     start = time.time()
     with socket.create_connection((HOST, PORT), timeout=3) as s:
         s.sendall(msg.encode("utf-8"))
@@ -54,7 +54,7 @@ def send_traj(rows: list[list[float]]) -> None:
         print("Server:", resp.strip())
     end = time.time()
     print(f"Time taken: {end - start:.3f} seconds")
-
+    time.sleep(0.3)
 
 if __name__ == "__main__":
     print(f"Prepared rows: {len(TEST_ROWS)}")
