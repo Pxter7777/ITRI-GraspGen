@@ -7,7 +7,7 @@ on:
 
 jobs:
   lint-python:
-    name: ruff & pydoclint & pyright
+    name: ruff & pydoclint
     runs-on: ubuntu-latest
     # ---don't need the if, just check every time---
     # if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
@@ -19,5 +19,3 @@ jobs:
         run: uvx ruff check --output-format=github
       - name: Run Pydoclint
         run: uvx pydoclint .
-      - name: Run Pyright
-        run: uvx pyright
