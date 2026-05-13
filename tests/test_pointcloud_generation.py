@@ -11,7 +11,11 @@ from pointcloud_generation.pointcloud_generation import PointCloudGenerator, Sce
 
 @pytest.fixture(scope="module")
 def pc_generator() -> Generator[PointCloudGenerator, None, None]:
-    """Create a PointCloudGenerator with demo settings."""
+    """Create a PointCloudGenerator with demo settings.
+
+    Yields:
+        PointCloudGenerator: A configured generator instance.
+    """
     args = argparse.Namespace(
         ckpt_dir=str(config.FOUNDATIONSTEREO_CHECKPOINT),
         scale=1.0,
@@ -28,7 +32,11 @@ def pc_generator() -> Generator[PointCloudGenerator, None, None]:
 
 
 def test_generate_pointcloud(pc_generator: PointCloudGenerator):
-    """Generate a point cloud and verify object info is populated."""
+    """Generate a point cloud and verify object info is populated.
+
+    Args:
+        pc_generator (PointCloudGenerator): Pytest fixture providing a generator.
+    """
     result = pc_generator.generate_pointcloud(["blue cup", "green cup"])
 
     assert isinstance(result, SceneData)

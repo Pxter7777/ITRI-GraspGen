@@ -31,7 +31,11 @@ PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 
 
 def parse_args() -> argparse.Namespace:
-    """Parse command-line arguments."""
+    """Parse command-line arguments.
+
+    Returns:
+        argparse.Namespace: Parsed arguments.
+    """
     parser = argparse.ArgumentParser(
         description="Visualize grasp data for a given scene."
     )
@@ -57,7 +61,11 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
-    """Load and visualize grasp poses for a scene in meshcat."""
+    """Load and visualize grasp poses for a scene in meshcat.
+
+    Raises:
+        TypeError: If a loaded mesh is not a Trimesh instance.
+    """
     args = parse_args()
     scene_class = getattr(args, "class")
     name = args.name

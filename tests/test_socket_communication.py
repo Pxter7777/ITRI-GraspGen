@@ -29,7 +29,17 @@ logger = logging.getLogger(__name__)
 def blocking_receiver_loop(
     port: int, receiver_type: str, data_queue: Queue[object], error_queue: Queue[object]
 ) -> None:
-    """Run a receiver loop that blocks on each capture_data call."""
+    """Run a receiver loop that blocks on each capture_data call.
+
+    Args:
+        port (int): The TCP port to listen on.
+        receiver_type (str): Either "non-blocking_receiver" or "blocking_receiver".
+        data_queue (Queue[object]): Queue for captured data.
+        error_queue (Queue[object]): Queue for error messages.
+
+    Raises:
+        TypeError: If receiver_type is unknown.
+    """
     receiver = None
     if receiver_type == "non-blocking_receiver":
         receiver = NonBlockingJSONReceiver(port=port)
@@ -59,6 +69,15 @@ def responsive_receiver_loop(
     A blocking `capture_data` will prevent the counter from incrementing.
     receiver can be either blocking or non-blocking, but only non-blocking type
     receiver can pass the assert.
+
+    Args:
+        port (int): The TCP port to listen on.
+        receiver_type (str): Either "non-blocking_receiver" or "blocking_receiver".
+        data_queue (Queue[object]): Queue for captured data.
+        error_queue (Queue[object]): Queue for error messages.
+
+    Raises:
+        TypeError: If receiver_type is unknown.
     """
     receiver = None
     if receiver_type == "non-blocking_receiver":
@@ -94,9 +113,17 @@ def receiver_process(
 ) -> tuple[Process, Queue[object], Queue[object]]:
     """Set up a DataReceiver in a separate background process.
 
-    Yields:
-        tuple: A tuple containing the multiprocessing Queue for results
-               and the port number used by the receiver.
+    Args:
+        port (int): The TCP port to use.
+        task_type (str): Either "non-blocking_task" or "blocking_task".
+        receiver_type (str): Either "non-blocking_receiver" or "blocking_receiver".
+
+    Returns:
+        tuple[Process, Queue[object], Queue[object]]: The process, data queue,
+            and error queue.
+
+    Raises:
+        ValueError: If task_type is unknown.
     """
     data_queue: Queue[object] = Queue()
     error_queue: Queue[object] = Queue()

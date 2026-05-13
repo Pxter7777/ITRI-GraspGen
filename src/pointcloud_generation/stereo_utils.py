@@ -9,18 +9,25 @@ import numpy as np
 import torch
 from foundation_stereo.core.foundation_stereo import FoundationStereo
 from foundation_stereo.core.utils.utils import InputPadder
-from omegaconf import OmegaConf
+from omegaconf import DictConfig, ListConfig, OmegaConf
 
 
 class FoundationStereoModel:
-    """A class to encapsulate the FoundationStereo model and its inference."""
+    """Encapsulate the FoundationStereo model and its inference.
+
+    Args:
+        args (OmegaConf | argparse.Namespace): Configuration arguments
+            containing ``ckpt_dir``, ``scale``, and ``valid_iters``.
+
+    Attributes:
+        args (DictConfig | ListConfig): Merged configuration.
+        model (object): Loaded FoundationStereo model.
+    """
+
+    args: DictConfig | ListConfig
+    model: object
 
     def __init__(self, args: OmegaConf | argparse.Namespace):
-        """Initializes the FoundationStereoModel.
-
-        Args:
-            args: The configuration arguments.
-        """
         logging.info("Loading FoundationStereo model...")
         ckpt_dir = args.ckpt_dir  # type: ignore[reportAttributeAccessIssue]
         cfg = OmegaConf.load(Path(ckpt_dir).parent / "cfg.yaml")
@@ -46,17 +53,17 @@ class FoundationStereoModel:
         K: np.ndarray,  # noqa: N803
         baseline: float,
     ) -> tuple[np.ndarray, tuple[int, int]]:
-        """Runs stereo inference on a pair of images and returns a depth map.
+        """Run stereo inference on a pair of images and return a depth map.
 
         Args:
-            ir1_np: The left image as a numpy array.
-            ir2_np: The right image as a numpy array.
-            K: The camera intrinsics matrix.
-            baseline: The camera baseline.
+            ir1_np (np.ndarray): Left grayscale image.
+            ir2_np (np.ndarray): Right grayscale image.
+            K (np.ndarray): Camera intrinsic matrix.
+            baseline (float): Camera stereo baseline in meters.
 
         Returns:
-            A tuple containing the depth map and the
-            scaled height and width of the images.
+            tuple[np.ndarray, tuple[int, int]]: Depth map and the scaled
+                ``(height, width)`` of the images.
         """
         ir1_np_bgr = cv2.cvtColor(ir1_np, cv2.COLOR_GRAY2BGR)
         ir2_np_bgr = cv2.cvtColor(ir2_np, cv2.COLOR_GRAY2BGR)

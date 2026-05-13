@@ -23,7 +23,26 @@ PROJECT_ROOT_DIR = Path(__file__).resolve().parents[2]
 
 
 class ZedCamera:
-    """A class to interface with a ZED camera."""
+    """A class to interface with a ZED camera.
+
+    Args:
+        use_png (str): Name of a saved PNG dataset to load instead of
+            a live camera.
+        from_stream (bool): Whether to receive frames via ZMQ stream.
+
+    Attributes:
+        baseline (float): Camera stereo baseline in meters.
+        camera (sl.Camera): Underlying ZED SDK camera handle.
+        ext_ir1_to_color (np.ndarray): Extrinsic transform from IR1 to color.
+        K_left (np.ndarray): Left camera intrinsic matrix.
+        W (int): Image width in pixels.
+        H (int): Image height in pixels.
+        left_image (sl.Mat): Left image buffer.
+        right_image (sl.Mat): Right image buffer.
+        png_dir (Path | None): Directory of pre-loaded PNG images.
+        from_stream (bool): Whether frames come from a ZMQ stream.
+        sub (zmq.Socket[bytes]): ZMQ subscriber socket.
+    """
 
     baseline: float
     camera: sl.Camera
@@ -38,7 +57,6 @@ class ZedCamera:
     sub: zmq.Socket[bytes]
 
     def __init__(self, use_png: str = "", from_stream: bool = False) -> None:
-        """Initializes the ZedCamera object."""
         self.left_image = sl.Mat()
         self.right_image = sl.Mat()
         self.png_dir = None
@@ -63,7 +81,11 @@ class ZedCamera:
         self.from_stream = True
 
     def initialize_zed(self) -> None:
-        """Initializes the ZED camera and sets camera parameters."""
+        """Initialize the ZED camera and set camera parameters.
+
+        Raises:
+            RuntimeError: If the camera fails to open.
+        """
         self.camera = sl.Camera()
 
         init_params = sl.InitParameters()
@@ -101,7 +123,11 @@ class ZedCamera:
         self.ext_ir1_to_color = np.identity(4)
 
     def initialize_zed_using_existing_png(self, use_png: str) -> None:
-        """Initialize camera parameters from saved PNG images and calibration data."""
+        """Initialize camera parameters from saved PNG images and calibration data.
+
+        Args:
+            use_png (str): Name of the PNG dataset directory under ``data/zed_images/``.
+        """
         self.png_dir = PROJECT_ROOT_DIR / "data" / "zed_images" / use_png
         self.baseline = 0.0
         self.K_left = np.zeros((3, 3))
@@ -124,6 +150,16 @@ class ZedCamera:
         """Capture images from a ZMQ stream.
 
         Connect, grab one frame, and disconnect immediately to avoid memory buildup.
+
+        Args:
+            port (int): TCP port to connect to.
+
+        Returns:
+            tuple[sl.ERROR_CODE, np.ndarray, np.ndarray]: Status code, left image,
+                and right image.
+
+        Raises:
+            ValueError: If the stream times out.
         """
         ctx = zmq.Context()
         self.sub = ctx.socket(zmq.SUB)
@@ -154,7 +190,12 @@ class ZedCamera:
     def capture_images_from_exsisting_png(
         self,
     ) -> tuple[sl.ERROR_CODE, np.ndarray, np.ndarray]:
-        """Return the pre-loaded PNG images."""
+        """Return the pre-loaded PNG images.
+
+        Returns:
+            tuple[sl.ERROR_CODE, np.ndarray, np.ndarray]: Status code, left image,
+                and right image.
+        """
         return (
             sl.ERROR_CODE.SUCCESS,
             self.left_image.get_data(),
@@ -162,7 +203,12 @@ class ZedCamera:
         )
 
     def capture_images(self) -> tuple[sl.ERROR_CODE, np.ndarray, np.ndarray]:
-        """Capture left and right images from the active source."""
+        """Capture left and right images from the active source.
+
+        Returns:
+            tuple[sl.ERROR_CODE, np.ndarray, np.ndarray]: Status code, left image,
+                and right image.
+        """
         if self.from_stream:
             return self.capture_images_from_stream()
         if (

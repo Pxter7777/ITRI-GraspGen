@@ -18,7 +18,13 @@ PROJECT_ROOT_DIR = Path(__file__).resolve().parents[2]
 
 
 def save_json(dir: str, prefix: str, data: object) -> None:
-    """Save data as a timestamped JSON file for debugging."""
+    """Save data as a timestamped JSON file for debugging.
+
+    Args:
+        dir (str): Subdirectory name under the data folder.
+        prefix (str): Filename prefix before the timestamp.
+        data (object): JSON-serializable data to save.
+    """
     current_time_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     filepath = PROJECT_ROOT_DIR / "data" / dir / (prefix + current_time_str + ".json")
     logger.info(f"save to {filepath}")
@@ -31,7 +37,16 @@ def create_obstacle_info(
     scene_data: SceneData,
     extra_obstacles: dict[str, ObstacleBound] | None = None,
 ) -> SceneData:
-    """Build obstacle bounding boxes from object point clouds and extra config."""
+    """Build obstacle bounding boxes from object point clouds and extra config.
+
+    Args:
+        scene_data (SceneData): The scene data containing object point clouds.
+        extra_obstacles (dict[str, ObstacleBound] | None): Additional static
+            obstacle definitions. Defaults to None.
+
+    Returns:
+        SceneData: A deep copy of the scene data with obstacle info populated.
+    """
     if extra_obstacles is None:
         extra_obstacles = {}
     new_scene_data = copy.deepcopy(scene_data)
@@ -59,7 +74,11 @@ def create_obstacle_info(
 
 
 def load_extra_obstacles() -> dict[str, ObstacleBound]:
-    """Load extra obstacle definitions from the config JSON file."""
+    """Load extra obstacle definitions from the config JSON file.
+
+    Returns:
+        dict[str, ObstacleBound]: Mapping of obstacle names to their bounds.
+    """
     extra_obstacles: dict[str, ObstacleBound] = {}
     extra_obstacles_path = (
         PROJECT_ROOT_DIR / "configs" / "actions" / "extra_obstacles.json"

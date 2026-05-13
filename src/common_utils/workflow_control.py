@@ -31,9 +31,9 @@ class BaseWorkflowController:
     """Orchestrate scene capture, grasp generation, and robot execution.
 
     Args:
-        args: CLI arguments with model paths and inference parameters.
-        sender: Socket sender for outgoing commands to Isaac Sim.
-        receiver: Socket receiver for responses from Isaac Sim.
+        args (argparse.Namespace): CLI arguments with model paths and parameters.
+        sender (NonBlockingJSONSender): Socket sender to Isaac Sim.
+        receiver (NonBlockingJSONReceiver): Socket receiver from Isaac Sim.
     """
 
     def __init__(
@@ -70,7 +70,11 @@ class BaseWorkflowController:
         )
 
     def __enter__(self) -> BaseWorkflowController:
-        """Allows the use of 'with GraspGenController(args) as controller:'."""
+        """Allow the use of 'with GraspGenController(args) as controller:'.
+
+        Returns:
+            BaseWorkflowController: This controller instance.
+        """
         return self
 
     def __exit__(
@@ -79,7 +83,16 @@ class BaseWorkflowController:
         exc_val: BaseException | None,
         exc_tb: object,
     ) -> bool:
-        """Clean up resources when the context manager exits."""
+        """Clean up resources when the context manager exits.
+
+        Args:
+            exc_type (type[BaseException] | None): The exception type, if any.
+            exc_val (BaseException | None): The exception value, if any.
+            exc_tb (object): The traceback object, if any.
+
+        Returns:
+            bool: False to propagate exceptions.
+        """
         if exc_type:
             logger.error(f"Exiting due to error: {exc_val}")
 
@@ -89,7 +102,11 @@ class BaseWorkflowController:
         return False
 
     def handle_task_command(self) -> None:
-        """Dispatch a task to the appropriate handler (GraspGen or CSV)."""
+        """Dispatch a task to the appropriate handler (GraspGen or CSV).
+
+        Raises:
+            ValueError: If the task type is not recognized.
+        """
         task_type, task_name, no_need_curobo = self._capture_task_name()
         self._eat_aborts()
         if task_type == "GraspGen" and task_name == "Grasp_and_Dump":

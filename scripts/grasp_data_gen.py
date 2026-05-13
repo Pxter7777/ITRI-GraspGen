@@ -28,7 +28,14 @@ class NumpyEncoder(json.JSONEncoder):
     """JSON encoder that convert numpy arrays to lists."""
 
     def default(self, o: Any) -> Any:  # noqa: ANN401
-        """Serialize numpy arrays as Python lists."""
+        """Serialize numpy arrays as Python lists.
+
+        Args:
+            o (Any): The object to serialize.
+
+        Returns:
+            Any: A JSON-serializable representation.
+        """
         if isinstance(o, np.ndarray):
             return o.tolist()
         return super().default(o)
@@ -45,13 +52,24 @@ PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 
 
 def set_seed(seed: int) -> None:
-    """Set random seeds for torch and numpy."""
+    """Set random seeds for torch and numpy.
+
+    Args:
+        seed (int): The random seed value.
+    """
     torch.manual_seed(seed)
     np.random.seed(seed)
 
 
 def ndgrasp_to_pre_quat(grasp: np.ndarray) -> list[float]:
-    """Convert a grasp matrix to a pre-grasp position-quaternion list."""
+    """Convert a grasp matrix to a pre-grasp position-quaternion list.
+
+    Args:
+        grasp (np.ndarray): A 4x4 grasp transformation matrix.
+
+    Returns:
+        list[float]: 7-element list [x,y,z,qw,qx,qy,qz].
+    """
     quaternion_orientation = list(trimesh.transformations.quaternion_from_matrix(grasp))
     _, _, front = get_left_up_and_front(grasp)
     front = front.tolist()
@@ -62,7 +80,14 @@ def ndgrasp_to_pre_quat(grasp: np.ndarray) -> list[float]:
 
 
 def ndgrasp_to_quat(grasp: np.ndarray) -> list[float]:
-    """Convert a grasp matrix to a grasp position-quaternion list."""
+    """Convert a grasp matrix to a grasp position-quaternion list.
+
+    Args:
+        grasp (np.ndarray): A 4x4 grasp transformation matrix.
+
+    Returns:
+        list[float]: 7-element list [x,y,z,qw,qx,qy,qz].
+    """
     quaternion_orientation = list(trimesh.transformations.quaternion_from_matrix(grasp))
     _, _, front = get_left_up_and_front(grasp)
     front = front.tolist()
@@ -73,7 +98,11 @@ def ndgrasp_to_quat(grasp: np.ndarray) -> list[float]:
 
 
 def parse_args() -> argparse.Namespace:
-    """Parse command-line arguments."""
+    """Parse command-line arguments.
+
+    Returns:
+        argparse.Namespace: Parsed arguments.
+    """
     parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
     parser.add_argument(
         "--ckpt_dir",
@@ -168,7 +197,14 @@ def parse_args() -> argparse.Namespace:
 
 
 def angle_diff_rad(grasp: np.ndarray) -> float:
-    """Compute the planar angle difference between approach and position vectors."""
+    """Compute the planar angle difference between approach and position vectors.
+
+    Args:
+        grasp (np.ndarray): A 4x4 grasp transformation matrix.
+
+    Returns:
+        float: Angle difference in radians.
+    """
     position = grasp[:3, 3].tolist()
     _left, _up, front = get_left_up_and_front(grasp)
     position += front * 0.20  # offset
@@ -183,12 +219,26 @@ def angle_diff_rad(grasp: np.ndarray) -> float:
 
 
 def distance_meter(grasp: np.ndarray) -> float:
-    """Return the Euclidean distance from the origin to the grasp position."""
+    """Return the Euclidean distance from the origin to the grasp position.
+
+    Args:
+        grasp (np.ndarray): A 4x4 grasp transformation matrix.
+
+    Returns:
+        float: Distance in meters.
+    """
     return float(np.linalg.norm(grasp[:3, 3]))
 
 
 def up_vector(grasp: np.ndarray) -> float:
-    """Return the Z component of the grasp approach vector."""
+    """Return the Z component of the grasp approach vector.
+
+    Args:
+        grasp (np.ndarray): A 4x4 grasp transformation matrix.
+
+    Returns:
+        float: Z component of the approach vector.
+    """
     _left, _up, front = get_left_up_and_front(grasp)
     return front[2]
 
@@ -217,7 +267,11 @@ class ExperimentWorkflowController:
         logger.info("======Successfully initialized======")
 
     def __enter__(self) -> ExperimentWorkflowController:
-        """Allows the use of 'with GraspGenController(args) as controller:'."""
+        """Allows the use of 'with GraspGenController(args) as controller:'.
+
+        Returns:
+            ExperimentWorkflowController: The controller instance.
+        """
         return self
 
     def __exit__(
@@ -229,6 +283,14 @@ class ExperimentWorkflowController:
         """Automatically called when the 'with' block ends.
 
         Even if an exception occurs, this method runs.
+
+        Args:
+            exc_type (type[BaseException] | None): Exception type, if any.
+            exc_val (BaseException | None): Exception value, if any.
+            exc_tb (object): Traceback object, if any.
+
+        Returns:
+            bool: False to propagate exceptions.
         """
         if exc_type:
             logger.error(f"Exiting due to error: {exc_val}")

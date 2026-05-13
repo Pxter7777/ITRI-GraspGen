@@ -8,7 +8,21 @@ logger = logging.getLogger(__name__)
 
 
 class ObjectBound(BaseModel):
-    """Define Obstacle class."""
+    """Define Obstacle class.
+
+    Attributes:
+        model_config: Pydantic model configuration.
+        pose_meter_quat (list[float]): 7-element pose [x,y,z,qw,qx,qy,qz].
+        instance_id (str): Unique object identifier.
+        obj_dir (str): Directory containing the object mesh.
+        scale (float): Object scale factor.
+        x (float): X position.
+        y (float): Y position.
+        z (float): Z position.
+        roll (float): Roll angle.
+        pitch (float): Pitch angle.
+        yaw (float): Yaw angle.
+    """
 
     model_config = ConfigDict(extra="ignore")
 
@@ -29,6 +43,12 @@ class OrderTaskConfig(BaseModel):
 
     Its pose is fixed.
     We only need to record its jointstate.
+
+    Attributes:
+        model_config: Pydantic model configuration.
+        robot_jointstate (list[float]): 6-element joint state in radians.
+        target (ObjectBound): The target object to grasp.
+        obstacles (list[ObjectBound]): Obstacle objects in the scene.
     """
 
     model_config = ConfigDict(extra="ignore")

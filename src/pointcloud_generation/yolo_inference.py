@@ -23,8 +23,11 @@ class YOLOv5Detector:
 
     Attributes:
         device (torch.device): Torch device used for inference.
-        model: Loaded YOLOv5 model.
+        model (object): Loaded YOLOv5 model.
     """
+
+    device: torch.device  # type: ignore[reportPrivateImportUsage]
+    model: object
 
     def __init__(
         self,
@@ -43,7 +46,11 @@ class YOLOv5Detector:
     def infer(self, image: np.ndarray | str) -> pd.DataFrame:
         """Run inference on an image path or numpy array.
 
-        Return detection results as a pandas DataFrame.
+        Args:
+            image (np.ndarray | str): Input image or path to an image file.
+
+        Returns:
+            pd.DataFrame: Detection results filtered to class 41.
         """
         if isinstance(image, str):
             image = cv2.imread(image)
@@ -54,7 +61,11 @@ class YOLOv5Detector:
         return df
 
     def infer_and_show(self, image: np.ndarray | str) -> None:
-        """Run inference and display results in an OpenCV window."""
+        """Run inference and display results in an OpenCV window.
+
+        Args:
+            image (np.ndarray | str): Input image or path to an image file.
+        """
         if isinstance(image, str):
             image = cv2.imread(image)
         results = self.model(image)  # type: ignore[reportCallIssue]

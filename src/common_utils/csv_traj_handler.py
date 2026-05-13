@@ -16,7 +16,15 @@ logger = logging.getLogger(__name__)
 
 
 class Mode(Enum):
-    """Gripper/movement modes parsed from CSV trajectories."""
+    """Gripper/movement modes parsed from CSV trajectories.
+
+    Attributes:
+        MOVE: Movement mode.
+        OPEN: Gripper open mode.
+        HALF_OPEN: Gripper half-open mode.
+        CLOSE: Gripper close mode.
+        CLOSE_TIGHT: Gripper tight-close mode.
+    """
 
     MOVE = 1
     OPEN = 2
@@ -32,7 +40,12 @@ status_close_tight = [1, 1, 0]
 
 
 class Movement:
-    """A single movement step with a mode and optional joint values."""
+    """A single movement step with a mode and optional joint values.
+
+    Args:
+        mode (Mode): The movement mode.
+        joint_value (list[float] | None): Optional joint values for the step.
+    """
 
     def __init__(self, mode: Mode, joint_value: list[float] | None = None) -> None:
         self.mode = mode
@@ -41,7 +54,17 @@ class Movement:
 
 
 def load_trajectory_from_csv(command: str) -> list[Movement]:
-    """Parse a CSV trajectory file into a list of Movement steps."""
+    """Parse a CSV trajectory file into a list of Movement steps.
+
+    Args:
+        command (str): The trajectory command name (maps to a CSV filename).
+
+    Returns:
+        list[Movement]: The parsed movement steps.
+
+    Raises:
+        FileNotFoundError: If the CSV directory or file does not exist.
+    """
     base_dir = Path("~").expanduser() / "RobotSnackServing-csv"
     if not base_dir.exists():
         raise FileNotFoundError(
@@ -101,7 +124,13 @@ def load_trajectory_from_csv(command: str) -> list[Movement]:
 
 @dataclass
 class SpeedParam:
-    """Velocity, acceleration, and blend parameters for a trajectory."""
+    """Velocity, acceleration, and blend parameters for a trajectory.
+
+    Attributes:
+        vel (int): Velocity parameter.
+        acc (int): Acceleration parameter.
+        blend (int): Blend parameter.
+    """
 
     vel: int = 40
     acc: int = 20
@@ -143,7 +172,19 @@ def run_trajectory(
     obstacles: list[object] | None = None,
     no_need_curobo: bool = False,
 ) -> list[dict[str, object]]:
-    """Convert a CSV trajectory into a list of SingleRobotMove dicts."""
+    """Convert a CSV trajectory into a list of SingleRobotMove dicts.
+
+    Args:
+        command (str): The trajectory command name.
+        obstacles (list[object] | None): Optional list of obstacle objects.
+        no_need_curobo (bool): Whether to skip cuRobo motion planning.
+
+    Returns:
+        list[dict[str, object]]: The list of serialized move dictionaries.
+
+    Raises:
+        TypeError: If a MOVE node has a None joint_value.
+    """
     if obstacles is None:
         obstacles = []
     nodes = load_trajectory_from_csv(command)
@@ -223,7 +264,16 @@ def csv_act(
     obstacles: dict[str, ObstacleBound] | None = None,
     no_need_curobo: bool = False,
 ) -> list[dict[str, object]]:
-    """Run a named CSV trajectory and wrap it as a sendable action list."""
+    """Run a named CSV trajectory and wrap it as a sendable action list.
+
+    Args:
+        command (str): The trajectory command name.
+        obstacles (dict[str, ObstacleBound] | None): Optional obstacle bounds.
+        no_need_curobo (bool): Whether to skip cuRobo motion planning.
+
+    Returns:
+        list[dict[str, object]]: The wrapped action list.
+    """
     if obstacles is None:
         obstacles = {}
     return [

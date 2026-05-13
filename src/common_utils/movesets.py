@@ -30,6 +30,24 @@ class SingleRobotMove:
     Scripts like mia_server.py, sync_with_ROS2.py, and gripper_server.py
     each consume the fields they need and may transform the move type
     (e.g. single_pose_meter_quaternion to sequence_joint_rad).
+
+    Attributes:
+        type (MoveType): The move type.
+        grip_type (GripType | None): Gripper action, only used when type
+            is "gripper".
+        wait_time (float): Time to wait after the move in seconds.
+        vel (int): Velocity parameter for sequence_joint_rad moves.
+        acc (int): Acceleration parameter for sequence_joint_rad moves.
+        blend (int): Blend parameter for sequence_joint_rad moves.
+        no_curobo (bool): Whether to skip cuRobo motion planning.
+        no_obstacles (bool): Whether to ignore all obstacles.
+        ignore_obstacles (list[str]): Names of obstacles to ignore.
+        sequence_joint_rad_goals (list[list[float]] | None): Joint goals
+            for sequence moves.
+        single_pose_meter_quaternion_goal (list[float] | None): Pose goal
+            as position and quaternion.
+        single_pose_joint_rad_goal (list[float] | None): Joint goal for
+            single pose moves.
     """
 
     type: MoveType
@@ -67,7 +85,21 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
     args: list[object],
     scene_data: SceneData,
 ) -> dict[str, object]:
-    """Generate a grab-pour-release move sequence using rotational pouring."""
+    """Generate a grab-pour-release move sequence using rotational pouring.
+
+    Args:
+        target_name (str): Name of the target object to grasp.
+        grasp (np.ndarray): A 4x4 grasp transformation matrix.
+        args (list[object]): Additional arguments (pour target position or name).
+        scene_data (SceneData): Scene data with obstacle information.
+
+    Returns:
+        dict[str, object]: The full action dictionary with moves and obstacles.
+
+    Raises:
+        TypeError: If args[0] is neither a list nor a string.
+        ValueError: If the pour axis norm is near zero.
+    """
     obstacles = scene_data.obstacle_infos
     moves: list[SingleRobotMove] = []
     # fetch basic infos
@@ -242,7 +274,15 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
 def joints_rad_move_to_curobo(
     args: list[object], scene_data: SceneData
 ) -> dict[str, object]:
-    """Generate a single joint-space move through cuRobo."""
+    """Generate a single joint-space move through cuRobo.
+
+    Args:
+        args (list[object]): List whose first element is the joint goal.
+        scene_data (SceneData): Scene data with obstacle information.
+
+    Returns:
+        dict[str, object]: The full action dictionary with moves and obstacles.
+    """
     joints_goal = args[0]
     obstacles = scene_data.obstacle_infos
     moves: list[SingleRobotMove] = []
@@ -261,7 +301,11 @@ def joints_rad_move_to_curobo(
 
 
 def open_grip() -> dict[str, object]:
-    """Generate a gripper-open command."""
+    """Generate a gripper-open command.
+
+    Returns:
+        dict[str, object]: The full action dictionary with moves and obstacles.
+    """
     obstacles: list[object] = []
     moves: list[SingleRobotMove] = []
     moves.append(SingleRobotMove(type="gripper", grip_type="open", wait_time=1.0))
@@ -288,7 +332,21 @@ def act_with_name(
     scene_data: SceneData | None = None,
     target_name: str | None = None,
 ) -> list[dict[str, object]]:
-    """Dispatch a named action to the appropriate move generator."""
+    """Dispatch a named action to the appropriate move generator.
+
+    Args:
+        action (str): The action name to dispatch.
+        args (list[object] | None): Optional arguments for the action.
+        grasps (list[np.ndarray] | None): Optional list of grasp matrices.
+        scene_data (SceneData | None): Optional scene data.
+        target_name (str | None): Optional target object name.
+
+    Returns:
+        list[dict[str, object]]: A list of action dictionaries.
+
+    Raises:
+        ValueError: If required arguments are None or the action is unknown.
+    """
     if action == "grab_and_pour_and_place_back_curobo":
         if grasps is None:
             raise ValueError(

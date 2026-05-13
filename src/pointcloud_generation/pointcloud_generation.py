@@ -9,6 +9,7 @@ import numpy as np
 import open3d as o3d
 import pyzed.sl as sl
 import torch
+from sam2.sam2_image_predictor import SAM2ImagePredictor
 
 # from pointcloud_generation.yolo_inference import YOLOv5Detector
 from common_utils.scene_data import SceneData
@@ -29,13 +30,16 @@ class NamedMask:
     """Pair a segmentation mask with its object name.
 
     Args:
-        name: Object name.
-        mask: Boolean segmentation mask.
+        name (str): Object name.
+        mask (np.ndarray): Boolean segmentation mask.
 
     Attributes:
-        name: Object name.
-        mask: Boolean segmentation mask.
+        name (str): Object name.
+        mask (np.ndarray): Boolean segmentation mask.
     """
+
+    name: str
+    mask: np.ndarray
 
     def __init__(self, name: str, mask: np.ndarray) -> None:
         self.name = name
@@ -46,19 +50,29 @@ class PointCloudGenerator:
     """Generate point clouds from stereo camera input and segmentation.
 
     Args:
-        args: CLI arguments containing pipeline configuration.
+        args (argparse.Namespace): CLI arguments containing pipeline configuration.
 
     Attributes:
         erosion_iterations (int): Number of mask erosion iterations.
         need_confirm (bool): Whether to show a confirmation GUI.
         max_depth (float): Maximum depth threshold in meters.
         scale (float): Scale factor for camera intrinsics.
-        sam_predictor: Loaded SAM2 predictor.
+        sam_predictor (SAM2ImagePredictor): Loaded SAM2 predictor.
         stereo_model (FoundationStereoModel): Stereo depth model.
         groundingdino_predictor (GroundindDinoPredictor): Detection model.
         zed (ZedCamera): Camera interface.
         mouse_handler (MouseHandler): Mouse input handler.
     """
+
+    erosion_iterations: int
+    need_confirm: bool
+    max_depth: float
+    scale: float
+    sam_predictor: SAM2ImagePredictor
+    stereo_model: FoundationStereoModel
+    groundingdino_predictor: GroundindDinoPredictor
+    zed: ZedCamera
+    mouse_handler: MouseHandler
 
     def __init__(self, args: argparse.Namespace) -> None:
         # Init
@@ -87,7 +101,22 @@ class PointCloudGenerator:
         """Generate a point cloud for the given target objects.
 
         Blockages are rectangular regions to mask out before detection:
-        [[minX, minY, maxX, maxY], ...].
+        ``[[minX, minY, maxX, maxY], ...]``.
+
+        Args:
+            target_names (list[str]): Names of target objects to detect.
+            blockages (list[list[int]] | None): Rectangular regions to black out
+                before detection.
+            valid_region (list[int] | None): Bounding region ``[minX, minY, maxX,
+                maxY]`` that all detections must fall within.
+
+        Returns:
+            SceneData: Generated scene and object point clouds.
+
+        Raises:
+            RuntimeError: If image capture fails.
+            ValueError: If a detected object is unknown, duplicated, outside the
+                valid region, or not detected at all.
         """
         # blockage init
         if blockages is None:
@@ -208,7 +237,12 @@ class PointCloudGenerator:
         return result_scene_data
 
     def interactive_gui_mode(self) -> SceneData | None:
-        """Run an interactive GUI for manual box selection."""
+        """Run an interactive GUI for manual box selection.
+
+        Returns:
+            SceneData | None: Generated scene data, or ``None`` if the user
+                cancels or an error occurs.
+        """
         # ---------- Window and Mouse Callback Setup ----------
         win_name = "RGB + Mask | Depth"
         cv2.namedWindow(win_name)
@@ -311,6 +345,23 @@ class PointCloudGenerator:
         scale: float,
         max_depth: float,
     ) -> SceneData | None:
+        """Generate a scene/object point cloud from a single mask.
+
+        Args:
+            depth (np.ndarray): Depth map.
+            color_np_org (np.ndarray): Original BGR color image.
+            mask (np.ndarray): Boolean segmentation mask for the object.
+            K_cam (np.ndarray): Camera intrinsic matrix.
+            scale (float): Scale factor applied to intrinsics.
+            max_depth (float): Maximum depth threshold in meters.
+
+        Returns:
+            SceneData | None: Scene data with object and background point
+                clouds, or ``None`` if no valid points remain.
+
+        Raises:
+            ValueError: If the mask contains no projected points.
+        """
         logging.info("generating scene and object...")
 
         K_scaled_cam = K_cam.copy()  # noqa: N806
@@ -415,6 +466,23 @@ class PointCloudGenerator:
         scale: float,
         max_depth: float,
     ) -> SceneData:
+        """Generate a scene point cloud with multiple named objects.
+
+        Args:
+            depth (np.ndarray): Depth map.
+            color_np_org (np.ndarray): Original BGR color image.
+            named_masks (list[NamedMask]): Named segmentation masks.
+            K_cam (np.ndarray): Camera intrinsic matrix.
+            scale (float): Scale factor applied to intrinsics.
+            max_depth (float): Maximum depth threshold in meters.
+
+        Returns:
+            SceneData: Scene data with per-object and background point clouds.
+
+        Raises:
+            ValueError: If no valid points remain after filtering, or if any
+                mask contains no projected points.
+        """
         logging.info("generating scene and object...")
 
         K_scaled_cam = K_cam.copy()  # noqa: N806
@@ -520,6 +588,15 @@ class PointCloudGenerator:
         depth: np.ndarray,
         K: np.ndarray,  # noqa: N803
     ) -> np.ndarray:
+        """Convert a depth map to an XYZ coordinate map.
+
+        Args:
+            depth (np.ndarray): Depth map.
+            K (np.ndarray): Camera intrinsic matrix.
+
+        Returns:
+            np.ndarray: XYZ map with shape ``(H, W, 3)``.
+        """
         vy, vx = np.meshgrid(
             np.arange(depth.shape[0]), np.arange(depth.shape[1]), indexing="ij"
         )

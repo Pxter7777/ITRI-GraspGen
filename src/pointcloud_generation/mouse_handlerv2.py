@@ -7,7 +7,14 @@ import cv2
 
 @dataclass(frozen=True)
 class BoundingBox:
-    """Represent an axis-aligned bounding box."""
+    """Represent an axis-aligned bounding box.
+
+    Attributes:
+        x_min (int): Left edge coordinate.
+        y_min (int): Top edge coordinate.
+        x_max (int): Right edge coordinate.
+        y_max (int): Bottom edge coordinate.
+    """
 
     x_min: int
     y_min: int
@@ -22,6 +29,8 @@ class MouseHandler:
         boxes (list[BoundingBox]): Finalized bounding boxes.
     """
 
+    boxes: list[BoundingBox]
+
     def __init__(self) -> None:
         self.boxes: list[BoundingBox] = []
         self._current_start: tuple[int, int] | None = None
@@ -29,7 +38,11 @@ class MouseHandler:
 
     @property
     def temp_box(self) -> BoundingBox | None:
-        """Return the in-progress bounding box, or None if not dragging."""
+        """Return the in-progress bounding box, or None if not dragging.
+
+        Returns:
+            BoundingBox | None: The temporary box, or ``None``.
+        """
         if self._current_start is None or self._current_end is None:
             return None
         return self._create_box(
@@ -47,7 +60,18 @@ class MouseHandler:
         flags: int,
         param: object,
     ) -> None:
-        """Handle an OpenCV mouse callback event."""
+        """Handle an OpenCV mouse callback event.
+
+        Args:
+            event (int): OpenCV mouse event type.
+            x (int): Horizontal pixel coordinate.
+            y (int): Vertical pixel coordinate.
+            flags (int): OpenCV event flags.
+            param (object): User-defined data passed by OpenCV.
+
+        Raises:
+            RuntimeError: If LBUTTONUP arrives without a prior LBUTTONDOWN.
+        """
         if event == cv2.EVENT_LBUTTONDOWN:
             self._current_start = (x, y)
             self._current_end = (x, y)
@@ -72,6 +96,17 @@ class MouseHandler:
         self._current_end = None
 
     def _create_box(self, x1: int, y1: int, x2: int, y2: int) -> BoundingBox | None:
+        """Create a normalized bounding box from two corner points.
+
+        Args:
+            x1 (int): First corner x coordinate.
+            y1 (int): First corner y coordinate.
+            x2 (int): Second corner x coordinate.
+            y2 (int): Second corner y coordinate.
+
+        Returns:
+            BoundingBox | None: The bounding box, or ``None`` if too small.
+        """
         if abs(x1 - x2) <= 1 or abs(y1 - y2) <= 1:
             return None
         return BoundingBox(min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2))

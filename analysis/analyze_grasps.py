@@ -39,7 +39,11 @@ FEATURE_LABELS = {
 
 
 def load_all_data() -> list[dict[str, object]]:
-    """Load grasp records from all scenario JSON files."""
+    """Load grasp records from all scenario JSON files.
+
+    Returns:
+        list[dict[str, object]]: Flat list of grasp records.
+    """
     records = []
     for scenario in SCENARIOS:
         for i in range(1, 6):
@@ -66,7 +70,11 @@ def load_all_data() -> list[dict[str, object]]:
 
 
 def plot_feature_distributions(records: list[dict[str, object]]) -> None:
-    """Box plots: feature distributions for success vs fail grasps."""
+    """Box plots: feature distributions for success vs fail grasps.
+
+    Args:
+        records (list[dict[str, object]]): Grasp records with features and labels.
+    """
     success = [r for r in records if r["success"] == 1]
     fail = [r for r in records if r["success"] == 0]
 
@@ -97,7 +105,11 @@ def plot_feature_distributions(records: list[dict[str, object]]) -> None:
 
 
 def plot_success_rate_by_bin(records: list[dict[str, object]]) -> None:
-    """Success rate across binned feature values."""
+    """Success rate across binned feature values.
+
+    Args:
+        records (list[dict[str, object]]): Grasp records with features and labels.
+    """
     fig, axes = plt.subplots(1, len(FEATURE_NAMES), figsize=(18, 4))
     fig.suptitle(
         "Success Rate by Feature Value (binned)", fontsize=13, fontweight="bold"
@@ -166,7 +178,15 @@ def plot_success_rate_by_bin(records: list[dict[str, object]]) -> None:
 def train_and_evaluate(
     records: list[dict[str, object]],
 ) -> tuple[LogisticRegression, StandardScaler, XGBClassifier]:
-    """Train logistic regression and XGBoost, evaluate with cross-validation."""
+    """Train logistic regression and XGBoost, evaluate with cross-validation.
+
+    Args:
+        records (list[dict[str, object]]): Grasp records with features and labels.
+
+    Returns:
+        tuple[LogisticRegression, StandardScaler, XGBClassifier]: Trained models
+            and scaler.
+    """
     X = np.array([[r[f] for f in FEATURE_NAMES] for r in records])  # noqa: N806
     y = np.array([r["success"] for r in records])
 
@@ -226,6 +246,12 @@ def topk_table(
     For each scene, rank grasps by model score vs random.
     Report: % of scenes with at least one success in top-k, for k = 1,3,5,10,20.
     Also report mean attempts to first success.
+
+    Args:
+        records (list[dict[str, object]]): Grasp records with features and labels.
+        lr (LogisticRegression): Trained logistic regression model.
+        scaler (StandardScaler): Fitted feature scaler.
+        xgb (XGBClassifier): Trained XGBoost model.
     """
     # Group by scene key
     scenes = {}

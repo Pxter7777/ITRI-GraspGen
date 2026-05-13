@@ -36,7 +36,11 @@ TEST_ROWS = [
 
 
 def send_traj(rows: list[list[float]]) -> None:
-    """Send trajectory rows to the remote Isaac Sim display server."""
+    """Send trajectory rows to the remote Isaac Sim display server.
+
+    Args:
+        rows (list[list[float]]): Trajectory rows to send.
+    """
     payload = {
         "type": "traj",
         "unit": "deg",

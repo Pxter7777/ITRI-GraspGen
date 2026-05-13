@@ -16,7 +16,15 @@ def transform(
     original_pointcloud: np.ndarray,
     transformation_matrix: np.ndarray,
 ) -> np.ndarray:
-    """Apply a 4x4 transformation matrix to a point cloud."""
+    """Apply a 4x4 transformation matrix to a point cloud.
+
+    Args:
+        original_pointcloud (np.ndarray): Point cloud of shape ``(N, 3)``.
+        transformation_matrix (np.ndarray): 4x4 homogeneous transformation.
+
+    Returns:
+        np.ndarray: Transformed point cloud of shape ``(N, 3)``.
+    """
     original_pc_homogeneous = np.hstack(
         (
             original_pointcloud,
@@ -31,7 +39,14 @@ def transform(
 
 
 def silent_transform_multiple_obj_with_name_dict(scene_data: SceneData) -> SceneData:
-    """Transform scene data using the saved config without user interaction."""
+    """Transform scene data using the saved config without user interaction.
+
+    Args:
+        scene_data (SceneData): Scene data to transform.
+
+    Returns:
+        SceneData: Deep-copied and transformed scene data.
+    """
     config_filepath = PROJECT_ROOT_DIR / "configs" / "transform_config.json"
     with open(config_filepath, "rb") as f:
         transform_data = json.load(f)

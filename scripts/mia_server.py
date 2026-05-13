@@ -26,13 +26,21 @@ PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 
 
 def set_seed(seed: int) -> None:
-    """Set random seeds for torch and numpy."""
+    """Set random seeds for torch and numpy.
+
+    Args:
+        seed (int): The random seed value.
+    """
     torch.manual_seed(seed)
     np.random.seed(seed)
 
 
 def parse_args() -> argparse.Namespace:
-    """Parse command-line arguments."""
+    """Parse command-line arguments.
+
+    Returns:
+        argparse.Namespace: Parsed arguments.
+    """
     parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
     parser.add_argument(
         "--ckpt_dir",

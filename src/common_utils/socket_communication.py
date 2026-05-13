@@ -41,6 +41,10 @@ class NonBlockingJSONSender:
     """Manage connection and send JSON payloads to a receiver.
 
     Connects automatically upon instantiation.
+
+    Args:
+        port (int): The TCP port to connect to.
+        host (str): The hostname to connect to.
     """
 
     def __init__(self, port: int, host: str = "localhost") -> None:
@@ -80,7 +84,11 @@ class NonBlockingJSONSender:
             logger.info("Sender disconnected")
 
     def reconnect(self) -> bool:
-        """Close the current connection and establish a new one."""
+        """Close the current connection and establish a new one.
+
+        Returns:
+            bool: True on success, False otherwise.
+        """
         logger.info("Attempting to reconnect sender...")
         self.disconnect()
         return self._connect_on_init()
@@ -88,7 +96,16 @@ class NonBlockingJSONSender:
     def send_data(self, data: Mapping[str, object] | Sequence[object]) -> bool:
         """Send a JSON payload, reconnecting automatically on failure.
 
-        Returns True on successful send, False otherwise.
+        Args:
+            data (Mapping[str, object] | Sequence[object]): The data to
+                serialize and send.
+
+        Returns:
+            bool: True on successful send, False otherwise.
+
+        Raises:
+            BrokenPipeError: If the peer closed the connection.
+            RuntimeError: If socket is None after successful reconnect.
         """
         if not self.socket:
             logger.info("Connection not established. Attempting to reconnect.")
@@ -142,6 +159,10 @@ class NonBlockingJSONReceiver:
     """Non-blocking TCP server that receives length-prefixed JSON messages.
 
     Connects automatically upon instantiation.
+
+    Args:
+        port (int): The TCP port to bind to.
+        host (str): The hostname to bind to.
     """
 
     def __init__(self, port: int, host: str = "localhost") -> None:
@@ -158,6 +179,9 @@ class NonBlockingJSONReceiver:
 
         Returns:
             bool: True on success, False otherwise.
+
+        Raises:
+            ConnectionAbortedError: If an OS-level error occurs during binding.
         """
         if self.socket:
             self.disconnect()
@@ -194,7 +218,16 @@ class NonBlockingJSONReceiver:
     def capture_data(
         self,
     ) -> dict[str, object] | list[object] | None:
-        """Poll for a complete JSON message, returning None if unavailable."""
+        """Poll for a complete JSON message, returning None if unavailable.
+
+        Returns:
+            dict[str, object] | list[object] | None: The decoded JSON message,
+                or None if no complete message is available.
+
+        Raises:
+            RuntimeError: If socket is None when accepting connections.
+            ValueError: If the message buffer is shorter than the header length.
+        """
         if self.conn is None:
             if self.socket is None:
                 raise RuntimeError("Socket is None, cannot accept connections")
@@ -247,6 +280,10 @@ class BlockingJSONReceiver:
     """Blocking TCP server that receives length-prefixed JSON messages.
 
     Connects automatically upon instantiation.
+
+    Args:
+        port (int): The TCP port to bind to.
+        host (str): The hostname to bind to.
     """
 
     def __init__(self, port: int, host: str = "localhost") -> None:
@@ -261,6 +298,9 @@ class BlockingJSONReceiver:
 
         Returns:
             bool: True on success, False otherwise.
+
+        Raises:
+            ConnectionAbortedError: If an OS-level error occurs during binding.
         """
         if self.socket:
             self.disconnect()
@@ -294,7 +334,17 @@ class BlockingJSONReceiver:
         logger.info("receiver disconnected")
 
     def _read_blocking(self, n: int) -> bytes | None:
-        """Read exactly n bytes from the blocking socket."""
+        """Read exactly n bytes from the blocking socket.
+
+        Args:
+            n (int): The number of bytes to read.
+
+        Returns:
+            bytes | None: The data read, or None if the connection closed.
+
+        Raises:
+            RuntimeError: If the connection is None.
+        """
         if self.conn is None:
             raise RuntimeError("Connection is None, cannot read")
         data = b""
@@ -308,7 +358,15 @@ class BlockingJSONReceiver:
     def capture_data(
         self,
     ) -> dict[str, object] | list[object] | None:
-        """Block until a complete JSON message is received."""
+        """Block until a complete JSON message is received.
+
+        Returns:
+            dict[str, object] | list[object] | None: The decoded JSON message,
+                or None on decode error.
+
+        Raises:
+            RuntimeError: If socket is None when accepting connections.
+        """
         if self.conn is None:
             if self.socket is None:
                 raise RuntimeError("Socket is None, cannot accept connections")

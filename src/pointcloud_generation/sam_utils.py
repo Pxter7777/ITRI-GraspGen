@@ -14,7 +14,11 @@ from pointcloud_generation.mouse_handlerv2 import BoundingBox
 
 
 def load_sam_model() -> SAM2ImagePredictor:
-    """Load and return the SAM2 image predictor."""
+    """Load and return the SAM2 image predictor.
+
+    Returns:
+        SAM2ImagePredictor: The loaded SAM2 predictor.
+    """
     try:
         sam_model = build_sam2(config.SAM2_CFG, config.SAM2_CHECKPOINT).to(
             config.DEVICE
@@ -37,7 +41,17 @@ def run_sam2(
     box: BoundingBox,
     iterations: int = 6,
 ) -> np.ndarray:
-    """Run SAM2 inference on an image region and return an eroded boolean mask."""
+    """Run SAM2 inference on an image region and return an eroded boolean mask.
+
+    Args:
+        predictor (SAM2ImagePredictor): Loaded SAM2 predictor.
+        image_rgb (np.ndarray): RGB input image.
+        box (BoundingBox): Bounding box defining the region of interest.
+        iterations (int): Number of erosion iterations on the mask.
+
+    Returns:
+        np.ndarray: Boolean mask after erosion.
+    """
     predictor.set_image(image_rgb)
     input_point = np.array([[(box.x_min + box.x_max) / 2, (box.y_min + box.y_max) / 2]])
     input_label = np.array([1])

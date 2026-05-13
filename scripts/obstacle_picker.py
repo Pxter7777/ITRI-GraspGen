@@ -27,7 +27,11 @@ logger = logging.getLogger(__name__)
 
 
 def parse_args() -> argparse.Namespace:
-    """Parse command-line arguments."""
+    """Parse command-line arguments.
+
+    Returns:
+        argparse.Namespace: Parsed arguments.
+    """
     parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
     parser.add_argument(
         "--ckpt_dir",
@@ -79,7 +83,11 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
-    """Capture an obstacle bounding box from a point cloud and save it."""
+    """Capture an obstacle bounding box from a point cloud and save it.
+
+    Raises:
+        ValueError: If scene_data is None or has unexpected object count.
+    """
     logger.info("starting the program")
     args = parse_args()
     pc_generator = PointCloudGenerator(args)

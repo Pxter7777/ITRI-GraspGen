@@ -17,14 +17,18 @@ class DetectedBoxInfo:
 
     Args:
         box (BoundingBox): Bounding box coordinates.
-        phrase: Detected phrase label.
-        logits: Confidence score.
+        phrase (str): Detected phrase label.
+        logits (float): Confidence score.
 
     Attributes:
         box (BoundingBox): Bounding box coordinates.
-        phrase: Detected phrase label.
-        logits: Confidence score.
+        phrase (str): Detected phrase label.
+        logits (float): Confidence score.
     """
+
+    box: BoundingBox
+    phrase: str
+    logits: float
 
     def __init__(self, box: BoundingBox, phrase: str, logits: float) -> None:
         self.box = box
@@ -36,8 +40,10 @@ class GroundindDinoPredictor:
     """Wrap the Grounding DINO model for bounding box prediction.
 
     Attributes:
-        model: Loaded Grounding DINO model.
+        model (object): Loaded Grounding DINO model.
     """
+
+    model: object
 
     def __init__(self) -> None:
         self.model = load_model(
@@ -52,7 +58,17 @@ class GroundindDinoPredictor:
         box_threshold: float = 0.4,
         text_threshold: float = 0.4,
     ) -> list[DetectedBoxInfo]:
-        """Predict bounding boxes for the given text prompt in an image."""
+        """Predict bounding boxes for the given text prompt in an image.
+
+        Args:
+            image (np.ndarray): BGR input image.
+            text_prompt (str): Text prompt describing objects to detect.
+            box_threshold (float): Minimum box confidence threshold.
+            text_threshold (float): Minimum text confidence threshold.
+
+        Returns:
+            list[DetectedBoxInfo]: Detected boxes with phrases and scores.
+        """
         transform = transforms.Compose(
             [
                 transforms.RandomResize([800], max_size=1333),

@@ -37,19 +37,41 @@ logger = logging.getLogger(__name__)
 
 
 def mrad_to_mmdeg(cartesian_pose: list[float]) -> list[float]:
-    """Convert meter-radian pose to millimeter-degree pose."""
+    """Convert meter-radian pose to millimeter-degree pose.
+
+    Args:
+        cartesian_pose (list[float]): 6-element pose [x, y, z, rx, ry, rz].
+
+    Returns:
+        list[float]: Pose with position in mm and orientation in degrees.
+    """
     position = [p * 1000 for p in cartesian_pose[:3]]
     euler_orientation_deg = np.rad2deg(cartesian_pose[3:]).tolist()
     return position + euler_orientation_deg
 
 
 def is_joint_vel_near_zero(joint_vel: list[float]) -> bool:
-    """Check if all joint velocities are near zero."""
+    """Check if all joint velocities are near zero.
+
+    Args:
+        joint_vel (list[float]): Joint velocity values.
+
+    Returns:
+        bool: True if all velocities are below threshold.
+    """
     return all(abs(v) < 0.001 for v in joint_vel)
 
 
 def is_pose_identical(joints1: list[float] | None, joints2: list[float] | None) -> bool:
-    """Check if two joint poses are identical within tolerance."""
+    """Check if two joint poses are identical within tolerance.
+
+    Args:
+        joints1 (list[float] | None): First joint pose.
+        joints2 (list[float] | None): Second joint pose.
+
+    Returns:
+        bool: True if all joint values match within 0.02 tolerance.
+    """
     if joints1 is None or joints2 is None:
         return False
     pos_identical = all(
@@ -203,7 +225,11 @@ class TMRobotController(Node):  # type: ignore[reportUntypedBaseClass]
         logger.info("✅ 已訂閱 feedback_states")
 
     def feedback_callback(self, msg: FeedbackState) -> None:
-        """Handle feedback state updates and detect reach or stuck conditions."""
+        """Handle feedback state updates and detect reach or stuck conditions.
+
+        Args:
+            msg (FeedbackState): The feedback state message from the robot.
+        """
         self.current_IO_states = list(msg.ee_digital_output)[:3]
         self.current_joints_states = list(np.rad2deg(msg.joint_pos))
         if self.current_IO_states == [0, 0, 0]:
@@ -247,7 +273,11 @@ class TMRobotController(Node):  # type: ignore[reportUntypedBaseClass]
             self._handle_failure()
 
     def set_io(self, states: list[int]) -> None:
-        """設定 End_DO0, End_DO1, End_DO2 狀態,例如 [1, 0, 0]."""
+        """設定 End_DO0, End_DO1, End_DO2 狀態,例如 [1, 0, 0].
+
+        Args:
+            states (list[int]): 3-element list of IO pin states.
+        """
         for pin, state in enumerate(states):
             req = SetIO.Request()
             req.module = 1  # End Module 夾爪
@@ -276,7 +306,11 @@ class TMRobotController(Node):  # type: ignore[reportUntypedBaseClass]
             future.add_done_callback(_done)
 
     def append_gripper_states(self, states: list[int]) -> None:
-        """Append a gripper IO command to the TCP queue."""
+        """Append a gripper IO command to the TCP queue.
+
+        Args:
+            states (list[int]): 3-element list of IO pin states.
+        """
         logger.debug(f"{self.current_IO_states} -> {states}")
         if self.current_IO_states == states:
             logger.info("set wait time to 0 since gripper already in target state")
@@ -298,7 +332,16 @@ class TMRobotController(Node):  # type: ignore[reportUntypedBaseClass]
         fine: bool = False,
         wait_time: float = 0.0,
     ) -> None:
-        """Append a point-to-point Cartesian move to the TCP queue."""
+        """Append a point-to-point Cartesian move to the TCP queue.
+
+        Args:
+            ptp_values (list[float]): 6-element Cartesian target pose.
+            vel (int): Velocity percentage.
+            acc (int): Acceleration percentage.
+            coord (int): Coordinate setting.
+            fine (bool): Whether to use fine positioning.
+            wait_time (float): Seconds to wait after reaching the target.
+        """
         if len(ptp_values) != 6:
             logger.error("TCP 必須 6 個數字")
             return
@@ -324,7 +367,17 @@ class TMRobotController(Node):  # type: ignore[reportUntypedBaseClass]
         wait_time: float = 0.0,
         blend: int = 100,
     ) -> None:
-        """Append a joint point-to-point move to the TCP queue."""
+        """Append a joint point-to-point move to the TCP queue.
+
+        Args:
+            joint_values (list[float]): 6-element joint target in degrees.
+            vel (int): Velocity percentage.
+            acc (int): Acceleration percentage.
+            coord (int): Coordinate setting.
+            fine (bool): Whether to use fine positioning.
+            wait_time (float): Seconds to wait after reaching the target.
+            blend (int): Blend percentage for smooth motion.
+        """
         if len(joint_values) != 6:
             logger.error("TCP 必須 6 個數字")
             return
@@ -430,7 +483,11 @@ class TMRobotController(Node):  # type: ignore[reportUntypedBaseClass]
 
 
 def parse_args() -> argparse.Namespace:
-    """Parse command-line arguments."""
+    """Parse command-line arguments.
+
+    Returns:
+        argparse.Namespace: Parsed arguments.
+    """
     parser = argparse.ArgumentParser(
         description=(
             "Visualize grasps on a scene point cloud"

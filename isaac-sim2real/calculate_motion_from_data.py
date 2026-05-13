@@ -6,7 +6,11 @@ from omni.isaac.kit import SimulationApp
 
 
 def parse_args() -> argparse.Namespace:
-    """Parse command-line arguments."""
+    """Parse command-line arguments.
+
+    Returns:
+        argparse.Namespace: Parsed arguments.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--visualize_spheres",

@@ -10,7 +10,15 @@ logger = logging.getLogger(__name__)
 def get_left_up_and_front(
     grasp: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Extract left, up, and front direction vectors from a 4x4 grasp matrix."""
+    """Extract left, up, and front direction vectors from a 4x4 grasp matrix.
+
+    Args:
+        grasp (np.ndarray): A 4x4 grasp transformation matrix.
+
+    Returns:
+        tuple[np.ndarray, np.ndarray, np.ndarray]: The left, up, and front
+            direction vectors.
+    """
     left = grasp[:3, 0]
     up = grasp[:3, 1]
     front = grasp[:3, 2]
@@ -22,7 +30,16 @@ def cup_qualifier(
     min_point: np.ndarray,
     max_point: np.ndarray,
 ) -> bool:
-    """Filter grasp poses suitable for grasping a cup from the side."""
+    """Filter grasp poses suitable for grasping a cup from the side.
+
+    Args:
+        grasp (np.ndarray): A 4x4 grasp transformation matrix.
+        min_point (np.ndarray): The 3rd-percentile bounding point of the object.
+        max_point (np.ndarray): The 97th-percentile bounding point of the object.
+
+    Returns:
+        bool: True if the grasp passes all qualification checks.
+    """
     position = grasp[:3, 3].tolist()
     left, up, front = get_left_up_and_front(grasp)
     position += front * 0.20  # offset
@@ -53,7 +70,16 @@ def cup_qualifier(
 def small_cup_qualifier(
     grasp: np.ndarray, mass_center: np.ndarray, obj_std: np.ndarray
 ) -> bool:
-    """Filter grasp poses suitable for grasping a small cup."""
+    """Filter grasp poses suitable for grasping a small cup.
+
+    Args:
+        grasp (np.ndarray): A 4x4 grasp transformation matrix.
+        mass_center (np.ndarray): The mass center of the object point cloud.
+        obj_std (np.ndarray): The standard deviation of the object point cloud.
+
+    Returns:
+        bool: True if the grasp passes all qualification checks.
+    """
     position = grasp[:3, 3].tolist()
     _left, up, front = get_left_up_and_front(grasp)
     if up[2] < 0.7:
@@ -82,7 +108,16 @@ def small_cube_qualifier(
     mass_center: np.ndarray,
     obj_std: np.ndarray,
 ) -> bool:
-    """Filter grasp poses suitable for grasping a small cube from above."""
+    """Filter grasp poses suitable for grasping a small cube from above.
+
+    Args:
+        grasp (np.ndarray): A 4x4 grasp transformation matrix.
+        mass_center (np.ndarray): The mass center of the object point cloud.
+        obj_std (np.ndarray): The standard deviation of the object point cloud.
+
+    Returns:
+        bool: True if the grasp passes all qualification checks.
+    """
     position = grasp[:3, 3].tolist()
     _left, _up, front = get_left_up_and_front(grasp)
     if front[0] < 0:
@@ -116,7 +151,20 @@ qualifier_dict = {
 def is_qualified(
     grasp: np.ndarray, qualifier: str, min_point: np.ndarray, max_point: np.ndarray
 ) -> bool:
-    """Run the named qualifier function against a grasp pose."""
+    """Run the named qualifier function against a grasp pose.
+
+    Args:
+        grasp (np.ndarray): A 4x4 grasp transformation matrix.
+        qualifier (str): Name of the qualifier function to use.
+        min_point (np.ndarray): The 3rd-percentile bounding point of the object.
+        max_point (np.ndarray): The 97th-percentile bounding point of the object.
+
+    Returns:
+        bool: True if the grasp is qualified.
+
+    Raises:
+        KeyError: If the qualifier name is not found.
+    """
     if qualifier not in qualifier_dict:
         logger.error(f"There is no such qualifier: {qualifier}")
         raise KeyError

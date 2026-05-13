@@ -59,21 +59,43 @@ class NumpyEncoder(json.JSONEncoder):
     """JSON encoder that converts numpy arrays to lists."""
 
     def default(self, o: object) -> object:
-        """Serialize numpy arrays as Python lists."""
+        """Serialize numpy arrays as Python lists.
+
+        Args:
+            o (object): Object to serialize.
+
+        Returns:
+            object: Serialized object.
+        """
         if isinstance(o, np.ndarray):
             return o.tolist()
         return super().default(o)
 
 
 def cmd_to_move(cmd_plan: JointState) -> list[list[float]]:
-    """Extract joint positions from a cuRobo plan as a list."""
+    """Extract joint positions from a cuRobo plan as a list.
+
+    Args:
+        cmd_plan (JointState): The cuRobo joint state plan.
+
+    Returns:
+        list[list[float]]: Joint positions as nested lists.
+    """
     return cmd_plan.position.cpu().numpy().tolist()
 
 
 def init_pose_matric(
     args: argparse.Namespace, motion_gen: MotionGen
 ) -> PoseCostMetric | None:
-    """Initialize the pose cost metric from command-line arguments."""
+    """Initialize the pose cost metric from command-line arguments.
+
+    Args:
+        args (argparse.Namespace): Parsed command-line arguments.
+        motion_gen (MotionGen): Motion generation instance.
+
+    Returns:
+        PoseCostMetric | None: The configured pose metric, or None.
+    """
     pose_metric = None
     if args.constrain_grasp_approach:
         pose_metric = PoseCostMetric.create_grasp_approach_metric()
@@ -89,7 +111,15 @@ def init_pose_matric(
 
 
 def get_cuboid_list(move: SingleRobotMove, obstacles: dict[str, Any]) -> list[Cuboid]:
-    """Build a list of cuRobo Cuboid obstacles from move and obstacle data."""
+    """Build a list of cuRobo Cuboid obstacles from move and obstacle data.
+
+    Args:
+        move (SingleRobotMove): The robot move with ignore_obstacles list.
+        obstacles (dict[str, Any]): Obstacle name to bounds mapping.
+
+    Returns:
+        list[Cuboid]: List of cuRobo Cuboid obstacles.
+    """
     cuboids = []
     cuboids.append(Cuboid(name="table", pose=[0, 0, -1.97, 1, 0, 0, 0], dims=[4, 4, 4]))
     for i, obstacle_name in enumerate(obstacles):
@@ -112,7 +142,11 @@ def get_cuboid_list(move: SingleRobotMove, obstacles: dict[str, Any]) -> list[Cu
 
 
 def basic_world_config() -> WorldConfig:
-    """Create a default world config with a collision table."""
+    """Create a default world config with a collision table.
+
+    Returns:
+        WorldConfig: World configuration with table cuboid and mesh.
+    """
     world_cfg_table = WorldConfig.from_dict(
         load_yaml(join_path(get_world_configs_path(), "collision_table.yml"))
     )
@@ -130,7 +164,16 @@ def basic_motion_gen(
     robot_cfg: dict[str, Any],
     world_cfg: WorldConfig,
 ) -> MotionGen:
-    """Create a MotionGen instance with default trajectory optimization settings."""
+    """Create a MotionGen instance with default trajectory optimization settings.
+
+    Args:
+        tensor_args (TensorDeviceType): Tensor device configuration.
+        robot_cfg (dict[str, Any]): Robot configuration dictionary.
+        world_cfg (WorldConfig): World configuration with obstacles.
+
+    Returns:
+        MotionGen: Configured motion generation instance.
+    """
     trajopt_tsteps = 32
     trajopt_dt = None
     optimize_dt = True
@@ -157,7 +200,11 @@ def basic_motion_gen(
 
 
 def basic_plan_config() -> MotionGenPlanConfig:
-    """Create a default motion generation plan config."""
+    """Create a default motion generation plan config.
+
+    Returns:
+        MotionGenPlanConfig: Default plan configuration.
+    """
     return MotionGenPlanConfig(
         enable_graph=False,
         enable_graph_attempt=2,
@@ -170,7 +217,15 @@ def basic_plan_config() -> MotionGenPlanConfig:
 def zero_obstacle_world_config(
     usd_help: UsdHelper, robot_prim_path: str
 ) -> WorldConfig:
-    """Get a collision world from the USD stage with no custom obstacles."""
+    """Get a collision world from the USD stage with no custom obstacles.
+
+    Args:
+        usd_help (UsdHelper): USD helper for stage access.
+        robot_prim_path (str): Prim path of the robot in the stage.
+
+    Returns:
+        WorldConfig: Collision world configuration.
+    """
     return usd_help.get_obstacles_from_stage(
         only_paths=["/World"],
         reference_prim_path=robot_prim_path,
@@ -188,7 +243,16 @@ def still_joint_states(
     tensor_args: TensorDeviceType,
     sim_js_names: list[str],
 ) -> JointState:
-    """Create a JointState with zero velocity, acceleration, and jerk."""
+    """Create a JointState with zero velocity, acceleration, and jerk.
+
+    Args:
+        joint_states (list[float]): Joint position values.
+        tensor_args (TensorDeviceType): Tensor device configuration.
+        sim_js_names (list[str]): Joint names for the state.
+
+    Returns:
+        JointState: Joint state with zero dynamics.
+    """
     return JointState(
         position=tensor_args.to_device(joint_states),
         velocity=tensor_args.to_device([0.0] * len(joint_states)),
@@ -206,7 +270,7 @@ class MotionPlanController:
 
     Args:
         args (argparse.Namespace): Parsed command-line arguments.
-        simulation_app (SimulationApp): The Isaac Sim application instance.
+        simulation_app (object): The Isaac Sim application instance.
 
     Attributes:
         args (argparse.Namespace): Parsed command-line arguments.
@@ -383,7 +447,11 @@ class MotionPlanController:
             logger.info(f"Automate mode: {len(self.task_queue)} tasks queued")
 
     def __enter__(self) -> MotionPlanController:
-        """Enter the context manager."""
+        """Enter the context manager.
+
+        Returns:
+            MotionPlanController: This controller instance.
+        """
         return self
 
     def __exit__(
@@ -392,7 +460,16 @@ class MotionPlanController:
         exc_val: BaseException | None,
         exc_tb: types.TracebackType | None,
     ) -> bool:
-        """Exit the context manager and clean up resources."""
+        """Exit the context manager and clean up resources.
+
+        Args:
+            exc_type (type[BaseException] | None): Exception type, if any.
+            exc_val (BaseException | None): Exception value, if any.
+            exc_tb (types.TracebackType | None): Traceback, if any.
+
+        Returns:
+            bool: False to propagate exceptions.
+        """
         if exc_type:
             logger.error(f"Exiting due to error: {exc_val}")
         self._close()

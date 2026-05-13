@@ -51,7 +51,12 @@ app_state = AppState()
 
 
 def save_pointcloud(scene_data: SceneData, output_path: Path) -> None:
-    """Save scene data to a JSON file."""
+    """Save scene data to a JSON file.
+
+    Args:
+        scene_data (SceneData): The scene data to save.
+        output_path (Path): Destination file path.
+    """
     with open(output_path, "w") as f:
         json.dump(scene_data.to_dict(), f, indent=4)
     print(f"Saved transformed point cloud and matrix to {output_path}")
@@ -61,7 +66,15 @@ def transform(
     original_pointcloud: np.ndarray,
     transformation_matrix: np.ndarray,
 ) -> np.ndarray:
-    """Apply a 4x4 transformation matrix to a point cloud."""
+    """Apply a 4x4 transformation matrix to a point cloud.
+
+    Args:
+        original_pointcloud (np.ndarray): Nx3 point cloud array.
+        transformation_matrix (np.ndarray): 4x4 transformation matrix.
+
+    Returns:
+        np.ndarray: Transformed Nx3 point cloud.
+    """
     original_pc_homogeneous = np.hstack(
         (
             original_pointcloud,
@@ -76,7 +89,14 @@ def transform(
 
 
 class ControlPanel:
-    """Tkinter control panel for interactive point cloud transformation."""
+    """Tkinter control panel for interactive point cloud transformation.
+
+    Args:
+        root (tk.Tk): The root tkinter window.
+        vis (meshcat.Visualizer): The meshcat visualizer instance.
+        json_files (list[str]): Available JSON scene files.
+        args (argparse.Namespace): Parsed command-line arguments.
+    """
 
     def __init__(
         self,
@@ -144,7 +164,19 @@ class ControlPanel:
         resolution: float,
         row: int,
     ) -> tk.DoubleVar:
-        """Create a labeled slider control with an entry field."""
+        """Create a labeled slider control with an entry field.
+
+        Args:
+            parent (tk.Frame): Parent frame for the control.
+            label (str): Display label for the slider.
+            from_ (float): Minimum slider value.
+            to (float): Maximum slider value.
+            resolution (float): Slider step size.
+            row (int): Grid row index.
+
+        Returns:
+            tk.DoubleVar: The variable bound to the slider.
+        """
         var = tk.DoubleVar()
         var.trace_add("write", self.on_transform_change)
 
@@ -162,7 +194,11 @@ class ControlPanel:
         return var
 
     def on_transform_change(self, *args: object) -> None:
-        """Handle slider or entry value change."""
+        """Handle slider or entry value change.
+
+        Args:
+            *args (object): Tkinter trace callback arguments.
+        """
         self.apply_transform()
 
     def load_scene(self) -> None:
@@ -256,7 +292,11 @@ class ControlPanel:
 
 
 def parse_args() -> argparse.Namespace:
-    """Parse command-line arguments."""
+    """Parse command-line arguments.
+
+    Returns:
+        argparse.Namespace: Parsed arguments.
+    """
     parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
     parser.add_argument(
         "--sample_data_dir",
@@ -285,7 +325,11 @@ def parse_args() -> argparse.Namespace:
 
 
 def start_meshcat_server() -> subprocess.Popen[bytes]:
-    """Launch the meshcat-server subprocess."""
+    """Launch the meshcat-server subprocess.
+
+    Returns:
+        subprocess.Popen[bytes]: The meshcat-server process handle.
+    """
     print("Starting meshcat-server...")
     meshcat_server_process = subprocess.Popen(
         "meshcat-server", shell=True, preexec_fn=os.setsid
@@ -302,7 +346,11 @@ def start_meshcat_server() -> subprocess.Popen[bytes]:
 
 
 def open_meshcat_url(url: str) -> None:
-    """Open the meshcat visualizer URL in a browser."""
+    """Open the meshcat visualizer URL in a browser.
+
+    Args:
+        url (str): The URL to open.
+    """
     print(f"\n--- Meshcat Visualizer ---\nURL: {url}\n--------------------------\n")
     try:
         system = platform.system()
@@ -322,7 +370,14 @@ def open_meshcat_url(url: str) -> None:
 
 
 def load_scene(json_file: str | Path) -> SceneData:
-    """Load object and scene point clouds from a JSON file."""
+    """Load object and scene point clouds from a JSON file.
+
+    Args:
+        json_file (str | Path): Path to the JSON scene file.
+
+    Returns:
+        SceneData: Loaded scene data.
+    """
     print(f"Loading scene from {json_file}")
     with open(json_file, "rb") as f:
         data = json.load(f)
@@ -361,7 +416,12 @@ def load_scene(json_file: str | Path) -> SceneData:
 
 
 def load_and_process_scene(vis: meshcat.Visualizer, json_file: str | Path) -> None:
-    """Load a scene, reset app state, and update the visualizer."""
+    """Load a scene, reset app state, and update the visualizer.
+
+    Args:
+        vis (meshcat.Visualizer): The meshcat visualizer instance.
+        json_file (str | Path): Path to the JSON scene file.
+    """
     vis.delete()  # type: ignore[reportAttributeAccessIssue]
 
     scene_data = load_scene(json_file)
@@ -372,7 +432,11 @@ def load_and_process_scene(vis: meshcat.Visualizer, json_file: str | Path) -> No
 
 
 def update_visualization(vis: meshcat.Visualizer) -> None:
-    """Refresh the meshcat visualizer with the current point clouds."""
+    """Refresh the meshcat visualizer with the current point clouds.
+
+    Args:
+        vis (meshcat.Visualizer): The meshcat visualizer instance.
+    """
     if app_state.current is None:
         return
 
@@ -400,14 +464,24 @@ def create_control_panel(
     json_files: list[str],
     args: argparse.Namespace,
 ) -> None:
-    """Create and run the tkinter control panel."""
+    """Create and run the tkinter control panel.
+
+    Args:
+        vis (meshcat.Visualizer): The meshcat visualizer instance.
+        json_files (list[str]): Available JSON scene files.
+        args (argparse.Namespace): Parsed command-line arguments.
+    """
     root = tk.Tk()
     panel = ControlPanel(root, vis, json_files, args)
     panel.run()
 
 
 def quick_transform(args: argparse.Namespace) -> None:
-    """Apply a saved transform config to a point cloud without GUI."""
+    """Apply a saved transform config to a point cloud without GUI.
+
+    Args:
+        args (argparse.Namespace): Parsed command-line arguments.
+    """
     # check and load transform config
     if args.transform_config == "":
         print("Please provide transform config")

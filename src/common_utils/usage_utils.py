@@ -7,7 +7,12 @@ import torch
 
 
 class UsageInspector:
-    """Track elapsed time and peak VRAM for named code sections."""
+    """Track elapsed time and peak VRAM for named code sections.
+
+    Args:
+        enabled (bool): Whether profiling is active. Defaults to False.
+        log_file (str): Path to the log file. Defaults to "usage_log.txt".
+    """
 
     def __init__(self, enabled: bool = False, log_file: str = "usage_log.txt") -> None:
         self.enabled = enabled
@@ -33,7 +38,11 @@ class UsageInspector:
         self.logger.info("--- New Usage Inspection Session ---")
 
     def start(self, name: str) -> None:
-        """Begin timing a named section and reset peak VRAM stats."""
+        """Begin timing a named section and reset peak VRAM stats.
+
+        Args:
+            name (str): Label for the section being timed.
+        """
         if not self.enabled:
             return
         if torch.cuda.is_available():
@@ -43,7 +52,11 @@ class UsageInspector:
         print(f"Starting: {name}")
 
     def end(self, name: str) -> None:
-        """Stop timing a named section and log elapsed time and VRAM."""
+        """Stop timing a named section and log elapsed time and VRAM.
+
+        Args:
+            name (str): Label for the section to stop timing.
+        """
         if not self.enabled:
             return
         if name not in self.timers:

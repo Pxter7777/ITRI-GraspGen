@@ -11,7 +11,12 @@ logger = logging.getLogger(__name__)
 
 
 class ObstacleBound(BaseModel):
-    """Define Obstacle class."""
+    """Define Obstacle class.
+
+    Attributes:
+        max (list[float]): Upper bound [x, y, z].
+        min (list[float]): Lower bound [x, y, z].
+    """
 
     # max and min must be a list of float with exact 3 elements (X, Y, Z)
     max: list[float] = Field(..., min_length=3, max_length=3)
@@ -19,7 +24,15 @@ class ObstacleBound(BaseModel):
 
 
 class MoveItem(BaseModel):
-    """Define Move class format."""
+    """Define Move class format.
+
+    Attributes:
+        model_config: Pydantic model configuration.
+        move_type (str): Type of move to execute.
+        target_name (str | None): Name of the target object.
+        qualifier (str | None): Qualifier for grasp filtering.
+        args (list[Any] | None): Additional move arguments.
+    """
 
     model_config = ConfigDict(extra="forbid")  # Forbid unexpected keys.
 
@@ -36,7 +49,16 @@ FourIntList = Annotated[list[int], Field(min_length=4, max_length=4)]
 
 
 class TaskConfig(BaseModel):
-    """Define the whole JSON task file structure."""
+    """Define the whole JSON task file structure.
+
+    Attributes:
+        model_config: Pydantic model configuration.
+        moves (list[MoveItem]): List of moves to execute.
+        blockages (list[FourIntList]): Blockage regions.
+        track (list[str]): Object names to track.
+        extra_obstacles (dict[str, ObstacleBound]): Additional obstacles.
+        valid_region (FourIntList | None): Valid region bounds.
+    """
 
     model_config = ConfigDict(extra="forbid")  # Forbid unexpected keys.
 
@@ -53,7 +75,15 @@ class TaskConfig(BaseModel):
         mode="after"
     )  # mode="after" means we validate this after all basic type validations.
     def check_target_in_track(self) -> TaskConfig:
-        """Validate that every target_name appears in the track list."""
+        """Validate that every target_name appears in the track list.
+
+        Returns:
+            TaskConfig: The validated task config instance.
+
+        Raises:
+            ValueError: If a target_name is set but track is empty, or if
+                a target_name is not found in the track list.
+        """
         for move in self.moves:
             if move.target_name is None:
                 continue
@@ -67,7 +97,14 @@ class TaskConfig(BaseModel):
 
 
 def is_actions_format_valid(actions: list[object] | dict[str, object]) -> bool:
-    """Check whether the legacy action list has valid structure."""
+    """Check whether the legacy action list has valid structure.
+
+    Args:
+        actions (list[object] | dict[str, object]): The action data to validate.
+
+    Returns:
+        bool: True if the structure is valid, False otherwise.
+    """
     try:
         if not isinstance(actions, list):
             return False
@@ -88,7 +125,14 @@ def is_actions_format_valid(actions: list[object] | dict[str, object]) -> bool:
 
 
 def is_actions_format_valid_v1028(actions: dict[str, object]) -> bool:
-    """Check whether the v1028 action dict has valid structure."""
+    """Check whether the v1028 action dict has valid structure.
+
+    Args:
+        actions (dict[str, object]): The v1028 action dict to validate.
+
+    Returns:
+        bool: True if the structure is valid, False otherwise.
+    """
     try:
         if not isinstance(actions["track"], list):
             logger.error(actions["track"])

@@ -15,7 +15,12 @@ from common_utils.movesets import SingleRobotMove  # noqa: E402
 
 @dataclass
 class PlannedAction:
-    """A planned robot action with moves and obstacle cuboids."""
+    """A planned robot action with moves and obstacle cuboids.
+
+    Attributes:
+        moves (list[SingleRobotMove]): Sequence of robot moves to execute.
+        obstacles (list[Cuboid]): Obstacle cuboids for collision avoidance.
+    """
 
     moves: list[SingleRobotMove]
     obstacles: list[Cuboid]
