@@ -149,6 +149,7 @@ reportUnknownArgumentType = false
 reportUnknownParameterType = false
 reportUnknownLambdaType = false
 reportMissingTypeStubs = false
+reportMissingImports = false # GitHub CI will fail this because we're not going to install the whole env on GitHub. Switch True locally if needed.
 venvPath = "."
 venv = ".venv"
 typeCheckingMode = "strict"
