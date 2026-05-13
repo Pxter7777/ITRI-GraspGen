@@ -1,11 +1,12 @@
 """Base controller for the GraspGen-to-IsaacSim-to-ROS2 workflow loop."""
 
+from __future__ import annotations
+
 import argparse
 import json
 import logging
 import time
 from pathlib import Path
-from typing import Self
 
 from common_utils.actions_format_checker import ObstacleBound, TaskConfig
 from common_utils.common_utils import create_obstacle_info, load_extra_obstacles
@@ -68,7 +69,7 @@ class BaseWorkflowController:
             " command, through CLI input or socket"
         )
 
-    def __enter__(self) -> Self:
+    def __enter__(self) -> BaseWorkflowController:
         """Allows the use of 'with GraspGenController(args) as controller:'."""
         return self
 

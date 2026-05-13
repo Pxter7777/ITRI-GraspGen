@@ -1,5 +1,7 @@
 """Plan motions from saved grasp data using cuRobo, with batch task automation."""
 
+from __future__ import annotations
+
 import argparse
 import json
 import logging
@@ -9,7 +11,7 @@ import time
 import types
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Literal, Self
+from typing import Any, Literal
 
 import numpy as np
 from curobo.geom.sdf.world import CollisionCheckerType
@@ -380,7 +382,7 @@ class MotionPlanController:
                         self.task_queue.append((dir_name, json_path.stem))
             logger.info(f"Automate mode: {len(self.task_queue)} tasks queued")
 
-    def __enter__(self) -> Self:
+    def __enter__(self) -> MotionPlanController:
         """Enter the context manager."""
         return self
 

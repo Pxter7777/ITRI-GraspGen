@@ -1,7 +1,9 @@
 """Pydantic models and validators for task action JSON files."""
 
+from __future__ import annotations
+
 import logging
-from typing import Annotated, Any, Self
+from typing import Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -50,7 +52,7 @@ class TaskConfig(BaseModel):
     @model_validator(
         mode="after"
     )  # mode="after" means we validate this after all basic type validations.
-    def check_target_in_track(self) -> Self:
+    def check_target_in_track(self) -> TaskConfig:
         """Validate that every target_name appears in the track list."""
         for move in self.moves:
             if move.target_name is None:

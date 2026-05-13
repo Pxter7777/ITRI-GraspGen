@@ -1,10 +1,12 @@
 """Generate grasp data for order experiment scenes using GraspGen."""
 
+from __future__ import annotations
+
 import argparse
 import json
 import logging
 from pathlib import Path
-from typing import Any, Self
+from typing import Any
 
 import numpy as np
 import torch
@@ -214,7 +216,7 @@ class ExperimentWorkflowController:
         self.gripper_collision_mesh = gripper_info.collision_mesh
         logger.info("======Successfully initialized======")
 
-    def __enter__(self) -> Self:
+    def __enter__(self) -> ExperimentWorkflowController:
         """Allows the use of 'with GraspGenController(args) as controller:'."""
         return self
 

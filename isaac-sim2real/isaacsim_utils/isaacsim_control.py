@@ -1,5 +1,7 @@
 """Control Isaac Sim robot with cuRobo motion planning and ROS2 communication."""
 
+from __future__ import annotations
+
 import argparse
 import logging
 import queue
@@ -8,7 +10,7 @@ import time
 import types
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Literal, Self
+from typing import Any, Literal
 
 import numpy as np
 from curobo.geom.sdf.world import CollisionCheckerType
@@ -326,7 +328,7 @@ class IsaacSimController:
         self.graspgen_eof = False
         self.ros2state: ROS2StateType = "Ready"
 
-    def __enter__(self) -> Self:
+    def __enter__(self) -> IsaacSimController:
         """Enter the context manager."""
         return self
 
