@@ -1,12 +1,12 @@
-[submodule "Third_Party/sam2"]
-	path = Third_Party/sam2
+[submodule "third_party/sam2"]
+	path = third_party/sam2
 	url = https://github.com/facebookresearch/sam2.git
-[submodule "Third_Party/FoundationStereo"]
-	path = Third_Party/FoundationStereo
-	url = https://github.com/NVlabs/FoundationStereo.git
-[submodule "Third_Party/GroundingDINO"]
-	path = Third_Party/GroundingDINO
+[submodule "third_party/FoundationStereo"]
+	path = third_party/FoundationStereo
+	url = https://github.com/Pxter7777/FoundationStereo.git
+[submodule "third_party/GroundingDINO"]
+	path = third_party/GroundingDINO
 	url = https://github.com/IDEA-Research/GroundingDINO.git
-[submodule "Third_Party/GraspGen"]
-	path = Third_Party/GraspGen
+[submodule "third_party/GraspGen"]
+	path = third_party/GraspGen
 	url = https://github.com/NVlabs/GraspGen.git

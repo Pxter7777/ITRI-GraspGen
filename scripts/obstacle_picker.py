@@ -1,21 +1,37 @@
+"""IMPORTANT!
+
+This script won't work, because the transform config logic and path changed a bit.
+also the task format was changed, so I will need to rewrite this anyway.
+move it to scripts/legacy later.
+"""
+
 # use the zed camera to get the object's 3D bounding box
-import logging
 import argparse
+import logging
+
 import numpy as np
-from common_utils.common_utils import save_json
-from common_utils.custom_logger import CustomFormatter
+
 from common_utils import config
-from PointCloud_Generation.pointcloud_generation import PointCloudGenerator
-from PointCloud_Generation.PC_transform import silent_transform
+from common_utils.common_utils import save_json
+from common_utils.log_formatter import CustomLoggingFormatter
+from pointcloud_generation.pc_transform import (
+    silent_transform_multiple_obj_with_name_dict,
+)
+from pointcloud_generation.pointcloud_generation import PointCloudGenerator
 
 # root logger setup
 handler = logging.StreamHandler()
-handler.setFormatter(CustomFormatter())
+handler.setFormatter(CustomLoggingFormatter())
 logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
 logger = logging.getLogger(__name__)
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments.
+
+    Returns:
+        argparse.Namespace: Parsed arguments.
+    """
     parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
     parser.add_argument(
         "--ckpt_dir",
@@ -44,7 +60,7 @@ def parse_args():
         "--use-png",
         type=str,
         default="",
-        help="Use exisiting images at sample_data/zed_images instead of the real zed camera",
+        help="Use exisiting images at data/zed_images instead of the real zed camera",
     )
     parser.add_argument(
         "--erosion_iterations",
@@ -59,25 +75,33 @@ def parse_args():
         help="max depth for generating pointcloud",
     )
     parser.add_argument(
-        "--transform-config",
-        type=str,
-        default="sim2.json",
-        help="transform-config",
+        "--need-confirm",
+        action="store_true",
+        help="decide if we need confirm for groundingDINO detect and grasp Generation",
     )
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
+    """Capture an obstacle bounding box from a point cloud and save it.
+
+    Raises:
+        ValueError: If scene_data is None or has unexpected object count.
+    """
     logger.info("starting the program")
     args = parse_args()
     pc_generator = PointCloudGenerator(args)
     scene_data = pc_generator.interactive_gui_mode()
-    scene_data = silent_transform(scene_data, args.transform_config)
-    pc = scene_data["object_info"]["pc"]
+    if scene_data is None:
+        raise ValueError("scene_data is None")
+    scene_data = silent_transform_multiple_obj_with_name_dict(scene_data)
+    if len(scene_data.object_infos) != 1:
+        raise ValueError(f"Expected 1 object, got {len(scene_data.object_infos)}")
+    pc = next(iter(scene_data.object_infos.values())).points
     pc_max, pc_min = np.percentile(pc, 97, axis=0), np.percentile(pc, 3, axis=0)
-    obstacle_name = input("./obstacle/<obstacle_name>.json: ")
+    obstacle_name = input("./data/calibrate/<obstacle_name>.json: ")
     obstacle = {obstacle_name: {"max": pc_max.tolist(), "min": pc_min.tolist()}}
-    save_json("obstacle", "obstacle", obstacle)
+    save_json("calibrate", "obstacle", obstacle)
 
 
 if __name__ == "__main__":

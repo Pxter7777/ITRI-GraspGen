@@ -1,32 +1,49 @@
+"""Generate grasp data for order experiment scenes using GraspGen."""
+
+from __future__ import annotations
+
 import argparse
+import json
 import logging
+from pathlib import Path
+from typing import Any
+
 import numpy as np
 import torch
-import json
 import trimesh
 import trimesh.transformations as tra
-from pathlib import Path
-from common_utils.custom_logger import CustomFormatter
-from common_utils import config
-from common_utils.graspgen_utils import GraspGeneratorUI, flip_upside_down_grasps
-from common_utils.order_task_config import OrderTaskConfig
 from grasp_gen.grasp_server import GraspGenSampler, load_grasp_cfg
-from grasp_gen.utils.point_cloud_utils import filter_colliding_grasps
 from grasp_gen.robot import get_gripper_info
-from common_utils.grasp_data_format import GraspPack, GraspData
+from grasp_gen.utils.point_cloud_utils import filter_colliding_grasps
+
+from common_utils import config
+from common_utils.grasp_data_format import GraspData, GraspPack
+from common_utils.graspgen_utils import GraspGeneratorUI, flip_upside_down_grasps
+from common_utils.log_formatter import CustomLoggingFormatter
+from common_utils.order_task_config import OrderTaskConfig
 from common_utils.qualification import get_left_up_and_front
 
 
 class NumpyEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        return super().default(obj)
+    """JSON encoder that convert numpy arrays to lists."""
+
+    def default(self, o: Any) -> Any:  # noqa: ANN401
+        """Serialize numpy arrays as Python lists.
+
+        Args:
+            o (Any): The object to serialize.
+
+        Returns:
+            Any: A JSON-serializable representation.
+        """
+        if isinstance(o, np.ndarray):
+            return o.tolist()
+        return super().default(o)
 
 
 # root logger setup
 handler = logging.StreamHandler()
-handler.setFormatter(CustomFormatter())
+handler.setFormatter(CustomLoggingFormatter())
 logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
 logger = logging.getLogger(__name__)
 
@@ -34,12 +51,25 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 
 
-def set_seed(seed):
+def set_seed(seed: int) -> None:
+    """Set random seeds for torch and numpy.
+
+    Args:
+        seed (int): The random seed value.
+    """
     torch.manual_seed(seed)
     np.random.seed(seed)
 
 
-def ndgrasp_to_pre_quat(grasp: np.ndarray):
+def ndgrasp_to_pre_quat(grasp: np.ndarray) -> list[float]:
+    """Convert a grasp matrix to a pre-grasp position-quaternion list.
+
+    Args:
+        grasp (np.ndarray): A 4x4 grasp transformation matrix.
+
+    Returns:
+        list[float]: 7-element list [x,y,z,qw,qx,qy,qz].
+    """
     quaternion_orientation = list(trimesh.transformations.quaternion_from_matrix(grasp))
     _, _, front = get_left_up_and_front(grasp)
     front = front.tolist()
@@ -49,7 +79,15 @@ def ndgrasp_to_pre_quat(grasp: np.ndarray):
     return pre_grasp_position + quaternion_orientation
 
 
-def ndgrasp_to_quat(grasp: np.ndarray):
+def ndgrasp_to_quat(grasp: np.ndarray) -> list[float]:
+    """Convert a grasp matrix to a grasp position-quaternion list.
+
+    Args:
+        grasp (np.ndarray): A 4x4 grasp transformation matrix.
+
+    Returns:
+        list[float]: 7-element list [x,y,z,qw,qx,qy,qz].
+    """
     quaternion_orientation = list(trimesh.transformations.quaternion_from_matrix(grasp))
     _, _, front = get_left_up_and_front(grasp)
     front = front.tolist()
@@ -59,7 +97,12 @@ def ndgrasp_to_quat(grasp: np.ndarray):
     return grasp_position + quaternion_orientation
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments.
+
+    Returns:
+        argparse.Namespace: Parsed arguments.
+    """
     parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
     parser.add_argument(
         "--ckpt_dir",
@@ -103,12 +146,6 @@ def parse_args():
         help="max depth for generating pointcloud",
     )
     parser.add_argument(
-        "--transform-config",
-        type=str,
-        default="sim2.json",
-        help="transform-config",
-    )
-    parser.add_argument(
         "--gripper_config",
         type=str,
         default=str(config.GRIPPER_CFG),
@@ -118,7 +155,10 @@ def parse_args():
         "--grasp_threshold",
         type=float,
         default=0.70,
-        help="Threshold for valid grasps. If -1.0, then the top 100 grasps will be ranked and returned",
+        help=(
+            "Threshold for valid grasps. If -1.0, then the"
+            " top 100 grasps will be ranked and returned"
+        ),
     )
     parser.add_argument(
         "--num_grasps",
@@ -151,16 +191,25 @@ def parse_args():
         "--use-png",
         type=str,
         default="",
-        help="Use exisiting images at sample_data/zed_images instead of the real zed camera",
+        help="Use exisiting images at data/zed_images instead of the real zed camera",
     )
     return parser.parse_args()
 
 
 def angle_diff_rad(grasp: np.ndarray) -> float:
+    """Compute the planar angle difference between approach and position vectors.
+
+    Args:
+        grasp (np.ndarray): A 4x4 grasp transformation matrix.
+
+    Returns:
+        float: Angle difference in radians.
+    """
     position = grasp[:3, 3].tolist()
-    left, up, front = get_left_up_and_front(grasp)
+    _left, _up, front = get_left_up_and_front(grasp)
     position += front * 0.20  # offset
-    # Rule: planar 2D angle between grasp approach (front) vector and grasp position vector should be small
+    # Rule: planar 2D angle between grasp approach (front)
+    # vector and grasp position vector should be small
     angle_front = np.arctan2(front[1], front[0])
     angle_position = np.arctan2(position[1], position[0])
     angle_diff = np.abs(angle_front - angle_position)
@@ -170,16 +219,38 @@ def angle_diff_rad(grasp: np.ndarray) -> float:
 
 
 def distance_meter(grasp: np.ndarray) -> float:
-    return np.linalg.norm(grasp[:3, 3])
+    """Return the Euclidean distance from the origin to the grasp position.
+
+    Args:
+        grasp (np.ndarray): A 4x4 grasp transformation matrix.
+
+    Returns:
+        float: Distance in meters.
+    """
+    return float(np.linalg.norm(grasp[:3, 3]))
 
 
 def up_vector(grasp: np.ndarray) -> float:
-    left, up, front = get_left_up_and_front(grasp)
+    """Return the Z component of the grasp approach vector.
+
+    Args:
+        grasp (np.ndarray): A 4x4 grasp transformation matrix.
+
+    Returns:
+        float: Z component of the approach vector.
+    """
+    _left, _up, front = get_left_up_and_front(grasp)
     return front[2]
 
 
 class ExperimentWorkflowController:
-    def __init__(self, args) -> None:
+    """Run grasp generation experiments across order experiment scenes.
+
+    Args:
+        args (argparse.Namespace): Parsed command-line arguments.
+    """
+
+    def __init__(self, args: argparse.Namespace) -> None:
         self.args = args
         self.grasp_generator = GraspGeneratorUI(
             args.gripper_config,
@@ -195,14 +266,31 @@ class ExperimentWorkflowController:
         self.gripper_collision_mesh = gripper_info.collision_mesh
         logger.info("======Successfully initialized======")
 
-    def __enter__(self):
-        """Allows the use of 'with GraspGenController(args) as controller:'"""
+    def __enter__(self) -> ExperimentWorkflowController:
+        """Allows the use of 'with GraspGenController(args) as controller:'.
+
+        Returns:
+            ExperimentWorkflowController: The controller instance.
+        """
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """
-        Automatically called when the 'with' block ends.
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object,
+    ) -> bool:
+        """Automatically called when the 'with' block ends.
+
         Even if an exception occurs, this method runs.
+
+        Args:
+            exc_type (type[BaseException] | None): Exception type, if any.
+            exc_val (BaseException | None): Exception value, if any.
+            exc_tb (object): Traceback object, if any.
+
+        Returns:
+            bool: False to propagate exceptions.
         """
         if exc_type:
             logger.error(f"Exiting due to error: {exc_val}")
@@ -212,14 +300,15 @@ class ExperimentWorkflowController:
         # so you still see the traceback after cleanup.
         return False
 
-    def _close(self):
+    def _close(self) -> None:
         logger.info("Cleaning up resources...")
         try:
             pass  # nothing to do, actually.
         except Exception as e:
             logger.exception(f"Error during pc_generator cleanup: {e}")
 
-    def run_experiment(self):
+    def run_experiment(self) -> None:
+        """Generate and save grasp data for all experiment scenes."""
         for dir in ["in_basket", "on_shelf", "on_table"]:
             task_config_path = (
                 PROJECT_ROOT_DIR
@@ -234,7 +323,7 @@ class ExperimentWorkflowController:
                 if grasp_data_pack is None:
                     continue
                 output_dir = json_path.parent.parent / "grasp_data"
-                output_dir.mkdir(exist_ok=True)
+                output_dir.mkdir(parents=True, exist_ok=True)
                 output_file = output_dir / json_path.name
                 with open(output_file, "w") as f:
                     json.dump(
@@ -242,7 +331,7 @@ class ExperimentWorkflowController:
                     )
                 logger.info(f"Saved grasp data to {output_file}")
 
-    def _generate_grasp_datas(self, json_path: Path) -> GraspPack:
+    def _generate_grasp_datas(self, json_path: Path) -> GraspPack | None:
         with open(json_path, "rb") as f:
             task_json = json.load(f)
         task = OrderTaskConfig(**task_json)
@@ -251,13 +340,17 @@ class ExperimentWorkflowController:
         mesh_file = Path(task.target.obj_dir) / "mesh.obj"
         logger.info(f"Loading mesh: {mesh_file}")
         obj = trimesh.load(str(mesh_file), force="mesh", process=False)
+        if not isinstance(obj, trimesh.Trimesh):
+            raise TypeError(f"Expected Trimesh, got {type(obj)}")
         obj.apply_scale(task.target.scale)
 
-        xyz, _ = trimesh.sample.sample_surface(obj, 2000)
+        xyz, _ = trimesh.sample.sample_surface(  # type: ignore[reportAssignmentType]
+            obj, 2000
+        )
         xyz = np.array(xyz, dtype=np.float32)
 
         # Center the point cloud (GraspGen expects centered input)
-        T_subtract_mean = tra.translation_matrix(-xyz.mean(axis=0))
+        T_subtract_mean = tra.translation_matrix(-xyz.mean(axis=0))  # noqa: N806
         xyz = tra.transform_points(xyz, T_subtract_mean)
 
         # Run grasp inference
@@ -284,13 +377,15 @@ class ExperimentWorkflowController:
         grasps = grasps[sort_idx][:200]
         grasp_conf = grasp_conf[sort_idx][:200]
         logger.info(
-            f"Generated {len(grasps)} grasps (scores {grasp_conf.min():.3f}–{grasp_conf.max():.3f})"
+            f"Generated {len(grasps)} grasps "
+            f"(scores {grasp_conf.min():.3f}"
+            f"-{grasp_conf.max():.3f})"
         )
 
         # Transform grasps from centered mesh frame → target local frame → world frame
-        T_restore = tra.inverse_matrix(T_subtract_mean)
+        T_restore = tra.inverse_matrix(T_subtract_mean)  # noqa: N806
         qx, qy, qz, qw = task.target.pose_meter_quat[3:]
-        T_target_world = tra.quaternion_matrix([qw, qx, qy, qz])
+        T_target_world = tra.quaternion_matrix([qw, qx, qy, qz])  # noqa: N806
         T_target_world[:3, 3] = task.target.pose_meter_quat[:3]
         grasps = np.array([T_target_world @ T_restore @ g for g in grasps])
 
@@ -299,11 +394,15 @@ class ExperimentWorkflowController:
         for obstacle in task.obstacles:
             obs_mesh_file = Path(obstacle.obj_dir) / "mesh.obj"
             obs_obj = trimesh.load(str(obs_mesh_file), force="mesh", process=False)
+            if not isinstance(obs_obj, trimesh.Trimesh):
+                raise TypeError(f"Expected Trimesh, got {type(obs_obj)}")
             obs_obj.apply_scale(obstacle.scale)
-            obs_pts, _ = trimesh.sample.sample_surface(obs_obj, 500)
+            obs_pts, _ = trimesh.sample.sample_surface(  # type: ignore[reportAssignmentType]
+                obs_obj, 500
+            )
             obs_pts = np.array(obs_pts, dtype=np.float32)
             qx, qy, qz, qw = obstacle.pose_meter_quat[3:]
-            T_obs_world = tra.quaternion_matrix([qw, qx, qy, qz])
+            T_obs_world = tra.quaternion_matrix([qw, qx, qy, qz])  # noqa: N806
             T_obs_world[:3, 3] = obstacle.pose_meter_quat[:3]
             obstacle_clouds.append(tra.transform_points(obs_pts, T_obs_world))
         xyz_scene = (
@@ -317,12 +416,15 @@ class ExperimentWorkflowController:
             indices = np.random.choice(len(xyz_scene), 8192, replace=False)
             xyz_scene_downsampled = xyz_scene[indices]
             logger.debug(
-                f"Downsampled scene point cloud from {len(xyz_scene)} to {len(xyz_scene_downsampled)} points"
+                f"Downsampled scene point cloud from"
+                f" {len(xyz_scene)} to"
+                f" {len(xyz_scene_downsampled)} points"
             )
         else:
             xyz_scene_downsampled = xyz_scene
             logger.debug(
-                f"Scene point cloud has {len(xyz_scene)} points (no downsampling needed)"
+                f"Scene point cloud has {len(xyz_scene)}"
+                " points (no downsampling needed)"
             )
         collision_free_mask = filter_colliding_grasps(
             scene_pc=xyz_scene_downsampled,
@@ -350,7 +452,8 @@ class ExperimentWorkflowController:
         )
 
 
-def main():
+def main() -> None:
+    """Run the grasp data generation experiment."""
     args = parse_args()
     set_seed(42)
     with ExperimentWorkflowController(args) as controller:

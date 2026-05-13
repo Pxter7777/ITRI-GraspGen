@@ -1,0 +1,399 @@
+"""Length-prefixed JSON socket communication for inter-process messaging."""
+
+import json
+import logging
+import select
+import socket
+import struct
+from collections.abc import Mapping, Sequence
+
+# Some example joint configurations to send
+
+logger = logging.getLogger(__name__)
+
+
+SAMPLE_DATA = {
+    "track": ["green cup", "blue cup", "pan"],
+    "actions": [
+        {
+            "target_name": "green cup",
+            "qualifier": "cup_qualifier",
+            "action": "grab_and_pour_and_place_back",
+            "args": ["pan"],
+        },
+        {
+            "target_name": "blue cup",
+            "qualifier": "cup_qualifier",
+            "action": "grab_and_pour_and_place_back",
+            "args": ["pan"],
+        },
+        {
+            "target_name": "blue cup",
+            "qualifier": "cup_qualifier",
+            "action": "move_to",
+            "args": [[326.8, -140.2, 212.6]],
+        },
+    ],
+}
+
+
+class NonBlockingJSONSender:
+    """Manage connection and send JSON payloads to a receiver.
+
+    Connects automatically upon instantiation.
+
+    Args:
+        port (int): The TCP port to connect to.
+        host (str): The hostname to connect to.
+    """
+
+    def __init__(self, port: int, host: str = "localhost") -> None:
+        self.host = host
+        self.port = port
+        self.socket = None
+        self._connect_on_init()  # Attempt connection during initialization
+
+    def _connect_on_init(self) -> bool:
+        """Establish a TCP connection to the receiver.
+
+        Returns:
+            bool: True on success, False otherwise.
+        """
+        if self.socket:
+            self.disconnect()
+
+        try:
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket.connect((self.host, self.port))
+            logger.info(f"Sender connected to receiver at {self.host}:{self.port}")
+            return True
+        except ConnectionRefusedError:
+            logger.warning(f"No socket currently listening at {self.host}:{self.port}")
+            self.socket = None
+            return False
+        except Exception as e:
+            logger.exception(f"An error occurred during connection: {e}")
+            self.socket = None
+            return False
+
+    def disconnect(self) -> None:
+        """Close the connection to the receiver."""
+        if self.socket:
+            self.socket.close()
+            self.socket = None
+            logger.info("Sender disconnected")
+
+    def reconnect(self) -> bool:
+        """Close the current connection and establish a new one.
+
+        Returns:
+            bool: True on success, False otherwise.
+        """
+        logger.info("Attempting to reconnect sender...")
+        self.disconnect()
+        return self._connect_on_init()
+
+    def send_data(self, data: Mapping[str, object] | Sequence[object]) -> bool:
+        """Send a JSON payload, reconnecting automatically on failure.
+
+        Args:
+            data (Mapping[str, object] | Sequence[object]): The data to
+                serialize and send.
+
+        Returns:
+            bool: True on successful send, False otherwise.
+
+        Raises:
+            BrokenPipeError: If the peer closed the connection.
+            RuntimeError: If socket is None after successful reconnect.
+        """
+        if not self.socket:
+            logger.info("Connection not established. Attempting to reconnect.")
+            if not self.reconnect():
+                return False
+
+        if self.socket is None:
+            raise RuntimeError("Socket is None after successful reconnect")
+
+        # Check if the socket is still alive before sending
+        try:
+            ready_to_read, _, _ = select.select([self.socket], [], [], 0)
+            if ready_to_read:
+                # If the socket is readable, it might be closed.
+                # A recv with MSG_PEEK will not remove data from buffer.
+                # If it returns b'', the peer has closed the connection.
+                if self.socket.recv(1, socket.MSG_PEEK) == b"":
+                    logger.warning("The other peer's receiver has disconnected.")
+                    raise BrokenPipeError("Connection closed by peer")
+        except BrokenPipeError:
+            logger.info("Connection lost. Attempting to reconnect and resend.")
+            if self.reconnect():
+                return self.send_data(data)  # Retry sending
+            else:
+                return False
+        except ConnectionResetError:
+            # This happens when the sender's socket is connected
+            # but never accepted (triggered by receiver's capture data)
+            # Handle same as BrokenPipeError, reconnect and retry
+            if self.reconnect():
+                return self.send_data(data)  # Retry sending
+            else:
+                return False
+
+        message_bytes = json.dumps(data).encode("utf-8")
+        header = struct.pack(">I", len(message_bytes))
+
+        try:
+            logger.debug(f"Sending signal: {data}")
+            self.socket.sendall(header + message_bytes)
+            logger.info("Sent!")
+            return True
+        except BrokenPipeError:
+            logger.warning("Connection lost while sending. Attempting to reconnect.")
+            if self.reconnect():  # Try to reconnect
+                return self.send_data(data)  # Retry sending
+            return False
+
+
+class NonBlockingJSONReceiver:
+    """Non-blocking TCP server that receives length-prefixed JSON messages.
+
+    Connects automatically upon instantiation.
+
+    Args:
+        port (int): The TCP port to bind to.
+        host (str): The hostname to bind to.
+    """
+
+    def __init__(self, port: int, host: str = "localhost") -> None:
+        self.host = host
+        self.port = port
+        self.socket = None
+        self.conn = None
+        self.buffer = b""
+        self.msg_len = None
+        self._connect_on_init()  # Attempt connection during initialization
+
+    def _connect_on_init(self) -> bool:
+        """Bind and listen on the configured port in non-blocking mode.
+
+        Returns:
+            bool: True on success, False otherwise.
+
+        Raises:
+            ConnectionAbortedError: If an OS-level error occurs during binding.
+        """
+        if self.socket:
+            self.disconnect()
+
+        try:
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.socket.setblocking(False)
+            self.socket.bind((self.host, self.port))
+            self.socket.listen()
+
+            self.conn = None
+            logger.info(f"Receiver starts listening at {self.host}:{self.port}")
+            return True
+        except ConnectionRefusedError:
+            logger.exception("Receiver connection failed.")
+            self.socket = None
+            return False
+        except OSError as e:
+            raise ConnectionAbortedError(
+                f"An error occurred during connecting {self.host}:{self.port}: {e}"
+            ) from e
+
+    def disconnect(self) -> None:
+        """Close the listening socket and any active connection."""
+        if self.socket:
+            self.socket.close()
+            self.socket = None
+        if self.conn:
+            self.conn.close()
+            self.conn = None
+        logger.info("receiver disconnected")
+
+    def capture_data(
+        self,
+    ) -> dict[str, object] | list[object] | None:
+        """Poll for a complete JSON message, returning None if unavailable.
+
+        Returns:
+            dict[str, object] | list[object] | None: The decoded JSON message,
+                or None if no complete message is available.
+
+        Raises:
+            RuntimeError: If socket is None when accepting connections.
+            ValueError: If the message buffer is shorter than the header length.
+        """
+        if self.conn is None:
+            if self.socket is None:
+                raise RuntimeError("Socket is None, cannot accept connections")
+            try:
+                self.conn, addr = self.socket.accept()
+                self.conn.setblocking(False)
+                self.buffer = b""
+                self.msg_len = None
+                logger.info(f"Accepted connection from {addr}")
+            except BlockingIOError:
+                return None  # No incoming connection yet
+        try:
+            while True:
+                data = self.conn.recv(4096)
+                if not data:
+                    logger.warning("The other peer's sender has disconnected.")
+                    self.conn.close()
+                    self.conn = None
+                    return None
+                self.buffer += data
+        except BlockingIOError:
+            pass  # No data available
+
+        # Process buffer for a complete message
+        if self.msg_len is None:
+            if len(self.buffer) >= 4:
+                self.msg_len = struct.unpack(">I", self.buffer[:4])[0]
+                self.buffer = self.buffer[4:]
+            else:
+                return None  # Not enough data for header
+        # check message length
+        if len(self.buffer) < self.msg_len:
+            raise ValueError(
+                "Message length defined in the header is"
+                " larger than the received buffer size,"
+                " shouldn't happen"
+            )
+
+        message_bytes = self.buffer[: self.msg_len]
+        self.buffer = self.buffer[self.msg_len :]
+        self.msg_len = None  # Reset for next message
+        try:
+            return json.loads(message_bytes.decode("utf-8"))
+        except json.JSONDecodeError as e:
+            logger.exception(f"JSON decode error: {e}")
+            return None
+
+
+class BlockingJSONReceiver:
+    """Blocking TCP server that receives length-prefixed JSON messages.
+
+    Connects automatically upon instantiation.
+
+    Args:
+        port (int): The TCP port to bind to.
+        host (str): The hostname to bind to.
+    """
+
+    def __init__(self, port: int, host: str = "localhost") -> None:
+        self.host = host
+        self.port = port
+        self.socket = None
+        self.conn = None
+        self._connect_on_init()  # Attempt connection during initialization
+
+    def _connect_on_init(self) -> bool:
+        """Bind and listen on the configured port in blocking mode.
+
+        Returns:
+            bool: True on success, False otherwise.
+
+        Raises:
+            ConnectionAbortedError: If an OS-level error occurs during binding.
+        """
+        if self.socket:
+            self.disconnect()
+
+        try:
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.socket.bind((self.host, self.port))
+            self.socket.listen()
+
+            self.conn = None
+            logger.info(f"Receiver starts listening at {self.host}:{self.port}")
+            return True
+        except ConnectionRefusedError:
+            logger.exception("Receiver connection failed.")
+            self.socket = None
+            return False
+        except OSError as e:
+            raise ConnectionAbortedError(
+                f"An error occurred during connecting {self.host}:{self.port}: {e}"
+            ) from e
+
+    def disconnect(self) -> None:
+        """Close the listening socket and any active connection."""
+        if self.socket:
+            self.socket.close()
+            self.socket = None
+        if self.conn:
+            self.conn.close()
+            self.conn = None
+        logger.info("receiver disconnected")
+
+    def _read_blocking(self, n: int) -> bytes | None:
+        """Read exactly n bytes from the blocking socket.
+
+        Args:
+            n (int): The number of bytes to read.
+
+        Returns:
+            bytes | None: The data read, or None if the connection closed.
+
+        Raises:
+            RuntimeError: If the connection is None.
+        """
+        if self.conn is None:
+            raise RuntimeError("Connection is None, cannot read")
+        data = b""
+        while len(data) < n:
+            packet = self.conn.recv(n - len(data))
+            if not packet:
+                return None
+            data += packet
+        return data
+
+    def capture_data(
+        self,
+    ) -> dict[str, object] | list[object] | None:
+        """Block until a complete JSON message is received.
+
+        Returns:
+            dict[str, object] | list[object] | None: The decoded JSON message,
+                or None on decode error.
+
+        Raises:
+            RuntimeError: If socket is None when accepting connections.
+        """
+        if self.conn is None:
+            if self.socket is None:
+                raise RuntimeError("Socket is None, cannot accept connections")
+            self.conn, addr = self.socket.accept()
+            logger.info(f"Accepted connection from {addr}")
+
+        try:
+            header_data = self._read_blocking(4)
+            if not header_data:
+                logger.warning("Sender disconnected. Re-accepting... ")
+                self.conn.close()
+                self.conn = None
+                return self.capture_data()  # Wait for new connection
+
+            msg_len = struct.unpack(">I", header_data)[0]
+
+            message_bytes = self._read_blocking(msg_len)
+            if not message_bytes:
+                logger.warning("Sender disconnected. Re-accepting... ")
+                self.conn.close()
+                self.conn = None
+                return self.capture_data()  # Wait for new connection
+
+            return json.loads(message_bytes.decode("utf-8"))
+        except (json.JSONDecodeError, struct.error) as e:
+            logger.exception(f"Data format error: {e}")
+            if self.conn:
+                self.conn.close()
+            self.conn = None
+            return None

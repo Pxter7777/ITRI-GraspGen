@@ -1,17 +1,19 @@
-import socket
-import json
-import keyboard
-import time
-import os
-import sys
+"""Send trajectory data to an Isaac Sim display PC over a socket."""
 
-current_file_dir = os.path.dirname(os.path.abspath(__file__))
-project_root_dir = os.path.dirname(current_file_dir)
-if project_root_dir not in sys.path:
-    sys.path.insert(0, project_root_dir)
+import json
+import socket
+import sys
+import time
+from pathlib import Path
+
+import keyboard  # type: ignore[reportMissingModuleSource]
+
+PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT_DIR))
 from common_utils import network_config  # noqa: E402
 
-HOST = network_config.REAL2SIM_IP  # 改成顯示電腦的 IP，例如 "192.168.1.123"
+HOST = network_config.REAL2SIM_IP  # 改成顯示電腦的 IP,例如 "192.168.1.123"
 PORT = network_config.REAL2SIM_PORT
 
 # Example
@@ -33,7 +35,12 @@ TEST_ROWS = [
 ]
 
 
-def send_traj(rows):
+def send_traj(rows: list[list[float]]) -> None:
+    """Send trajectory rows to the remote Isaac Sim display server.
+
+    Args:
+        rows (list[list[float]]): Trajectory rows to send.
+    """
     payload = {
         "type": "traj",
         "unit": "deg",
@@ -64,10 +71,10 @@ if __name__ == "__main__":
             print("[Done] Trajectory sent.")
             sent = True
             print("Press '1' again to re-send, or 'q'/ESC to quit.")
-            # 允許重送：把 sent=False 改掉即可
+            # 允許重送:把 sent=False 改掉即可
         elif key == "1" and sent:
-            # 若你希望每次按 1 都能重送，註解掉 sent 機制即可
+            # 若你希望每次按 1 都能重送,註解掉 sent 機制即可
             print("[Info] Already sent once. (Remove 'sent' flag to allow re-send.)")
-        elif key.lower() == "q" or key == "esc":
+        elif str(key).lower() == "q" or key == "esc":
             print("Exit.")
             break

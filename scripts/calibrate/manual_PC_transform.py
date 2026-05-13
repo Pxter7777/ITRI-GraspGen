@@ -1,0 +1,575 @@
+"""Manually transform point clouds via a tkinter GUI and meshcat visualizer."""
+
+import argparse
+import atexit
+import copy
+import json
+import os
+import platform
+import signal
+import subprocess
+import time
+import tkinter as tk
+import webbrowser
+from pathlib import Path
+from threading import Thread
+
+import meshcat
+import numpy as np
+from grasp_gen.utils.meshcat_utils import (
+    create_visualizer,
+    visualize_pointcloud,
+)
+from scipy.spatial.transform import Rotation
+
+from common_utils.scene_data import SceneData
+
+OUTPUT_PC_DIR = Path("data/calibrate/output_pointcloud")
+OUTPUT_TC_DIR = Path("data/calibrate/output_transform_config")
+
+
+class AppState:
+    """Mutable global state for point clouds and the current transformation.
+
+    Attributes:
+        original (SceneData | None): Original scene data before transformation.
+        current (SceneData | None): Current (transformed) scene data.
+        transformation (np.ndarray): Current 4x4 transformation matrix.
+    """
+
+    original: SceneData | None
+    current: SceneData | None
+    transformation: np.ndarray
+
+    def __init__(self) -> None:
+        self.original = None
+        self.current = None
+        self.transformation = np.identity(4)
+
+
+app_state = AppState()
+
+
+def save_pointcloud(scene_data: SceneData, output_path: Path) -> None:
+    """Save scene data to a JSON file.
+
+    Args:
+        scene_data (SceneData): The scene data to save.
+        output_path (Path): Destination file path.
+    """
+    with open(output_path, "w") as f:
+        json.dump(scene_data.to_dict(), f, indent=4)
+    print(f"Saved transformed point cloud and matrix to {output_path}")
+
+
+def transform(
+    original_pointcloud: np.ndarray,
+    transformation_matrix: np.ndarray,
+) -> np.ndarray:
+    """Apply a 4x4 transformation matrix to a point cloud.
+
+    Args:
+        original_pointcloud (np.ndarray): Nx3 point cloud array.
+        transformation_matrix (np.ndarray): 4x4 transformation matrix.
+
+    Returns:
+        np.ndarray: Transformed Nx3 point cloud.
+    """
+    original_pc_homogeneous = np.hstack(
+        (
+            original_pointcloud,
+            np.ones((original_pointcloud.shape[0], 1)),
+        )
+    )
+    transformed_object_pc_homogeneous = (
+        transformation_matrix @ original_pc_homogeneous.T
+    ).T
+    transformed_pointcloud = transformed_object_pc_homogeneous[:, :3]
+    return transformed_pointcloud
+
+
+class ControlPanel:
+    """Tkinter control panel for interactive point cloud transformation.
+
+    Args:
+        root (tk.Tk): The root tkinter window.
+        vis (meshcat.Visualizer): The meshcat visualizer instance.
+        json_files (list[str]): Available JSON scene files.
+        args (argparse.Namespace): Parsed command-line arguments.
+    """
+
+    def __init__(
+        self,
+        root: tk.Tk,
+        vis: meshcat.Visualizer,
+        json_files: list[str],
+        args: argparse.Namespace,
+    ) -> None:
+        self.root = root
+        self.vis = vis
+        self.json_files = json_files
+        self.args = args
+        self.root.title("Control Panel")
+
+        self.selected_file = tk.StringVar()
+
+        # Dropdown for JSON files
+        self.selected_file.set(json_files[0] if json_files else "")
+        self.json_dropdown = tk.OptionMenu(self.root, self.selected_file, *json_files)
+        self.json_dropdown.pack(padx=20, pady=5)
+
+        # Load button
+        self.load_button = tk.Button(
+            self.root, text="Load Scene", command=self.load_scene
+        )
+        self.load_button.pack(padx=20, pady=5)
+
+        # Transformation controls
+        transform_frame = tk.Frame(self.root, borderwidth=2, relief="groove")
+        transform_frame.pack(padx=10, pady=10)
+
+        self.trans_x_var = self.create_control(
+            transform_frame, "X:", -2.0, 2.0, 0.01, 1
+        )
+        self.trans_y_var = self.create_control(
+            transform_frame, "Y:", -2.0, 2.0, 0.01, 2
+        )
+        self.trans_z_var = self.create_control(
+            transform_frame, "Z:", -2.0, 2.0, 0.01, 3
+        )
+        self.rot_r_var = self.create_control(transform_frame, "Roll:", -180, 180, 1, 5)
+        self.rot_p_var = self.create_control(transform_frame, "Pitch:", -180, 180, 1, 6)
+        self.rot_y_var = self.create_control(transform_frame, "Yaw:", -180, 180, 1, 7)
+
+        self.save_button = tk.Button(
+            self.root,
+            text="Save Transformed PC (JSON)",
+            command=self.save_transformed_pc,
+        )
+        self.save_button.pack(padx=20, pady=5)
+
+        self.save_transform_button = tk.Button(
+            self.root,
+            text="Save Transform Config (JSON)",
+            command=self.save_transform_config,
+        )
+        self.save_transform_button.pack(padx=20, pady=5)
+
+    def create_control(
+        self,
+        parent: tk.Frame,
+        label: str,
+        from_: float,
+        to: float,
+        resolution: float,
+        row: int,
+    ) -> tk.DoubleVar:
+        """Create a labeled slider control with an entry field.
+
+        Args:
+            parent (tk.Frame): Parent frame for the control.
+            label (str): Display label for the slider.
+            from_ (float): Minimum slider value.
+            to (float): Maximum slider value.
+            resolution (float): Slider step size.
+            row (int): Grid row index.
+
+        Returns:
+            tk.DoubleVar: The variable bound to the slider.
+        """
+        var = tk.DoubleVar()
+        var.trace_add("write", self.on_transform_change)
+
+        tk.Label(parent, text=label).grid(row=row, column=0)
+        tk.Scale(
+            parent,
+            from_=from_,
+            to=to,
+            resolution=resolution,
+            orient=tk.HORIZONTAL,
+            length=200,
+            variable=var,
+        ).grid(row=row, column=1)
+        tk.Entry(parent, textvariable=var, width=10).grid(row=row, column=2)
+        return var
+
+    def on_transform_change(self, *args: object) -> None:
+        """Handle slider or entry value change.
+
+        Args:
+            *args (object): Tkinter trace callback arguments.
+        """
+        self.apply_transform()
+
+    def load_scene(self) -> None:
+        """Load the selected JSON scene file into the visualizer."""
+        selected = self.selected_file.get()
+        if selected:
+            load_and_process_scene(self.vis, selected)
+
+    def apply_transform(self) -> None:
+        """Build and apply the current transformation to both point clouds."""
+        if app_state.original is None or app_state.current is None:
+            return
+
+        # Get values from sliders
+        tx = self.trans_x_var.get()
+        ty = self.trans_y_var.get()
+        tz = self.trans_z_var.get()
+        rr = self.rot_r_var.get()
+        rp = self.rot_p_var.get()
+        ry = self.rot_y_var.get()
+
+        # Create transformation matrix
+        translation_matrix = np.array(
+            [[1, 0, 0, tx], [0, 1, 0, ty], [0, 0, 1, tz], [0, 0, 0, 1]]
+        )
+
+        rotation = Rotation.from_euler("xyz", [rr, rp, ry], degrees=True)
+        rotation_matrix = np.identity(4)
+        rotation_matrix[:3, :3] = rotation.as_matrix()
+
+        app_state.transformation = translation_matrix @ rotation_matrix
+
+        for name in app_state.original.object_infos:
+            app_state.current.object_infos[name].points = transform(
+                app_state.original.object_infos[name].points,
+                app_state.transformation,
+            )
+        for i, pc in enumerate(app_state.original.scene_info.pc_color):
+            app_state.current.scene_info.pc_color[i] = transform(
+                pc, app_state.transformation
+            )
+
+        update_visualization(self.vis)
+
+    def save_transformed_pc(self) -> None:
+        """Save the transformed point cloud to a JSON file."""
+        if app_state.current is None:
+            print("No point cloud to save.")
+            return
+
+        input_path = Path(self.selected_file.get())
+        output_filename = f"{input_path.stem}_transformed.json"
+        output_path = OUTPUT_PC_DIR / output_filename
+
+        OUTPUT_PC_DIR.mkdir(parents=True, exist_ok=True)
+
+        data_to_save = app_state.current.to_dict()
+        data_to_save["transformation_matrix"] = app_state.transformation.tolist()
+
+        with open(output_path, "w") as f:
+            json.dump(data_to_save, f, indent=4)
+        print(f"Saved transformed point cloud and matrix to {output_path}")
+
+    def save_transform_config(self) -> None:
+        """Save the current translation and rotation values to a config JSON."""
+        if app_state.current is None:
+            print("No point cloud to save.")
+            return
+
+        input_path = Path(self.selected_file.get())
+        output_filename = f"{input_path.stem}_transform_config.json"
+        output_path = OUTPUT_TC_DIR / output_filename
+
+        OUTPUT_TC_DIR.mkdir(parents=True, exist_ok=True)
+
+        tx = self.trans_x_var.get()
+        ty = self.trans_y_var.get()
+        tz = self.trans_z_var.get()
+        rr = self.rot_r_var.get()
+        rp = self.rot_p_var.get()
+        ry = self.rot_y_var.get()
+
+        data_to_save = {"tx": tx, "ty": ty, "tz": tz, "rr": rr, "rp": rp, "ry": ry}
+        with open(output_path, "w") as f:
+            json.dump(data_to_save, f, indent=4)
+        print(f"Saved transforme config {output_path}")
+
+    def run(self) -> None:
+        """Start the tkinter main loop."""
+        self.root.mainloop()
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments.
+
+    Returns:
+        argparse.Namespace: Parsed arguments.
+    """
+    parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
+    parser.add_argument(
+        "--sample_data_dir",
+        type=str,
+        default=str(OUTPUT_PC_DIR),
+        help="Directory containing JSON files with point cloud data",
+    )
+    parser.add_argument(
+        "--transform-config",
+        type=str,
+        default="",
+        help="Specific JSON file to process.",
+    )
+    parser.add_argument(
+        "--filename",
+        type=str,
+        default="",
+        help="Specific JSON file to process.",
+    )
+    parser.add_argument(
+        "--quick",
+        action="store_true",
+        help="quick transform without any gui and meshcat",
+    )
+    return parser.parse_args()
+
+
+def start_meshcat_server() -> subprocess.Popen[bytes]:
+    """Launch the meshcat-server subprocess.
+
+    Returns:
+        subprocess.Popen[bytes]: The meshcat-server process handle.
+    """
+    print("Starting meshcat-server...")
+    meshcat_server_process = subprocess.Popen(
+        "meshcat-server", shell=True, preexec_fn=os.setsid
+    )
+
+    @atexit.register
+    def cleanup_meshcat_server() -> None:  # pyright: ignore[reportUnusedFunction]
+        if meshcat_server_process.poll() is None:
+            print("Terminating meshcat-server...")
+            os.killpg(os.getpgid(meshcat_server_process.pid), signal.SIGTERM)
+
+    time.sleep(2)
+    return meshcat_server_process
+
+
+def open_meshcat_url(url: str) -> None:
+    """Open the meshcat visualizer URL in a browser.
+
+    Args:
+        url (str): The URL to open.
+    """
+    print(f"\n--- Meshcat Visualizer ---\nURL: {url}\n--------------------------\n")
+    try:
+        system = platform.system()
+        if system == "Linux":
+            release_info = platform.release().lower()
+            if "microsoft" in release_info or "wsl" in release_info:
+                subprocess.run(
+                    ["powershell.exe", "-c", f'Start-Process "{url}"'],
+                    stderr=subprocess.DEVNULL,
+                )
+            else:
+                subprocess.run(["xdg-open", url], stderr=subprocess.DEVNULL)
+        else:
+            webbrowser.open(url)
+    except Exception:
+        pass
+
+
+def load_scene(json_file: str | Path) -> SceneData:
+    """Load object and scene point clouds from a JSON file.
+
+    Args:
+        json_file (str | Path): Path to the JSON scene file.
+
+    Returns:
+        SceneData: Loaded scene data.
+    """
+    print(f"Loading scene from {json_file}")
+    with open(json_file, "rb") as f:
+        data = json.load(f)
+
+    object_infos: dict[str, SceneData.ObjectInfo] = {}
+    if (
+        "object_info" in data
+        and "pc" in data["object_info"]
+        and len(data["object_info"]["pc"]) > 0
+    ):
+        object_infos["object"] = SceneData.ObjectInfo(
+            points=np.array(data["object_info"]["pc"]),
+            colors=np.array(data["object_info"]["pc_color"]),
+        )
+
+    pc_color_list: list[np.ndarray] = []
+    img_color_list: list[np.ndarray] = []
+    if (
+        "scene_info" in data
+        and "pc_color" in data["scene_info"]
+        and len(data["scene_info"]["pc_color"]) > 0
+    ):
+        pc_color_list = [np.array(pc) for pc in data["scene_info"]["pc_color"]]
+        img_color_list = [np.array(img) for img in data["scene_info"]["img_color"]]
+
+    if not object_infos and not pc_color_list:
+        print("Could not find point cloud data in JSON file.")
+        exit(1)
+
+    return SceneData(
+        object_infos=object_infos,
+        scene_info=SceneData.SceneInfo(
+            pc_color=pc_color_list, img_color=img_color_list
+        ),
+    )
+
+
+def load_and_process_scene(vis: meshcat.Visualizer, json_file: str | Path) -> None:
+    """Load a scene, reset app state, and update the visualizer.
+
+    Args:
+        vis (meshcat.Visualizer): The meshcat visualizer instance.
+        json_file (str | Path): Path to the JSON scene file.
+    """
+    vis.delete()  # type: ignore[reportAttributeAccessIssue]
+
+    scene_data = load_scene(json_file)
+    app_state.original = scene_data
+    app_state.current = copy.deepcopy(scene_data)
+
+    update_visualization(vis)
+
+
+def update_visualization(vis: meshcat.Visualizer) -> None:
+    """Refresh the meshcat visualizer with the current point clouds.
+
+    Args:
+        vis (meshcat.Visualizer): The meshcat visualizer instance.
+    """
+    if app_state.current is None:
+        return
+
+    pc_list = []
+    pc_color_list = []
+    for info in app_state.current.object_infos.values():
+        pc_list.append(info.points)
+        pc_color_list.append(info.colors)
+    for pc in app_state.current.scene_info.pc_color:
+        pc_list.append(pc)
+    for img in app_state.current.scene_info.img_color:
+        pc_color_list.append(img)
+
+    if not pc_list:
+        return
+
+    pc = np.concatenate(pc_list, axis=0)
+    pc_color = np.concatenate(pc_color_list, axis=0)
+
+    visualize_pointcloud(vis, "pointcloud", pc, pc_color, size=0.005)
+
+
+def create_control_panel(
+    vis: meshcat.Visualizer,
+    json_files: list[str],
+    args: argparse.Namespace,
+) -> None:
+    """Create and run the tkinter control panel.
+
+    Args:
+        vis (meshcat.Visualizer): The meshcat visualizer instance.
+        json_files (list[str]): Available JSON scene files.
+        args (argparse.Namespace): Parsed command-line arguments.
+    """
+    root = tk.Tk()
+    panel = ControlPanel(root, vis, json_files, args)
+    panel.run()
+
+
+def quick_transform(args: argparse.Namespace) -> None:
+    """Apply a saved transform config to a point cloud without GUI.
+
+    Args:
+        args (argparse.Namespace): Parsed command-line arguments.
+    """
+    # check and load transform config
+    if args.transform_config == "":
+        print("Please provide transform config")
+        exit(1)
+    transform_filepath = OUTPUT_TC_DIR / args.transform_config
+    with open(transform_filepath, "rb") as f:
+        transform_data = json.load(f)
+
+    # Build Transformation matrix
+    translation_matrix = np.array(
+        [
+            [1, 0, 0, transform_data["tx"]],
+            [0, 1, 0, transform_data["ty"]],
+            [0, 0, 1, transform_data["tz"]],
+            [0, 0, 0, 1],
+        ]
+    )
+    rotation = Rotation.from_euler(
+        "xyz",
+        [transform_data["rr"], transform_data["rp"], transform_data["ry"]],
+        degrees=True,
+    )
+    rotation_matrix = np.identity(4)
+    rotation_matrix[:3, :3] = rotation.as_matrix()
+    transformation = translation_matrix @ rotation_matrix
+
+    # check and load pointcloud
+    if args.sample_data_dir == "":
+        print("Please provide pointcloud dir")
+        exit(1)
+    if args.filename == "":
+        print("Please provide poincloud filename")
+        exit(1)
+    pointcloud_filepath = Path(args.sample_data_dir) / args.filename
+    scene_data = load_scene(pointcloud_filepath)
+    for name in scene_data.object_infos:
+        scene_data.object_infos[name].points = transform(
+            scene_data.object_infos[name].points, transformation
+        )
+    for i, pc in enumerate(scene_data.scene_info.pc_color):
+        scene_data.scene_info.pc_color[i] = transform(pc, transformation)
+
+    # save
+    output_filename = f"{pointcloud_filepath.stem}_transformed.json"
+    output_path = OUTPUT_PC_DIR / output_filename
+
+    OUTPUT_PC_DIR.mkdir(parents=True, exist_ok=True)
+    save_pointcloud(scene_data, output_path)
+
+
+def main() -> None:
+    """Launch the point cloud transform tool."""
+    args = parse_args()
+    if args.quick:
+        quick_transform(args)
+        exit(0)
+
+    start_meshcat_server()
+    open_meshcat_url("http://127.0.0.1:7000/static/")
+
+    sample_dir = Path(args.sample_data_dir)
+    json_files = sorted(str(p) for p in sample_dir.glob("*.json"))
+    if not json_files:
+        print(f"No JSON files found in {sample_dir}")
+        return
+
+    vis = create_visualizer()
+
+    gui_thread = Thread(
+        target=create_control_panel,
+        args=(vis, json_files, args),
+        daemon=True,
+    )
+    gui_thread.start()
+
+    if args.filename:
+        filename_path = Path(args.filename)
+        if filename_path.exists():
+            load_and_process_scene(vis, str(filename_path))
+        else:
+            print(f"File not found: {args.filename}")
+
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("Exiting...")
+
+
+if __name__ == "__main__":
+    main()

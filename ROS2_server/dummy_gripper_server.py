@@ -1,24 +1,30 @@
 # Run this python script when no real TM5S robot available.
-"""
+"""Imitate gripper_server behavior without a real TM5S robot.
+
 Original gripper_server's behavior:
-    gripper_server accept signals from isaac sim script, run it, and responds {"message": "Success"} back to isaacsim script when the actual robot reaches the goal. (if wait_time is not 0.0, it will delay the response.)
-This script aims to imitate that behavior, only that all signal will only process for a fixed time, and also delay the wait_time, before the response {"message": "Success"}
+    gripper_server accept signals from isaac sim script, run it,
+    and responds {"message": "Success"} back to isaacsim script
+    when the actual robot reaches the goal. (if wait_time is not
+    0.0, it will delay the response.)
+This script aims to imitate that behavior, only that all signal
+will only process for a fixed time, and also delay the wait_time,
+before the response {"message": "Success"}.
 """
 
-import time
 import logging
-import os
 import sys
+import time
+from pathlib import Path
 
-current_file_dir = os.path.dirname(os.path.abspath(__file__))
-project_root_dir = os.path.dirname(current_file_dir)
-if project_root_dir not in sys.path:
-    sys.path.insert(0, project_root_dir)
+PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
+SRC_DIR = PROJECT_ROOT_DIR / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+from common_utils import network_config  # noqa: E402
 from common_utils.socket_communication import (  # noqa: E402
     NonBlockingJSONReceiver,
     NonBlockingJSONSender,
 )
-from common_utils import network_config  # noqa: E402
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -27,7 +33,9 @@ logging.basicConfig(
     force=True,
 )
 sender = NonBlockingJSONSender(port=network_config.ROS2_TO_ISAACSIM_PORT)
-# if it says [socket_communication][ERROR] Connection failed. Is the bridge.py script running on localhost:9877? when started, it's normal and can be ignored.
+# if it says [socket_communication][ERROR] Connection failed.
+# Is the bridge.py script running on localhost:9877?
+# when started, it's normal and can be ignored.
 receiver = NonBlockingJSONReceiver(port=network_config.ISAACSIM_TO_ROS2_PORT)
 
 try:
@@ -38,9 +46,14 @@ try:
             continue
         logger.info("Received data!")
         try:
+            if not isinstance(data, dict):
+                raise TypeError(f"Expected dict, got {type(data)}")
             if data["type"] == "sequence_joint_rad":
                 time.sleep(2)
-            time.sleep(data["wait_time"])
+            wait_time = data["wait_time"]
+            if not isinstance(wait_time, (int, float)):
+                raise TypeError(f"Expected number for wait_time, got {type(wait_time)}")
+            time.sleep(wait_time)
         except KeyError as e:
             logger.exception(
                 f"{e}, key error, please make sure the signal format is correct."

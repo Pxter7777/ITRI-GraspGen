@@ -1,20 +1,23 @@
+"""Workflow server that bridges MIA commands to Isaac Sim via sockets."""
+
 import argparse
 import logging
+from pathlib import Path
+
 import numpy as np
 import torch
-from pathlib import Path
-from common_utils import network_config
-from common_utils.custom_logger import CustomFormatter
-from common_utils.workflow_control import BaseWorkflowController
+
+from common_utils import config, network_config
+from common_utils.log_formatter import CustomLoggingFormatter
 from common_utils.socket_communication import (
-    NonBlockingJSONSender,
     NonBlockingJSONReceiver,
+    NonBlockingJSONSender,
 )
-from common_utils import config
+from common_utils.workflow_control import BaseWorkflowController
 
 # root logger setup
 handler = logging.StreamHandler()
-handler.setFormatter(CustomFormatter())
+handler.setFormatter(CustomLoggingFormatter())
 logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
 logger = logging.getLogger(__name__)
 
@@ -22,12 +25,22 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 
 
-def set_seed(seed):
+def set_seed(seed: int) -> None:
+    """Set random seeds for torch and numpy.
+
+    Args:
+        seed (int): The random seed value.
+    """
     torch.manual_seed(seed)
     np.random.seed(seed)
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments.
+
+    Returns:
+        argparse.Namespace: Parsed arguments.
+    """
     parser = argparse.ArgumentParser(description="Manually transform a point cloud.")
     parser.add_argument(
         "--ckpt_dir",
@@ -71,12 +84,6 @@ def parse_args():
         help="max depth for generating pointcloud",
     )
     parser.add_argument(
-        "--transform-config",
-        type=str,
-        default="sim2.json",
-        help="transform-config",
-    )
-    parser.add_argument(
         "--gripper_config",
         type=str,
         default=str(config.GRIPPER_CFG),
@@ -86,7 +93,10 @@ def parse_args():
         "--grasp_threshold",
         type=float,
         default=0.70,
-        help="Threshold for valid grasps. If -1.0, then the top 100 grasps will be ranked and returned",
+        help=(
+            "Threshold for valid grasps. If -1.0, then the"
+            " top 100 grasps will be ranked and returned"
+        ),
     )
     parser.add_argument(
         "--num_grasps",
@@ -119,13 +129,19 @@ def parse_args():
         "--use-png",
         type=str,
         default="",
-        help="Use exisiting images at sample_data/zed_images instead of the real zed camera",
+        help="Use exisiting images at data/zed_images instead of the real zed camera",
     )
     return parser.parse_args()
 
 
 class MiaWorkflowController(BaseWorkflowController):
-    def __init__(self, args) -> None:
+    """Workflow controller that receives commands from MIA and relays results.
+
+    Args:
+        args (argparse.Namespace): Parsed command-line arguments.
+    """
+
+    def __init__(self, args: argparse.Namespace) -> None:
         sender = NonBlockingJSONSender(port=network_config.GRASPGEN_TO_ISAACSIM_PORT)
         receiver = NonBlockingJSONReceiver(
             port=network_config.ISAACSIM_TO_GRASPGEN_PORT
@@ -138,12 +154,14 @@ class MiaWorkflowController(BaseWorkflowController):
             port=network_config.MIA_TO_GRASPGEN_PORT
         )
 
-    def _send_EOF(self):
+    def _send_eof(self) -> None:
         # end of move
         self.sender.send_data(["EOF"])
         response = self.receiver.capture_data()
         while response is None:
             response = self.receiver.capture_data()
+        if not isinstance(response, dict):
+            raise TypeError(f"Expected dict, got {type(response)}")
         if response["message"] == "EOF and ROS2 Complete":
             logger.warning("Success")
             self.main_sender.send_data({"message": "Success"})
@@ -154,7 +172,7 @@ class MiaWorkflowController(BaseWorkflowController):
         else:
             raise ValueError(f"Unknown message {response['message']}")
 
-    def _handle_keyboard_interrupt(self):
+    def _handle_keyboard_interrupt(self) -> None:
         logger.info("Manual stopping current action.")
         self.sender.send_data(["Reset_to_default"])
         self.main_sender.send_data({"message": "Fail"})
@@ -164,16 +182,19 @@ class MiaWorkflowController(BaseWorkflowController):
             task_signal = self.main_receiver.capture_data()
             if task_signal is None:
                 continue
+            if not isinstance(task_signal, dict):
+                raise TypeError(f"Expected dict, got {type(task_signal)}")
             text = task_signal.get("actions")
             no_need_curobo = False
             if task_signal.get("no_curobo"):
                 no_need_curobo = True
-            if text is None:
-                raise ValueError(f"received weird signal {task_signal}")
+            if not isinstance(text, str):
+                raise TypeError(f"Expected str, got {type(text)}")
             return text, no_need_curobo
 
 
-def main():
+def main() -> None:
+    """Start the MIA workflow server loop."""
     args = parse_args()
     set_seed(42)
     with MiaWorkflowController(args) as controller:

@@ -1,24 +1,25 @@
-"""
-Grasp selection analysis:
+"""Grasp selection analysis.
+
 - Feature correlation with cuRobo success
 - Logistic regression re-ranking model
-- Comparison: discriminator order vs learned re-ranking
+- Comparison: discriminator order vs learned re-ranking.
 """
 
 import json
-import numpy as np
-import matplotlib.pyplot as plt
 from pathlib import Path
-from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import StratifiedKFold, cross_val_score
-from sklearn.utils.class_weight import compute_class_weight
+
+import matplotlib.pyplot as plt
+import numpy as np
 from scipy import stats
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.preprocessing import StandardScaler
+from sklearn.utils.class_weight import compute_class_weight
 from xgboost import XGBClassifier
 
 DATA_ROOT = Path(__file__).resolve().parents[1] / "data" / "order_experiment_data"
 OUTPUT_DIR = Path(__file__).resolve().parent / "figures"
-OUTPUT_DIR.mkdir(exist_ok=True)
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 SCENARIOS = ["in_basket", "on_shelf", "on_table"]
 FEATURE_NAMES = [
@@ -37,7 +38,12 @@ FEATURE_LABELS = {
 }
 
 
-def load_all_data():
+def load_all_data() -> list[dict[str, object]]:
+    """Load grasp records from all scenario JSON files.
+
+    Returns:
+        list[dict[str, object]]: Flat list of grasp records.
+    """
     records = []
     for scenario in SCENARIOS:
         for i in range(1, 6):
@@ -63,8 +69,12 @@ def load_all_data():
     return records
 
 
-def plot_feature_distributions(records):
-    """Box plots: feature distributions for success vs fail grasps."""
+def plot_feature_distributions(records: list[dict[str, object]]) -> None:
+    """Box plots: feature distributions for success vs fail grasps.
+
+    Args:
+        records (list[dict[str, object]]): Grasp records with features and labels.
+    """
     success = [r for r in records if r["success"] == 1]
     fail = [r for r in records if r["success"] == 0]
 
@@ -94,8 +104,12 @@ def plot_feature_distributions(records):
     plt.close()
 
 
-def plot_success_rate_by_bin(records):
-    """Success rate across binned feature values."""
+def plot_success_rate_by_bin(records: list[dict[str, object]]) -> None:
+    """Success rate across binned feature values.
+
+    Args:
+        records (list[dict[str, object]]): Grasp records with features and labels.
+    """
     fig, axes = plt.subplots(1, len(FEATURE_NAMES), figsize=(18, 4))
     fig.suptitle(
         "Success Rate by Feature Value (binned)", fontsize=13, fontweight="bold"
@@ -112,7 +126,7 @@ def plot_success_rate_by_bin(records):
             bins = np.percentile(vals, np.linspace(0, 100, 6))
             bins = np.unique(bins)
             bin_labels = [
-                f"{bins[i]:.2f}–{bins[i + 1]:.2f}" for i in range(len(bins) - 1)
+                f"{bins[i]:.2f}-{bins[i + 1]:.2f}" for i in range(len(bins) - 1)
             ]
 
         rates, counts = [], []
@@ -161,13 +175,23 @@ def plot_success_rate_by_bin(records):
     plt.close()
 
 
-def train_and_evaluate(records):
-    """Train logistic regression and XGBoost, evaluate with cross-validation."""
-    X = np.array([[r[f] for f in FEATURE_NAMES] for r in records])
+def train_and_evaluate(
+    records: list[dict[str, object]],
+) -> tuple[LogisticRegression, StandardScaler, XGBClassifier]:
+    """Train logistic regression and XGBoost, evaluate with cross-validation.
+
+    Args:
+        records (list[dict[str, object]]): Grasp records with features and labels.
+
+    Returns:
+        tuple[LogisticRegression, StandardScaler, XGBClassifier]: Trained models
+            and scaler.
+    """
+    X = np.array([[r[f] for f in FEATURE_NAMES] for r in records])  # noqa: N806
     y = np.array([r["success"] for r in records])
 
     scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
+    X_scaled = scaler.fit_transform(X)  # noqa: N806
 
     class_weights = compute_class_weight("balanced", classes=np.array([0, 1]), y=y)
     cw_dict = {0: class_weights[0], 1: class_weights[1]}
@@ -211,11 +235,23 @@ def train_and_evaluate(records):
     return lr, scaler, xgb
 
 
-def topk_table(records, lr, scaler, xgb):
-    """
+def topk_table(
+    records: list[dict[str, object]],
+    lr: LogisticRegression,
+    scaler: StandardScaler,
+    xgb: XGBClassifier,
+) -> None:
+    """Rank grasps by model score and report top-k success rates.
+
     For each scene, rank grasps by model score vs random.
     Report: % of scenes with at least one success in top-k, for k = 1,3,5,10,20.
     Also report mean attempts to first success.
+
+    Args:
+        records (list[dict[str, object]]): Grasp records with features and labels.
+        lr (LogisticRegression): Trained logistic regression model.
+        scaler (StandardScaler): Fitted feature scaler.
+        xgb (XGBClassifier): Trained XGBoost model.
     """
     # Group by scene key
     scenes = {}
@@ -224,21 +260,21 @@ def topk_table(records, lr, scaler, xgb):
         scenes.setdefault(key, []).append(r)
     scene_keys = list(scenes.keys())
 
-    K_VALUES = [1, 3, 5, 10, 20]
+    K_VALUES = [1, 3, 5, 10, 20]  # noqa: N806
     results = {k: {"disc": [], "lr": [], "xgb": []} for k in K_VALUES}
     disc_attempts, lr_attempts, xgb_attempts = [], [], []
     disc_times, lr_times, xgb_times = [], [], []
 
-    def first_success(gs):
+    def first_success(gs: list[dict[str, object]]) -> int:
         for i, g in enumerate(gs):
             if g["success"]:
                 return i + 1
         return len(gs) + 1
 
-    def time_to_first_success(gs):
+    def time_to_first_success(gs: list[dict[str, object]]) -> float:
         total = 0.0
         for g in gs:
-            total += g["motion_plan_time"]
+            total += float(g["motion_plan_time"])  # type: ignore[reportArgumentType]
             if g["success"]:
                 return total
         return total
@@ -250,14 +286,14 @@ def topk_table(records, lr, scaler, xgb):
         ]
         test_grasps = scenes[held_out_key]
 
-        X_train = np.array([[r[f] for f in FEATURE_NAMES] for r in train_records])
+        X_train = np.array([[r[f] for f in FEATURE_NAMES] for r in train_records])  # noqa: N806
         y_train = np.array([r["success"] for r in train_records])
-        X_test = np.array([[r[f] for f in FEATURE_NAMES] for r in test_grasps])
+        X_test = np.array([[r[f] for f in FEATURE_NAMES] for r in test_grasps])  # noqa: N806
 
         # Logistic regression (needs scaling)
         scaler_cv = StandardScaler().fit(X_train)
-        X_train_s = scaler_cv.transform(X_train)
-        X_test_s = scaler_cv.transform(X_test)
+        X_train_s = scaler_cv.transform(X_train)  # noqa: N806
+        X_test_s = scaler_cv.transform(X_test)  # noqa: N806
         cw = compute_class_weight("balanced", classes=np.array([0, 1]), y=y_train)
         clf_lr = LogisticRegression(
             class_weight={0: cw[0], 1: cw[1]}, max_iter=1000, random_state=42
@@ -303,8 +339,8 @@ def topk_table(records, lr, scaler, xgb):
         lr_times.append(time_to_first_success(grasps_lr))
         xgb_times.append(time_to_first_success(grasps_xgb))
 
-    COLORS = {"disc": "#2196F3", "lr": "#FF9800", "xgb": "#4CAF50"}
-    LABELS = {"disc": "Discriminator", "lr": "Logistic Reg.", "xgb": "XGBoost"}
+    COLORS = {"disc": "#2196F3", "lr": "#FF9800", "xgb": "#4CAF50"}  # noqa: N806
+    LABELS = {"disc": "Discriminator", "lr": "Logistic Reg.", "xgb": "XGBoost"}  # noqa: N806
 
     print("\n--- Top-K Success Rate Table ---")
     print(f"{'k':<6} {'Discriminator':>15} {'Logistic Reg.':>15} {'XGBoost':>10}")
@@ -407,11 +443,14 @@ def topk_table(records, lr, scaler, xgb):
     plt.close()
 
 
-def main():
+def main() -> None:
+    """Run the full grasp selection analysis pipeline."""
     print("Loading data...")
     records = load_all_data()
     print(
-        f"Loaded {len(records)} grasps, {sum(r['success'] for r in records)} successes ({100 * sum(r['success'] for r in records) / len(records):.1f}%)"
+        f"Loaded {len(records)} grasps, "
+        f"{sum(bool(r['success']) for r in records)} successes "
+        f"({100 * sum(bool(r['success']) for r in records) / len(records):.1f}%)"
     )
 
     print("\n--- Point-biserial correlation with curobo_success ---")

@@ -1,12 +1,16 @@
+"""Test delayed move sequences sent to Isaac Sim over sockets."""
+
+import time
+
+from common_utils import network_config
 from common_utils.socket_communication import (
     NonBlockingJSONSender,
     # BlockingJSONReceiver,
 )
-from common_utils import network_config
-import time
 
 
 def scenario2():
+    """Send three moves with 3-second delays between each."""
     sender = NonBlockingJSONSender(port=network_config.GRASPGEN_TO_ISAACSIM_PORT)
     # receiever = BlockingJSONReceiver(port=network_config.ISAACSIM_TO_GRASPGEN_PORT)
     joints_goal1 = [
@@ -42,6 +46,7 @@ def scenario2():
 
 
 def scenario1():
+    """Send three moves with 1-second delays between each."""
     sender = NonBlockingJSONSender(port=network_config.GRASPGEN_TO_ISAACSIM_PORT)
     # receiever = BlockingJSONReceiver(port=network_config.ISAACSIM_TO_GRASPGEN_PORT)
     joints_goal1 = [
@@ -77,9 +82,14 @@ def scenario1():
 
 
 """
-Currently, scenario1 can work normally, however, I can see scenario2 is buggy, and that's because the bad logic currently in sync_with_ROS2.py.
-If ROS2 is complete, and there is no moves in queue, the robot will reset its last_joint_states back to default, which caused this weird result.
-This usually wouldn't happen, but theoritically and practically can happen sometimes.
+Currently, scenario1 can work normally, however, I can see
+scenario2 is buggy, and that's because the bad logic currently
+in sync_with_ROS2.py.
+If ROS2 is complete, and there is no moves in queue, the robot
+will reset its last_joint_states back to default, which caused
+this weird result.
+This usually wouldn't happen, but theoritically and practically
+can happen sometimes.
 """
 
 if __name__ == "__main__":

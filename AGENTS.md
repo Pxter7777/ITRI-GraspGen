@@ -9,7 +9,7 @@ Welcome to the ITRI-GraspGen repository. This document serves as the primary sys
 1. **NO SCRIPT EXECUTION**: Do NOT run any `.py` scripts directly (e.g., `main.py`, `scripts/workflow_with_isaacsim.py`). These scripts are computationally heavy, spin up complex persistent processes (Isaac Sim, ROS2, large ML models), and require specific environments. The human user will handle testing and running scripts manually.
 2. **NO MASS REFACTORING**: The project is acknowledged to be complex and contains legacy/needless scripts. Do NOT attempt large-scale architectural reconstructions, file movements, or stylistic overhauls unless explicitly requested. Focus strictly on the immediate, urgent tasks assigned by the user.
 3. **NO MAIN BRANCH PUSHES**: Do NOT push directly to the `main` branch. The `main` branch is protected and only accepts merges/squashes from GitHub Pull Requests. Always create a new branch for your work.
-4. **NO THIRD-PARTY EDITS**: Do NOT modify files inside the `Third_Party/` directory. These are Git submodules maintained upstream (e.g., GraspGen, SAM2, FoundationStereo, GroundingDINO). 
+4. **NO THIRD-PARTY EDITS**: Do NOT modify files inside the `third_party/` directory. These are Git submodules maintained upstream (e.g., GraspGen, SAM2, FoundationStereo, GroundingDINO). 
 5. **READ BEFORE EDITING**: Always use the `read`, `glob`, or `grep` tools to verify the contents of files and dependencies before proposing or making changes. Do not hallucinate imports or project structures.
 6. **NO GIT OPERATIONS**: Do NOT run `git add`, `git commit`, `git checkout`, `git reset`, etc. Version control should be manually handled by human users.
 
@@ -81,10 +81,10 @@ Tests are managed using `pytest` and are located entirely within the `tests/` di
 - **Logging**: Use the standard `logging` module. Do not introduce new logging frameworks. For top-level scripts, set up the root logger using the custom formatter to get preferred color and format:
   ```python
   import logging
-  from common_utils.custom_logger import CustomFormatter
+  from common_utils.log_formatter import CustomLoggingFormatter
   
   handler = logging.StreamHandler()
-  handler.setFormatter(CustomFormatter())
+  handler.setFormatter(CustomLoggingFormatter())
   logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
   ```
 
@@ -106,7 +106,7 @@ The pipeline is intentionally decoupled into distinct processes that communicate
    - Handles simulation environments, collision detection, and motion planning.
    - Requires NVIDIA Omniverse Python (`omni_python`).
 
-3. **GraspGen Core (`PointCloud_Generation/`, `scripts/`)**
+3. **GraspGen Core (`pointcloud_generation/`, `scripts/`)**
    - The primary data processing workflow.
    - Converts 2D images to 3D pointclouds, runs segmentation (SAM2, GroundingDINO), and estimates grasp poses.
 

@@ -1,55 +1,5 @@
 # referenced from https://github.com/AUTOMATIC1111/stable-diffusion-webui/blob/82a973c04367123ae98bd9abdf80d9eda9b910e2/pyproject.toml
-[tool.ruff]
-exclude = [
-    "Third_Party",
-    "isaac-sim2real/isaacsim_utils/helper.py"
-]
-target-version = "py311"
 
-[tool.ruff.lint]
-
-extend-select = [
-  "B",
-  "C",
-  "I",
-  "W",
-]
-
-ignore = [
-	"E501", # Line too long
-	"E721", # Do not compare types, use `isinstance`
-	"E731", # Do not assign a `lambda` expression, use a `def`
-	
-	"I001", # Import block is un-sorted or un-formatted
-	"C901", # Function is too complex
-	"C408", # Rewrite as a literal
-	"W605", # invalid escape sequence, messes with some docstrings
-]
-
-# Not really sure what this is.
-[tool.ruff.lint.flake8-bugbear]
-# Allow default arguments like, e.g., `data: List[str] = fastapi.Query(None)`.
-extend-immutable-calls = ["fastapi.Depends", "fastapi.security.HTTPBasic"]
-
-
-
-[tool.setuptools.packages.find]
-include = ["PointCloud_Generation", "common_utils", "src", "ROS2_server", "Third_Party"]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-filterwarnings = [
-    "ignore:Importing from timm.models.layers is deprecated:FutureWarning",
-    "ignore:zmq.eventloop.ioloop is deprecated in pyzmq 17:Warning:meshcat.servers.zmqserver",
-    "ignore:'locale.getdefaultlocale' is deprecated:Warning:ccimport.buildtools.writer",
-]
-
-[build-system]
-requires = [
-    "setuptools>=61.0",
-    "wheel"
-]
-build-backend = "setuptools.build_meta"
 
 [project]
 name = "ITRI-GraspGen"
@@ -62,27 +12,6 @@ dependencies = [
     "torchvision==0.20.1",
     "torchaudio==2.5.1",
     "pip",
-    "scikit-image",
-    "omegaconf",
-    "opencv-contrib-python",
-    "imgaug",
-    "ninja",
-    "timm",
-    "albumentations",
-    "jupyterlab",
-    "scipy",
-    "joblib",
-    "scikit-learn",
-    "ruamel.yaml",
-    "trimesh",
-    "pyyaml",
-    "imageio",
-    "open3d",
-    "transformations",
-    "einops",
-    "gdown",
-    "nodejs",
-    "huggingface-hub",
     "pyrealsense2",
     "ultralytics",
     "pye57",
@@ -99,17 +28,37 @@ dependencies = [
     "groundingdino",
     "grasp_gen",
     "pointnet2_ops",
+    "foundation_stereo",
     "cython>=3.2.0",
     "numpy>=2.3.4",
     "gitpython>=3.1.45",
     "PyOpenGL-accelerate",
-    "pytest",
-    "pytest-mock",
     "pyside6>=6.10.1",
     "pyserial>=3.5",
     "spconv-cu121>=2.3.8",
     "xgboost>=3.2.0",
+    "open3d>=0.19.0",
 ]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.8",
+    "pytest>=9.0.2",
+    "pytest-mock>=3.15.1",
+    "pydoclint>=0.8.3",
+    "pyright>=1.1.409",
+    ## pyyaml and lark will be needed if ros humble is installed
+    "pyyaml>=6.0.3",
+    "lark>=1.3.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.12,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = ["pointcloud_generation", "common_utils"]
+
 
 [tool.uv]
 override-dependencies = [
@@ -131,18 +80,16 @@ torchaudio = [
 torchvision = [
     { index = "pytorch-cu121", marker = "sys_platform == 'linux'" },
 ]
-
-sam-2 = { path = "./Third_Party/sam2", editable = false }
-groundingdino = { path = "./Third_Party/GroundingDINO", editable = true }
-grasp_gen = { path = "./Third_Party/GraspGen", editable = true }
-pointnet2_ops = { path = "./Third_Party/GraspGen/pointnet2_ops", editable = true }
+sam-2 = { path = "./third_party/sam2", editable = false }
+groundingdino = { path = "./third_party/GroundingDINO", editable = true }
+grasp_gen = { path = "./third_party/GraspGen", editable = true }
+pointnet2_ops = { path = "./third_party/GraspGen/pointnet2_ops", editable = true }
+foundation_stereo = { path = "./third_party/FoundationStereo", editable = true }
 
 [[tool.uv.index]]
 name = "pytorch-cu121"
 url = "https://download.pytorch.org/whl/cu121"
 explicit = true
-
-
 
 [tool.uv.extra-build-dependencies]
 flash-attn = ["torch==2.5.1"]
@@ -153,3 +100,75 @@ torch-cluster = ["torch==2.5.1"]
 
 [project.optional-dependencies]
 localextras = ["pyzed"] # this doesn't work at all.
+
+[tool.ruff]
+exclude = [
+    "third_party",
+    "isaac-sim2real/isaacsim_utils/helper.py"
+]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "ANN",  # flake8-annotations
+    "D",    # pydocstyle
+    "RUF",  # ruff-specific rules
+    "C4",   # flake8-comprehensions
+]
+ignore = [
+    "D107",  # pydoclint requires __init__ args in class docstring instead
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.flake8-annotations]
+mypy-init-return = true
+suppress-none-returning = true
+
+[tool.pydoclint]
+style = "google"
+exclude = '\.git|\.tox|\.venv|third_party|isaac-sim2real/isaacsim_utils/helper\.py'
+skip-checking-short-docstrings = false
+
+
+[tool.pyright]
+extraPaths = ["src", "third_party/GraspGen", "third_party/GroundingDINO", "third_party/FoundationStereo/src"] # Without this, pyright can't find these editable-installed package even though it works well at runtime.
+include = ["src", "scripts", "tests", "analysis", "isaac-sim2real", "ROS2_server"]
+exclude = ["third_party", "isaac-sim2real/isaacsim_utils/helper.py"]
+reportUnknownMemberType = false
+reportUnknownVariableType = false
+reportUnknownArgumentType = false
+reportUnknownParameterType = false
+reportUnknownLambdaType = false
+reportMissingTypeStubs = false
+venvPath = "."
+venv = ".venv"
+typeCheckingMode = "strict"
+executionEnvironments = [
+    { root = "isaac-sim2real", reportMissingImports = false },
+    { root = "ROS2_server", reportMissingImports = false },
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore:Importing from timm.models.layers is deprecated:FutureWarning",
+    "ignore:zmq.eventloop.ioloop is deprecated in pyzmq 17:Warning:meshcat.servers.zmqserver",
+    "ignore:'locale.getdefaultlocale' is deprecated:Warning:ccimport.buildtools.writer",
+    # FoundationStereo Warnings
+    "ignore:xFormers is not available:UserWarning",
+    "ignore:torch.meshgrid.*indexing:UserWarning",
+    "ignore:You are using `torch.load` with `weights_only=False`:FutureWarning",
+    "ignore:The `device` argument is deprecated:FutureWarning",
+    "ignore:torch.utils.checkpoint.*use_reentrant:UserWarning",
+    "ignore:None of the inputs have requires_grad=True:UserWarning",
+    "ignore:`torch.cuda.amp.autocast\\(args...\\)` is deprecated:FutureWarning",
+]

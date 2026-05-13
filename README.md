@@ -55,10 +55,10 @@ uv run ruff format
 - Make good use of logger.
     - For top level scripts, use this to get prefered color and format
         ```python
-        from common_utils.custom_logger import CustomFormatter
+        from common_utils.log_formatter import CustomLoggingFormatter
         # root logger setup
         handler = logging.StreamHandler()
-        handler.setFormatter(CustomFormatter())
+        handler.setFormatter(CustomLoggingFormatter())
         logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
         ```
 

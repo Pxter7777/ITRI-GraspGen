@@ -1,14 +1,13 @@
+"""Visualize generated grasp data for a given scene in meshcat."""
+
 import argparse
-import logging
-import numpy as np
 import json
+import logging
+from pathlib import Path
+
+import numpy as np
 import trimesh
 import trimesh.transformations as tra
-from pathlib import Path
-from common_utils.custom_logger import CustomFormatter
-from common_utils import config
-from common_utils.graspgen_utils import start_meshcat_server, open_meshcat_url
-from common_utils.order_task_config import OrderTaskConfig
 from grasp_gen.grasp_server import load_grasp_cfg
 from grasp_gen.utils.meshcat_utils import (
     create_visualizer,
@@ -16,9 +15,14 @@ from grasp_gen.utils.meshcat_utils import (
     visualize_mesh,
 )
 
+from common_utils import config
+from common_utils.graspgen_utils import open_meshcat_url, start_meshcat_server
+from common_utils.log_formatter import CustomLoggingFormatter
+from common_utils.order_task_config import OrderTaskConfig
+
 # root logger setup
 handler = logging.StreamHandler()
-handler.setFormatter(CustomFormatter())
+handler.setFormatter(CustomLoggingFormatter())
 logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
 logger = logging.getLogger(__name__)
 
@@ -26,7 +30,12 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments.
+
+    Returns:
+        argparse.Namespace: Parsed arguments.
+    """
     parser = argparse.ArgumentParser(
         description="Visualize grasp data for a given scene."
     )
@@ -51,7 +60,12 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
+    """Load and visualize grasp poses for a scene in meshcat.
+
+    Raises:
+        TypeError: If a loaded mesh is not a Trimesh instance.
+    """
     args = parse_args()
     scene_class = getattr(args, "class")
     name = args.name
@@ -91,12 +105,14 @@ def main():
     vis = create_visualizer()
 
     # Visualize all object meshes (target + obstacles) in world frame
-    for obj in [task.target] + task.obstacles:
+    for obj in [task.target, *task.obstacles]:
         mesh_file = Path(obj.obj_dir) / "mesh.obj"
         obj_mesh = trimesh.load(str(mesh_file), force="mesh", process=False)
+        if not isinstance(obj_mesh, trimesh.Trimesh):
+            raise TypeError(f"Expected Trimesh, got {type(obj_mesh)}")
         obj_mesh.apply_scale(obj.scale)
         qx, qy, qz, qw = obj.pose_meter_quat[3:]
-        T_world = tra.quaternion_matrix([qw, qx, qy, qz])
+        T_world = tra.quaternion_matrix([qw, qx, qy, qz])  # noqa: N806
         T_world[:3, 3] = obj.pose_meter_quat[:3]
         obj_mesh.apply_transform(T_world)
         visualize_mesh(vis, f"scene/{obj.instance_id}", obj_mesh)

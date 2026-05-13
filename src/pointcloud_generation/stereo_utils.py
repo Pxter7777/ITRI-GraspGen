@@ -1,0 +1,99 @@
+"""Wrapper around FoundationStereo for stereo depth inference."""
+
+import argparse
+import logging
+from pathlib import Path
+
+import cv2
+import numpy as np
+import torch
+from foundation_stereo.core.foundation_stereo import FoundationStereo
+from foundation_stereo.core.utils.utils import InputPadder
+from omegaconf import DictConfig, ListConfig, OmegaConf
+
+
+class FoundationStereoModel:
+    """Encapsulate the FoundationStereo model and its inference.
+
+    Args:
+        args (OmegaConf | argparse.Namespace): Configuration arguments
+            containing ``ckpt_dir``, ``scale``, and ``valid_iters``.
+
+    Attributes:
+        args (DictConfig | ListConfig): Merged configuration.
+        model (object): Loaded FoundationStereo model.
+    """
+
+    args: DictConfig | ListConfig
+    model: object
+
+    def __init__(self, args: OmegaConf | argparse.Namespace):
+        logging.info("Loading FoundationStereo model...")
+        ckpt_dir = args.ckpt_dir  # type: ignore[reportAttributeAccessIssue]
+        cfg = OmegaConf.load(Path(ckpt_dir).parent / "cfg.yaml")
+        if "vit_size" not in cfg:
+            cfg["vit_size"] = "vitl"  # type: ignore[reportArgumentType]
+        for key in args.__dict__:
+            if key not in cfg:  # prevent overriding config from command line
+                cfg[key] = args.__dict__[key]  # type: ignore[reportArgumentType]
+
+        self.args = OmegaConf.create(cfg)
+        logging.info(f"args:\n{self.args}")
+        logging.info(f"Using pretrained model from {ckpt_dir}")
+        self.model = FoundationStereo(self.args)
+        ckpt = torch.load(ckpt_dir, weights_only=False)
+        logging.info(f"ckpt global_step:{ckpt['global_step']}, epoch:{ckpt['epoch']}")
+        self.model.load_state_dict(ckpt["model"])  # type: ignore[reportAttributeAccessIssue]
+        self.model.cuda().eval()  # type: ignore[reportAttributeAccessIssue]
+
+    def run_inference(
+        self,
+        ir1_np: np.ndarray,
+        ir2_np: np.ndarray,
+        K: np.ndarray,  # noqa: N803
+        baseline: float,
+    ) -> tuple[np.ndarray, tuple[int, int]]:
+        """Run stereo inference on a pair of images and return a depth map.
+
+        Args:
+            ir1_np (np.ndarray): Left grayscale image.
+            ir2_np (np.ndarray): Right grayscale image.
+            K (np.ndarray): Camera intrinsic matrix.
+            baseline (float): Camera stereo baseline in meters.
+
+        Returns:
+            tuple[np.ndarray, tuple[int, int]]: Depth map and the scaled
+                ``(height, width)`` of the images.
+        """
+        ir1_np_bgr = cv2.cvtColor(ir1_np, cv2.COLOR_GRAY2BGR)
+        ir2_np_bgr = cv2.cvtColor(ir2_np, cv2.COLOR_GRAY2BGR)
+        img0 = cv2.resize(
+            ir1_np_bgr, fx=self.args.scale, fy=self.args.scale, dsize=None
+        )
+        img1 = cv2.resize(
+            ir2_np_bgr, fx=self.args.scale, fy=self.args.scale, dsize=None
+        )
+        H_scaled, W_scaled = img0.shape[:2]  # noqa: N806
+
+        img0_t = torch.as_tensor(img0).cuda().float()[None].permute(0, 3, 1, 2)  # type: ignore[reportPrivateImportUsage]
+        img1_t = torch.as_tensor(img1).cuda().float()[None].permute(0, 3, 1, 2)  # type: ignore[reportPrivateImportUsage]
+        padder = InputPadder(img0_t.shape, divis_by=32, force_square=False)
+        img0_t, img1_t = padder.pad(img0_t, img1_t)
+
+        with torch.cuda.amp.autocast(True):  # type: ignore[reportDeprecated]
+            disp = self.model.forward(  # type: ignore[reportAttributeAccessIssue]
+                img0_t, img1_t, iters=self.args.valid_iters, test_mode=True
+            )
+
+        disp = padder.unpad(disp.float()).data.cpu().numpy().reshape(H_scaled, W_scaled)
+
+        xx, _yy = np.meshgrid(np.arange(W_scaled), np.arange(H_scaled), indexing="xy")
+        us_right = xx - disp
+        invalid = us_right < 0
+        disp[invalid] = np.inf
+
+        # Convert disparity to depth
+        fx = K[0, 0] * self.args.scale
+        depth = (baseline * fx) / (disp + 1e-6)
+
+        return depth, (H_scaled, W_scaled)

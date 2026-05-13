@@ -8,7 +8,7 @@ git clone https://huggingface.co/adithyamurali/GraspGenModels
 #### SAM2Models
 ```bash
 mkdir SAM2Models
-cp ../Third_Party/sam2/checkpoints/download_ckpts.sh ./SAM2Models
+cp ../third_party/sam2/checkpoints/download_ckpts.sh ./SAM2Models
 cd SAM2Models && ./download_ckpts.sh && cd ..
 ```
 

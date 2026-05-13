@@ -1,8 +1,16 @@
+"""Synchronize Isaac Sim with a ROS2 robot controller over sockets."""
+
 import argparse
+
 from omni.isaac.kit import SimulationApp
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments.
+
+    Returns:
+        argparse.Namespace: Parsed arguments.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--visualize_spheres",
@@ -34,7 +42,10 @@ def parse_args():
     parser.add_argument(
         "--constrain_grasp_approach",
         action="store_true",
-        help="When True, approaches grasp with fixed orientation and motion only along z axis.",
+        help=(
+            "When True, approaches grasp with fixed"
+            " orientation and motion only along z axis."
+        ),
         default=False,
     )
     parser.add_argument(
@@ -56,7 +67,8 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
+    """Launch the Isaac Sim controller synchronized with ROS2."""
     args = parse_args()
     simulation_app = SimulationApp(
         {

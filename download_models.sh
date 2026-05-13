@@ -20,7 +20,7 @@ if [ -d "$MODELS_DIR/SAM2Models" ] && [ "$(ls -A $MODELS_DIR/SAM2Models)" ]; the
     echo "SAM2Models already exists and is not empty, skipping."
 else
     mkdir -p "$MODELS_DIR/SAM2Models"
-    cp Third_Party/sam2/checkpoints/download_ckpts.sh "$MODELS_DIR/SAM2Models/"
+    cp third_party/sam2/checkpoints/download_ckpts.sh "$MODELS_DIR/SAM2Models/"
     (cd "$MODELS_DIR/SAM2Models" && bash ./download_ckpts.sh)
 fi
 

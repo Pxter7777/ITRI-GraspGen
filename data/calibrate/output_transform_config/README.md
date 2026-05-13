@@ -1,0 +1,1 @@
+- Remember to copy the config **data/calibrate/output_transform_config/<time>_transforn_config.json** and save it as **config/transform_config.json**

@@ -1,47 +1,77 @@
+"""Control the TM robot arm via ROS2 services and socket communication."""
+
 # execute it with /usr/bin/python3
 
 # one_arm_control_CPP.py
 
-import time
-import rclpy
-from rclpy.node import Node
-from tm_msgs.srv import SendScript, SetIO
-from tm_msgs.msg import FeedbackState
-from collections import deque
-import numpy as np
 import argparse
 import logging
-import os
 import sys
-from send_traj_socket import send_traj
+import time
+from collections import deque
+from pathlib import Path
 
-# Because this script isn't using itri-graspgen venv, we need to manually add the project root to sys.path
-current_file_dir = os.path.dirname(os.path.abspath(__file__))
-project_root_dir = os.path.dirname(current_file_dir)
-if project_root_dir not in sys.path:
-    sys.path.insert(0, project_root_dir)
+import numpy as np
+import rclpy
+from rclpy.node import Node
+from send_traj_socket import send_traj
+from tm_msgs.msg import FeedbackState
+from tm_msgs.srv import SendScript, SetIO
+
+# Because this script isn't using itri-graspgen venv, we need to
+# manually add the project root to sys.path
+
+
+PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT_DIR))
 from common_utils import network_config  # noqa: E402
+from common_utils.log_formatter import CustomLoggingFormatter  # noqa: E402
+from common_utils.movesets import SingleRobotMove  # noqa: E402
 from common_utils.socket_communication import (  # noqa: E402
     NonBlockingJSONReceiver,
     NonBlockingJSONSender,
 )
-from common_utils.custom_logger import CustomFormatter  # noqa: E402
-from common_utils.movesets import SingleRobotMove  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
 
-def mrad_to_mmdeg(cartesian_pose: list) -> list:
+def mrad_to_mmdeg(cartesian_pose: list[float]) -> list[float]:
+    """Convert meter-radian pose to millimeter-degree pose.
+
+    Args:
+        cartesian_pose (list[float]): 6-element pose [x, y, z, rx, ry, rz].
+
+    Returns:
+        list[float]: Pose with position in mm and orientation in degrees.
+    """
     position = [p * 1000 for p in cartesian_pose[:3]]
     euler_orientation_deg = np.rad2deg(cartesian_pose[3:]).tolist()
     return position + euler_orientation_deg
 
 
-def is_joint_vel_near_zero(joint_vel: list):
+def is_joint_vel_near_zero(joint_vel: list[float]) -> bool:
+    """Check if all joint velocities are near zero.
+
+    Args:
+        joint_vel (list[float]): Joint velocity values.
+
+    Returns:
+        bool: True if all velocities are below threshold.
+    """
     return all(abs(v) < 0.001 for v in joint_vel)
 
 
-def is_pose_identical(joints1: list, joints2: list):
+def is_pose_identical(joints1: list[float] | None, joints2: list[float] | None) -> bool:
+    """Check if two joint poses are identical within tolerance.
+
+    Args:
+        joints1 (list[float] | None): First joint pose.
+        joints2 (list[float] | None): Second joint pose.
+
+    Returns:
+        bool: True if all joint values match within 0.02 tolerance.
+    """
     if joints1 is None or joints2 is None:
         return False
     pos_identical = all(
@@ -53,8 +83,14 @@ def is_pose_identical(joints1: list, joints2: list):
 successs = 0
 
 
-class TMRobotController(Node):
-    def __init__(self, real2sim: bool):
+class TMRobotController(Node):  # type: ignore[reportUntypedBaseClass]
+    """ROS2 node that controls the TM robot arm and communicates with Isaac Sim.
+
+    Args:
+        real2sim (bool): Whether to send trajectory data to an Isaac Sim display.
+    """
+
+    def __init__(self, real2sim: bool) -> None:
         super().__init__("tm_robot_controller")
         self.csv_receiver = NonBlockingJSONReceiver(
             port=network_config.MIA_TO_ROS2_PORT
@@ -86,7 +122,8 @@ class TMRobotController(Node):
         self.current_moving_type = ""
         self.reached_time = float("inf")
         self.goal_gripper = None
-        # record the last LAST_JOINTS_REC_NUM joint positions to detect stuck, using queue
+        # record the last LAST_JOINTS_REC_NUM joint positions
+        # to detect stuck, using queue
         self.num_response_to_send_back = (
             0  # it's enough because we're not using multi-threading
         )
@@ -94,15 +131,16 @@ class TMRobotController(Node):
         self.current_joints_states = [0.0] * 6
         self.real2sim = real2sim
 
-    def _capture_command(self):
+    def _capture_command(self) -> None:
         if self.moving:
             return
         isaacsim_data = self.isaacsim_receiver.capture_data()
         if isaacsim_data is None:
             return
         logger.warning("---new command from isaacsim---")
-        data_dict = isaacsim_data
-        move = SingleRobotMove(**data_dict)
+        if not isinstance(isaacsim_data, dict):
+            raise TypeError(f"Expected dict, got {type(isaacsim_data)}")
+        move = SingleRobotMove(**isaacsim_data)  # type: ignore[reportArgumentType]
         logger.info("received new data")
         self.num_response_to_send_back += 1
         logger.debug(f"{self.num_response_to_send_back}")
@@ -116,6 +154,8 @@ class TMRobotController(Node):
 
         commands_to_sim = []
         if move.type == "sequence_joint_rad":
+            if move.sequence_joint_rad_goals is None:
+                raise ValueError("sequence_joint_rad_goals is None")
             self.goal_joints = move.sequence_joint_rad_goals[-1]
             joints_values_degree = [
                 np.rad2deg(joints) for joints in move.sequence_joint_rad_goals
@@ -157,16 +197,13 @@ class TMRobotController(Node):
         if self.real2sim:
             try:
                 send_traj(commands_to_sim)
-            except (
-                OSError
-            ) as e:  # maybe, when the isaac-sim display pc is not reachable
-                logger.error(f"OSError, send_traj failed, not connected: {e}")
-            except (
-                TimeoutError
-            ) as e:  # maybe when the isaac-sim display pc is not listening
+            except TimeoutError as e:
                 logger.error(f"TimeoutError, send_traj failed, not listening: {e}")
+            except OSError as e:
+                logger.error(f"OSError, send_traj failed, not connected: {e}")
 
-    def setup_services(self):
+    def setup_services(self) -> None:
+        """Initialize ROS2 service clients and subscribe to feedback states."""
         logger.info("等待 ROS 2 服務啟動...")
 
         self.script_cli = self.create_client(SendScript, "send_script")
@@ -188,6 +225,11 @@ class TMRobotController(Node):
         logger.info("✅ 已訂閱 feedback_states")
 
     def feedback_callback(self, msg: FeedbackState) -> None:
+        """Handle feedback state updates and detect reach or stuck conditions.
+
+        Args:
+            msg (FeedbackState): The feedback state message from the robot.
+        """
         self.current_IO_states = list(msg.ee_digital_output)[:3]
         self.current_joints_states = list(np.rad2deg(msg.joint_pos))
         if self.current_IO_states == [0, 0, 0]:
@@ -230,8 +272,12 @@ class TMRobotController(Node):
             logger.error("Stuck detected.")
             self._handle_failure()
 
-    def set_io(self, states: list):
-        """設定 End_DO0, End_DO1, End_DO2 狀態，例如 [1, 0, 0]"""
+    def set_io(self, states: list[int]) -> None:
+        """設定 End_DO0, End_DO1, End_DO2 狀態,例如 [1, 0, 0].
+
+        Args:
+            states (list[int]): 3-element list of IO pin states.
+        """
         for pin, state in enumerate(states):
             req = SetIO.Request()
             req.module = 1  # End Module 夾爪
@@ -239,19 +285,19 @@ class TMRobotController(Node):
             req.pin = pin
             req.state = float(state)
 
-            future = self.io_cli.call_async(req)
+            future = self.io_cli.call_async(req)  # type: ignore[reportOptionalMemberAccess]
 
-            def _done(fut, pin=pin):
+            def _done(fut: object, pin: int = pin) -> None:
                 try:
-                    result = fut.result()
+                    result = fut.result()  # type: ignore[reportAttributeAccessIssue]
                     if result.ok:
-                        logger.info(f"✅ End_DO{pin} 設定成功，等待 feedback 確認")
+                        logger.info(f"✅ End_DO{pin} 設定成功,等待 feedback 確認")
                         # 只設定一次 target 狀態即可
                         if pin == 2:  # 最後一個 pin 設定完成時
                             self.target_ee_output = states
                             self.waiting_for_gripper = True
                     else:
-                        logger.warn(f"⚠️ End_DO{pin} 設定失敗，略過等待")
+                        logger.warning(f"⚠️ End_DO{pin} 設定失敗,略過等待")
                         self._busy = False
                 except Exception as e:
                     logger.error(f"[SetIO 失敗] {e}")
@@ -259,22 +305,43 @@ class TMRobotController(Node):
 
             future.add_done_callback(_done)
 
-    def append_gripper_states(self, states):
+    def append_gripper_states(self, states: list[int]) -> None:
+        """Append a gripper IO command to the TCP queue.
+
+        Args:
+            states (list[int]): 3-element list of IO pin states.
+        """
         logger.debug(f"{self.current_IO_states} -> {states}")
         if self.current_IO_states == states:
             logger.info("set wait time to 0 since gripper already in target state")
             self._handle_success()
             return
-        if not (isinstance(states, (list, tuple)) and len(states) == 3):
-            logger.error("IO 狀態必須為長度 3 的 list，例如 [1,0,0]")
+        if len(states) != 3:
+            logger.error("IO 狀態必須為長度 3 的 list,例如 [1,0,0]")
             return
         self.tcp_queue.append(
             {"script": f"IO:{states[0]},{states[1]},{states[2]}", "wait_time": 0.0}
         )
 
     def append_ptp(
-        self, ptp_values: list, vel=20, acc=20, coord=80, fine=False, wait_time=0.0
-    ):
+        self,
+        ptp_values: list[float],
+        vel: int = 20,
+        acc: int = 20,
+        coord: int = 80,
+        fine: bool = False,
+        wait_time: float = 0.0,
+    ) -> None:
+        """Append a point-to-point Cartesian move to the TCP queue.
+
+        Args:
+            ptp_values (list[float]): 6-element Cartesian target pose.
+            vel (int): Velocity percentage.
+            acc (int): Acceleration percentage.
+            coord (int): Coordinate setting.
+            fine (bool): Whether to use fine positioning.
+            wait_time (float): Seconds to wait after reaching the target.
+        """
         if len(ptp_values) != 6:
             logger.error("TCP 必須 6 個數字")
             return
@@ -292,20 +359,33 @@ class TMRobotController(Node):
 
     def append_jpp(
         self,
-        joint_values: list,
-        vel,
-        acc,
-        coord=80,
-        fine=False,
-        wait_time=0.0,
+        joint_values: list[float],
+        vel: int,
+        acc: int,
+        coord: int = 80,
+        fine: bool = False,
+        wait_time: float = 0.0,
         blend: int = 100,
-    ):
+    ) -> None:
+        """Append a joint point-to-point move to the TCP queue.
+
+        Args:
+            joint_values (list[float]): 6-element joint target in degrees.
+            vel (int): Velocity percentage.
+            acc (int): Acceleration percentage.
+            coord (int): Coordinate setting.
+            fine (bool): Whether to use fine positioning.
+            wait_time (float): Seconds to wait after reaching the target.
+            blend (int): Blend percentage for smooth motion.
+        """
         if len(joint_values) != 6:
             logger.error("TCP 必須 6 個數字")
             return
+        jv = joint_values
         script = (
-            f'PTP("JPP",{joint_values[0]:.2f}, {joint_values[1]:.2f}, {joint_values[2]:.2f}, '
-            f"{joint_values[3]:.2f}, {joint_values[4]:.2f}, {joint_values[5]:.2f},"
+            f'PTP("JPP",{jv[0]:.2f}, {jv[1]:.2f},'
+            f" {jv[2]:.2f}, {jv[3]:.2f},"
+            f" {jv[4]:.2f}, {jv[5]:.2f},"
             f"{vel},{acc},{blend},true)"
         )
         self.tcp_queue.append({"script": script, "wait_time": wait_time})
@@ -314,7 +394,7 @@ class TMRobotController(Node):
                 {"position": joint_values, "time_to_wait": wait_time}
             )
 
-    def _process_queue(self):
+    def _process_queue(self) -> None:
         if self._busy:
             return
         if not self.tcp_queue:
@@ -343,7 +423,7 @@ class TMRobotController(Node):
         logger.debug(f"正在執行佇列中的腳本: {script_to_run} wait_time={wait_time}")
         self._send_script_async(script_to_run, wait_time)
 
-    def _send_script_async(self, script: str, wait_time):
+    def _send_script_async(self, script: str, wait_time: float) -> None:
         if not self.script_cli:
             logger.error("send_script 客戶端尚未初始化。")
             self._busy = False
@@ -353,7 +433,7 @@ class TMRobotController(Node):
         req.script = script
         future = self.script_cli.call_async(req)
 
-        def _done(_):
+        def _done(_: object) -> None:
             try:
                 res = future.result()
                 ok = bool(getattr(res, "ok", False))
@@ -370,12 +450,13 @@ class TMRobotController(Node):
 
         future.add_done_callback(_done)
 
-    def clear_queue(self):
+    def clear_queue(self) -> None:
+        """Clear all pending commands from the TCP queue."""
         n = len(self.tcp_queue)
         self.tcp_queue.clear()
-        logger.info(f"已清空佇列，共 {n} 筆")
+        logger.info(f"已清空佇列,共 {n} 筆")
 
-    def _handle_failure(self):
+    def _handle_failure(self) -> None:
         if self.num_response_to_send_back == 0:
             return
         self.num_response_to_send_back -= 1
@@ -386,7 +467,7 @@ class TMRobotController(Node):
         sender.send_data({"message": "Fail"})
         self.moving = False
 
-    def _handle_success(self):
+    def _handle_success(self) -> None:
         if self.num_response_to_send_back == 0:
             return
         self.num_response_to_send_back -= 1
@@ -401,9 +482,17 @@ class TMRobotController(Node):
         self.moving = False
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments.
+
+    Returns:
+        argparse.Namespace: Parsed arguments.
+    """
     parser = argparse.ArgumentParser(
-        description="Visualize grasps on a scene point cloud after IsaacSim inference, for entire scene"
+        description=(
+            "Visualize grasps on a scene point cloud"
+            " after IsaacSim inference, for entire scene"
+        )
     )
     parser.add_argument(
         "--debug",
@@ -418,10 +507,11 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
+    """Start the TM robot controller ROS2 node."""
     args = parse_args()
     handler = logging.StreamHandler()
-    handler.setFormatter(CustomFormatter())
+    handler.setFormatter(CustomLoggingFormatter())
     if args.debug:
         logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
     else:

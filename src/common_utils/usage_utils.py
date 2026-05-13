@@ -1,0 +1,87 @@
+"""GPU time and VRAM usage profiling utilities."""
+
+import logging
+import time
+
+import torch
+
+
+class UsageInspector:
+    """Track elapsed time and peak VRAM for named code sections.
+
+    Args:
+        enabled (bool): Whether profiling is active. Defaults to False.
+        log_file (str): Path to the log file. Defaults to "usage_log.txt".
+    """
+
+    def __init__(self, enabled: bool = False, log_file: str = "usage_log.txt") -> None:
+        self.enabled = enabled
+        if not self.enabled:
+            return
+        self.log_file = log_file
+        self.timers = {}
+        self.vram_reports = {}
+
+        # Create a logger that writes to a file
+        self.logger = logging.getLogger("UsageInspector")
+        self.logger.setLevel(logging.INFO)
+        self.logger.propagate = False
+
+        # Prevent adding handlers multiple times if the
+        # class is instantiated more than once
+        if not self.logger.handlers:
+            handler = logging.FileHandler(log_file)
+            formatter = logging.Formatter("%(asctime)s - %(message)s")
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
+
+        self.logger.info("--- New Usage Inspection Session ---")
+
+    def start(self, name: str) -> None:
+        """Begin timing a named section and reset peak VRAM stats.
+
+        Args:
+            name (str): Label for the section being timed.
+        """
+        if not self.enabled:
+            return
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
+        self.timers[name] = time.perf_counter()
+        self.logger.info(f"Starting: {name}")
+        print(f"Starting: {name}")
+
+    def end(self, name: str) -> None:
+        """Stop timing a named section and log elapsed time and VRAM.
+
+        Args:
+            name (str): Label for the section to stop timing.
+        """
+        if not self.enabled:
+            return
+        if name not in self.timers:
+            self.logger.warning(f"Timer for '{name}' was not started.")
+            return
+
+        elapsed_time = time.perf_counter() - self.timers[name]
+
+        vram_usage = 0
+        if torch.cuda.is_available():
+            vram_usage = torch.cuda.max_memory_allocated() / (1024**2)  # In MB
+
+        self.vram_reports[name] = vram_usage
+
+        log_message = (
+            f"Finished: {name}"
+            f" | Time: {elapsed_time:.4f}s"
+            f" | Peak VRAM: {vram_usage:.2f} MB"
+        )
+        self.logger.info(log_message)
+        print(log_message)
+
+    def report(self) -> None:
+        """Write an end-of-session marker to the log."""
+        if not self.enabled:
+            return
+        # This could be expanded to provide a summary report.
+        self.logger.info("--- End of Session ---")

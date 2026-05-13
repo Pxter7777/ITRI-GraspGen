@@ -1,0 +1,174 @@
+"""Pydantic models and validators for task action JSON files."""
+
+from __future__ import annotations
+
+import logging
+from typing import Annotated, Any
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+logger = logging.getLogger(__name__)
+
+
+class ObstacleBound(BaseModel):
+    """Define Obstacle class.
+
+    Attributes:
+        max (list[float]): Upper bound [x, y, z].
+        min (list[float]): Lower bound [x, y, z].
+    """
+
+    # max and min must be a list of float with exact 3 elements (X, Y, Z)
+    max: list[float] = Field(..., min_length=3, max_length=3)
+    min: list[float] = Field(..., min_length=3, max_length=3)
+
+
+class MoveItem(BaseModel):
+    """Define Move class format.
+
+    Attributes:
+        model_config: Pydantic model configuration.
+        move_type (str): Type of move to execute.
+        target_name (str | None): Name of the target object.
+        qualifier (str | None): Qualifier for grasp filtering.
+        args (list[Any] | None): Additional move arguments.
+    """
+
+    model_config = ConfigDict(extra="forbid")  # Forbid unexpected keys.
+
+    # Must
+    move_type: str
+
+    # Optional
+    target_name: str | None = None
+    qualifier: str | None = None
+    args: list[Any] | None = None
+
+
+FourIntList = Annotated[list[int], Field(min_length=4, max_length=4)]
+
+
+class TaskConfig(BaseModel):
+    """Define the whole JSON task file structure.
+
+    Attributes:
+        model_config: Pydantic model configuration.
+        moves (list[MoveItem]): List of moves to execute.
+        blockages (list[FourIntList]): Blockage regions.
+        track (list[str]): Object names to track.
+        extra_obstacles (dict[str, ObstacleBound]): Additional obstacles.
+        valid_region (FourIntList | None): Valid region bounds.
+    """
+
+    model_config = ConfigDict(extra="forbid")  # Forbid unexpected keys.
+
+    # Must
+    moves: list[MoveItem]
+
+    # Optional
+    blockages: list[FourIntList] = Field(default_factory=list)
+    track: list[str] = Field(default_factory=list)
+    extra_obstacles: dict[str, ObstacleBound] = Field(default_factory=dict)
+    valid_region: FourIntList | None = None
+
+    @model_validator(
+        mode="after"
+    )  # mode="after" means we validate this after all basic type validations.
+    def check_target_in_track(self) -> TaskConfig:
+        """Validate that every target_name appears in the track list.
+
+        Returns:
+            TaskConfig: The validated task config instance.
+
+        Raises:
+            ValueError: If a target_name is set but track is empty, or if
+                a target_name is not found in the track list.
+        """
+        for move in self.moves:
+            if move.target_name is None:
+                continue
+            if not self.track:
+                raise ValueError(
+                    f"'target_name' is {move.target_name} yet 'track' is empty"
+                )
+            if move.target_name not in self.track:
+                raise ValueError(f"'{move.target_name}' is not in 'track'")
+        return self
+
+
+def is_actions_format_valid(actions: list[object] | dict[str, object]) -> bool:
+    """Check whether the legacy action list has valid structure.
+
+    Args:
+        actions (list[object] | dict[str, object]): The action data to validate.
+
+    Returns:
+        bool: True if the structure is valid, False otherwise.
+    """
+    try:
+        if not isinstance(actions, list):
+            return False
+        for action in actions:
+            if not isinstance(action, dict):
+                return False
+            if not isinstance(action["target_name"], str):
+                return False
+            if not isinstance(action["qualifier"], str):
+                return False
+            if not isinstance(action["action"], str):
+                return False
+            if not isinstance(action["args"], list):
+                return False
+        return True
+    except Exception:
+        return False
+
+
+def is_actions_format_valid_v1028(actions: dict[str, object]) -> bool:
+    """Check whether the v1028 action dict has valid structure.
+
+    Args:
+        actions (dict[str, object]): The v1028 action dict to validate.
+
+    Returns:
+        bool: True if the structure is valid, False otherwise.
+    """
+    try:
+        if not isinstance(actions["track"], list):
+            logger.error(actions["track"])
+            return False
+        for track in actions["track"]:
+            if not isinstance(track, str):
+                logger.error(track)
+                return False
+        if not isinstance(actions["actions"], list):
+            logger.error(actions["actions"])
+            return False
+        for action in actions["actions"]:
+            if not isinstance(action["target_name"], str):
+                logger.error(action["target_name"])
+                return False
+            if not isinstance(action["qualifier"], str):
+                logger.error(action["qualifier"])
+                return False
+            if not isinstance(action["action"], str):
+                logger.error(action["action"])
+                return False
+            if not isinstance(action["args"], list):
+                logger.error(action["args"])
+                return False
+            for arg in action["args"]:
+                logger.info(arg)
+                if not (isinstance(arg, list) or isinstance(arg, str)):
+                    logger.error(arg)
+                    return False
+                if isinstance(arg, list) and not (len(arg) == 3 or len(arg) == 6):
+                    logger.error(arg)
+                    return False
+                if isinstance(arg, str) and arg not in actions["track"]:
+                    logger.error(arg)
+                    return False
+        return True
+    except Exception as e:
+        logger.exception(e)
+        return False
