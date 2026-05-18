@@ -91,35 +91,26 @@ def init_pose_matric(
 
 
 def get_cuboid_list(move: SingleRobotMove, obstacles: dict[str, Any]) -> list[Cuboid]:
-    """Build a list of cuRobo Cuboid obstacles from move and obstacle data.
-
-    Args:
-        move (SingleRobotMove): The robot move with ignore_obstacles list.
-        obstacles (dict[str, Any]): Obstacle name to bounds mapping.
-
-    Returns:
-        list[Cuboid]: List of cuRobo Cuboid obstacles.
-    """
     cuboids = []
     cuboids.append(Cuboid(name="table", pose=[0, 0, -1.97, 1, 0, 0, 0], dims=[2, 2, 4]))
-    for i, obstacle_name in enumerate(obstacles):
-        if obstacle_name not in move.ignore_obstacles:
-            middle_point = np.mean(
-                [obstacles[obstacle_name]["max"], obstacles[obstacle_name]["min"]],
-                axis=0,
-            )
-            scale = np.array(obstacles[obstacle_name]["max"]) - np.array(
-                obstacles[obstacle_name]["min"]
-            )
-            cuboids.append(
-                Cuboid(
-                    name=f"obs_{i}",
-                    pose=[*middle_point.tolist(), 1, 0, 0, 0],
-                    dims=scale.tolist(),
-                )
-            )
+    print(f"\n[Debug] 本次規劃共收到 {len(obstacles)} 個動態障礙物！")
+    # for i, obstacle_name in enumerate(obstacles):
+    #     if obstacle_name not in move.ignore_obstacles:
+    #         middle_point = np.mean(
+    #             [obstacles[obstacle_name]["max"], obstacles[obstacle_name]["min"]],
+    #             axis=0,
+    #         )
+    #         scale = np.array(obstacles[obstacle_name]["max"]) - np.array(
+    #             obstacles[obstacle_name]["min"]
+    #         )
+    #         cuboids.append(
+    #             Cuboid(
+    #                 name=f"obs_{i}",
+    #                 pose=[*middle_point.tolist(), 1, 0, 0, 0],
+    #                 dims=scale.tolist(),
+    #             )
+    #         )
     return cuboids
-
 
 def basic_world_config() -> WorldConfig:
     """Create a default world config with a collision table.
@@ -159,8 +150,8 @@ def basic_motion_gen(
     optimize_dt = True
     trim_steps = None
     interpolation_dt = 0.05
-    n_obstacle_cuboids = 30
-    n_obstacle_mesh = 100
+    n_obstacle_cuboids = 500
+    n_obstacle_mesh = 500
 
     motion_gen_config = MotionGenConfig.load_from_robot_config(
         robot_cfg,
@@ -197,25 +188,37 @@ def basic_plan_config() -> MotionGenPlanConfig:
 def zero_obstacle_world_config(
     usd_help: UsdHelper, robot_prim_path: str
 ) -> WorldConfig:
-    """Get a collision world from the USD stage with no custom obstacles.
-
-    Args:
-        usd_help (UsdHelper): USD helper for stage access.
-        robot_prim_path (str): Prim path of the robot in the stage.
-
-    Returns:
-        WorldConfig: Collision world configuration.
-    """
-    return usd_help.get_obstacles_from_stage(
-        only_paths=["/World"],
+    # 1. 先把 CuRobo 掃描到的碰撞世界存成一個變數 (collision_world)
+    collision_world = usd_help.get_obstacles_from_stage(
+        only_paths=[
+            "/World/MyCustomScene/_416_funnel",
+            "/World/MyCustomScene/ObjMovie_20260303/_208_all/_204_ALL_1/_106_Funnel_skel",
+            "/World/MyCustomScene/Table",
+            "/World/MyCustomScene/_323_WOK_skel",
+            "/World/MyCustomScene/ObjMovie_20260303/_208_all/_204_ALL_1/_126_ALL/_126_1/_126_1_skel/___012_1",
+            "/World/MyCustomScene/_303_ALL/_213_ALL/_219_All_01/_216_ALL/_212_ALL/_212_shove_skel",
+            "/World/MyCustomScene/_407__1cube_shovel_skel"
+        ],
         reference_prim_path=robot_prim_path,
         ignore_substring=[
             robot_prim_path,
-            "/World/defaultGroundPlane",
-            "/curobo",
-            "/World/table",
         ],
     ).get_collision_check_world()
+
+    # 👇 2. 讓 CuRobo 大聲報數，印出它腦海裡的 USD 障礙物名單 👇
+    print("\n" + "="*50)
+    print("[Debug] CuRobo 成功從 USD 載入的靜態避障模型有：")
+    if collision_world.mesh is not None:
+        for i, mesh_obj in enumerate(collision_world.mesh):
+            print(f"  {i+1}. {mesh_obj.name}")
+    else:
+        print("  (沒有找到任何 Mesh 障礙物，請檢查路徑是否正確！)")
+    print("="*50 + "\n")
+    # 👆 ---------------------------------------------------- 👆
+
+    # 3. 把確認無誤的世界回傳給系統
+    return collision_world
+
 
 
 def still_joint_states(
@@ -410,7 +413,7 @@ class IsaacSimController:
         )
 
         self.sim_js = self.robot.get_joints_state()
-        self.sim_js_names = self.robot.dof_names
+        self.sim_js_names = self.j_names
         self.planned_action_moves: list[SingleRobotMove] = []
         self.idx_list = [0, 1, 2, 3, 4, 5]
         self.temp_cuboid_paths = []
@@ -489,15 +492,19 @@ class IsaacSimController:
                 graspgen_move = SingleRobotMove(**move_dict)
                 cuboids = get_cuboid_list(graspgen_move, graspgen_data["obstacles"])
 
-                obstacles = WorldConfig(cuboid=cuboids)
                 if graspgen_move.no_obstacles:
                     self.motion_gen.update_world(self.zero_obstacles)
                 else:
-                    self.motion_gen.update_world(obstacles)
+                    usd_cuboids = self.zero_obstacles.cuboid if self.zero_obstacles.cuboid else []
+                    combined_world = WorldConfig(
+                        mesh=self.zero_obstacles.mesh,         
+                        cuboid=usd_cuboids + cuboids               
+                    )
+                    self.motion_gen.update_world(combined_world)   
 
                 print("curoboing")
                 curobo_cu_js = still_joint_states(
-                    self.last_joint_states, self.tensor_args, self.sim_js_names
+                    self.last_joint_states[:6], self.tensor_args, self.sim_js_names
                 )
                 if graspgen_move.type == "gripper":
                     processed_moves.append(graspgen_move)
@@ -508,10 +515,10 @@ class IsaacSimController:
                     ik_goal = Pose(
                         position=self.tensor_args.to_device(
                             graspgen_move.single_pose_meter_quaternion_goal[:3]
-                        ),
+                        ).unsqueeze(0),
                         quaternion=self.tensor_args.to_device(
                             graspgen_move.single_pose_meter_quaternion_goal[3:]
-                        ),
+                        ).unsqueeze(0),
                     )
                     self.plan_config.pose_cost_metric = self.pose_metric
                     result = self.motion_gen.plan_single(
@@ -520,13 +527,13 @@ class IsaacSimController:
                 elif graspgen_move.type == "single_pose_joint_rad":
                     joints_goal = JointState(
                         position=self.tensor_args.to_device(
-                            graspgen_move.single_pose_joint_rad_goal
+                            graspgen_move.single_pose_joint_rad_goal[:6]
                         ),
-                        velocity=self.tensor_args.to_device(self.sim_js.velocities)
+                        velocity=self.tensor_args.to_device(self.sim_js.velocities[:6])
                         * 0.0,
-                        acceleration=self.tensor_args.to_device(self.sim_js.velocities)
+                        acceleration=self.tensor_args.to_device(self.sim_js.velocities[:6])
                         * 0.0,
-                        jerk=self.tensor_args.to_device(self.sim_js.velocities) * 0.0,
+                        jerk=self.tensor_args.to_device(self.sim_js.velocities[:6]) * 0.0,
                         joint_names=self.sim_js_names,
                     )
                     self.plan_config.pose_cost_metric = self.pose_metric
@@ -555,13 +562,13 @@ class IsaacSimController:
                         continue
                     joints_goal = JointState(
                         position=self.tensor_args.to_device(
-                            graspgen_move.sequence_joint_rad_goals[0]
+                            graspgen_move.sequence_joint_rad_goals[0][:6]
                         ),
-                        velocity=self.tensor_args.to_device(self.sim_js.velocities)
+                        velocity=self.tensor_args.to_device(self.sim_js.velocities[:6])
                         * 0.0,
-                        acceleration=self.tensor_args.to_device(self.sim_js.velocities)
+                        acceleration=self.tensor_args.to_device(self.sim_js.velocities[:6])
                         * 0.0,
-                        jerk=self.tensor_args.to_device(self.sim_js.velocities) * 0.0,
+                        jerk=self.tensor_args.to_device(self.sim_js.velocities[:6]) * 0.0,
                         joint_names=self.sim_js_names,
                     )
                     self.plan_config.pose_cost_metric = self.pose_metric
@@ -640,19 +647,19 @@ class IsaacSimController:
             ):
                 planned_action = self.planned_action_queue.get()
                 self.planned_action_moves = planned_action.moves
-                # if self.temp_cuboid_paths:
-                #     for path in self.temp_cuboid_paths:
-                #         self.stage.RemovePrim(path)
-                #     self.temp_cuboid_paths = []
-                # for i, cube in enumerate(planned_action.obstacles):
-                #     prim_path = f"/World/temp_obstacle_{i}"
-                #     cuboid.VisualCuboid(
-                #         prim_path=prim_path,
-                #         position=np.array(cube.pose[:3]),
-                #         scale=np.array(cube.dims),
-                #         color=np.array([0.0, 0.0, 1.0]),
-                #     )
-                #     self.temp_cuboid_paths.append(prim_path)
+                if self.temp_cuboid_paths:
+                    for path in self.temp_cuboid_paths:
+                        self.stage.RemovePrim(path)
+                    self.temp_cuboid_paths = []
+                for i, cube in enumerate(planned_action.obstacles):
+                    prim_path = f"/World/temp_obstacle_{i}"
+                    cuboid.VisualCuboid(
+                        prim_path=prim_path,
+                        position=np.array(cube.pose[:3]),
+                        scale=np.array(cube.dims),
+                        color=np.array([0.0, 0.0, 1.0]),
+                    )
+                    self.temp_cuboid_paths.append(prim_path)
             # Continue to handle Success message
             if len(self.planned_action_moves) > 0:
                 move: SingleRobotMove = self.planned_action_moves.pop(0)

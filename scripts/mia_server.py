@@ -157,20 +157,28 @@ class MiaWorkflowController(BaseWorkflowController):
     def _send_eof(self) -> None:
         # end of move
         self.sender.send_data(["EOF"])
-        response = self.receiver.capture_data()
-        while response is None:
+        
+        while True:
             response = self.receiver.capture_data()
-        if not isinstance(response, dict):
-            raise TypeError(f"Expected dict, got {type(response)}")
-        if response["message"] == "EOF and ROS2 Complete":
-            logger.warning("Success")
-            self.main_sender.send_data({"message": "Success"})
-        elif response["message"] == "Abort":
-            logger.warning("Abort")
-            self.main_sender.send_data({"message": "Fail"})
-            raise InterruptedError("aborted by isaacsim, stop current action")
-        else:
-            raise ValueError(f"Unknown message {response['message']}")
+            if response is None:
+                continue
+            if not isinstance(response, dict):
+                raise TypeError(f"Expected dict, got {type(response)}")
+                
+            if response["message"] == "EOF and ROS2 Complete":
+                logger.warning("Success")
+                self.main_sender.send_data({"message": "Success"})
+                break
+            elif response["message"] == "Abort":
+                logger.warning("Abort")
+                self.main_sender.send_data({"message": "Fail"})
+                raise InterruptedError("aborted by isaacsim, stop current action")
+            elif response["message"] == "Success":
+                # 👇 核心防護：忽略因為 USD 運算緩慢而「遲到」的 Success 訊息
+                logger.debug("收到遲來的 Success，忽略並繼續等待 EOF 完結訊號...")
+                continue
+            else:
+                raise ValueError(f"Unknown message {response['message']}")
 
     def _handle_keyboard_interrupt(self) -> None:
         logger.info("Manual stopping current action.")
