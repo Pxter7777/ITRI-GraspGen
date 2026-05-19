@@ -9,8 +9,9 @@ from pathlib import Path
 import keyboard  # type: ignore[reportMissingModuleSource]
 
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT_DIR))
+SRC_DIR = PROJECT_ROOT_DIR / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
 from common_utils import network_config  # noqa: E402
 
 HOST = network_config.REAL2SIM_IP  # 改成顯示電腦的 IP,例如 "192.168.1.123"
