@@ -20,6 +20,8 @@ overrides = [
     { name = "torchaudio", marker = "sys_platform == 'linux'", specifier = "==2.5.1", index = "https://download.pytorch.org/whl/cu121" },
     { name = "torchvision", marker = "sys_platform != 'linux'", specifier = "==0.20.1" },
     { name = "torchvision", marker = "sys_platform == 'linux'", specifier = "==0.20.1", index = "https://download.pytorch.org/whl/cu121" },
+    { name = "xformers", marker = "sys_platform != 'linux'", specifier = "==0.0.28.post3" },
+    { name = "xformers", marker = "sys_platform == 'linux'", specifier = "==0.0.28.post3", index = "https://download.pytorch.org/whl/cu121" },
 ]
 
 [[package]]
@@ -801,6 +803,8 @@ dependencies = [
     { name = "torchvision", version = "0.20.1+cu121", source = { registry = "https://download.pytorch.org/whl/cu121" }, marker = "sys_platform == 'linux'" },
     { name = "transformations" },
     { name = "trimesh" },
+    { name = "xformers", version = "0.0.28.post3", source = { registry = "https://download.pytorch.org/whl/cu121" }, marker = "sys_platform == 'linux'" },
+    { name = "xformers", version = "0.0.28.post3", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux'" },
 ]
 
 [package.metadata]
@@ -826,6 +830,7 @@ requires-dist = [
     { name = "torchvision", specifier = "==0.19.1" },
     { name = "transformations" },
     { name = "trimesh" },
+    { name = "xformers" },
 ]
 
 [[package]]
@@ -4592,6 +4597,37 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/73/3f/34beca37b4b66fa11f7932ef73f147a43c413b704ccf029d638eccb23ac2/xatlas-0.0.11-pp311-pypy311_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:54569a3aba9c1081ca23209391feecd1639228aad08c384c2995432dd57a3919", size = 263463, upload-time = "2025-07-04T16:46:28.093Z" },
     { url = "https://files.pythonhosted.org/packages/5b/95/6e7999da339ea492ad562b6b46a2f58e6d1c8e3d87f6f0acb67fb426ebc0/xatlas-0.0.11-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:3e4b3fd1b22d44d669c997c2196d608060220fcc631fa258fb8530c1c34563e3", size = 206464, upload-time = "2025-07-04T16:46:29.476Z" },
 ]
+
+[[package]]
+name = "xformers"
+version = "0.0.28.post3"
+source = { registry = "https://download.pytorch.org/whl/cu121" }
+resolution-markers = [
+    "platform_machine == 'aarch64' and sys_platform == 'linux'",
+    "platform_machine != 'aarch64' and sys_platform == 'linux'",
+]
+dependencies = [
+    { name = "numpy", marker = "sys_platform == 'linux'" },
+    { name = "torch", version = "2.5.1+cu121", source = { registry = "https://download.pytorch.org/whl/cu121" }, marker = "sys_platform == 'linux'" },
+]
+wheels = [
+    { url = "https://download.pytorch.org/whl/cu121/xformers-0.0.28.post3-cp311-cp311-manylinux_2_28_x86_64.whl", hash = "sha256:825563e129f6b22885c2a91e464ff617382f4d78876cc92d96ff618e875aaee3", upload-time = "2025-01-30T00:52:32Z" },
+]
+
+[[package]]
+name = "xformers"
+version = "0.0.28.post3"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "sys_platform == 'darwin'",
+    "sys_platform == 'win32'",
+    "sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32'",
+]
+dependencies = [
+    { name = "numpy", marker = "sys_platform != 'linux'" },
+    { name = "torch", version = "2.5.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/00/d8/7301b2044e29b384b6ec009ed37002f4df48906a2a772654e8386fa3b730/xformers-0.0.28.post3.tar.gz", hash = "sha256:c7a2392c874dfd8f38b73e14492baf048a4f50f77ddf522bfcf6ebf5ee84d567", size = 7758532, upload-time = "2024-10-30T20:57:52.913Z" }
 
 [[package]]
 name = "xgboost"
