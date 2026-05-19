@@ -42,10 +42,10 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "ruff>=0.15.8",
+    "ruff==0.15.13",
     "pytest>=9.0.2",
     "pytest-mock>=3.15.1",
-    "pydoclint>=0.8.3",
+    "pydoclint==0.8.4",
     "pyright>=1.1.409",
     ## pyyaml and lark will be needed if ros humble is installed
     "pyyaml>=6.0.3",

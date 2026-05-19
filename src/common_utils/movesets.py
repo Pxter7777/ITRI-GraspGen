@@ -32,7 +32,12 @@ class SingleRobotMove:
     (e.g. single_pose_meter_quaternion to sequence_joint_rad).
 
     Attributes:
-        type (MoveType): The move type.
+        type (MoveType): The move type. There are four types:
+            "gripper": modify gripper state, it won't move the arm.
+            "sequence_joint_rad": move the arm given a list of jointstates rad.
+            "single_pose_meter_quaternion": move the arm given a single
+                gripper pose (end effector/EE), meter and quaternion.
+            "single_pose_joint_rad": move the arm given a single jointstate rad.
         grip_type (GripType | None): Gripper action, only used when type
             is "gripper".
         wait_time (float): Time to wait after the move in seconds.
@@ -51,18 +56,6 @@ class SingleRobotMove:
     """
 
     type: MoveType
-    # "gripper", "sequence_joint_rad",
-    # "single_pose_meter_quaternion", "single_pose_joint_rad"
-    """
-    There are four types
-    "gripper": modify gripper state, it won't move the arm.
-    "sequence_joint_rad": move the arm given a list of
-        jointstates rad.
-    "single_pose_meter_quaternion": move the arm given a single
-        gripper pose (end effector/EE), meter and quaternion.
-    "single_pose_joint_rad": move the arm given a single
-        jointstate rad.
-    """
     grip_type: GripType | None = (
         None  # "open", "close", only useful when type is "gripper".
     )
