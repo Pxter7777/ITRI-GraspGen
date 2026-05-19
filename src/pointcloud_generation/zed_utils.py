@@ -127,8 +127,15 @@ class ZedCamera:
 
         Args:
             use_png (str): Name of the PNG dataset directory under ``data/zed_images/``.
+
+        Raises:
+            FileNotFoundError: If the provided --use-png dir name doesn't exist.
         """
         self.png_dir = PROJECT_ROOT_DIR / "data" / "zed_images" / use_png
+        if not self.png_dir.exists():
+            raise FileNotFoundError(
+                f"There is no pre-captured images at {self.png_dir}"
+            )
         self.baseline = 0.0
         self.K_left = np.zeros((3, 3))
         left_image_np = cv2.imread(str(self.png_dir / "left.png"))
