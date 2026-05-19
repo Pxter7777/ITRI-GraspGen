@@ -132,8 +132,8 @@ class SpeedParam:
         blend (int): Blend parameter.
     """
 
-    vel: int = 40
-    acc: int = 20
+    vel: int = 60
+    acc: int = 200
     blend: int = 100
 
 
@@ -141,30 +141,32 @@ class SpeedParam:
 # (the defaults: 40, 20, 100) if a key is missing!
 SPEED_PARAM_DICT = defaultdict(SpeedParam)
 # Specific overrides
-SPEED_PARAM_DICT["spoon_peanuts"] = SpeedParam(vel=60, acc=500)
-SPEED_PARAM_DICT["open_1st_lid"] = SpeedParam(vel=100, acc=500)
-SPEED_PARAM_DICT["open_2nd_lid"] = SpeedParam(vel=100, acc=500)
-SPEED_PARAM_DICT["close_1st_lid"] = SpeedParam(vel=100, acc=500)
-SPEED_PARAM_DICT["close_2nd_lid"] = SpeedParam(vel=100, acc=500)
-SPEED_PARAM_DICT["grab_1st_batter"] = SpeedParam(vel=100, acc=500)
-SPEED_PARAM_DICT["grab_2nd_batter"] = SpeedParam(vel=100, acc=500)
-SPEED_PARAM_DICT["drop_1st_batter"] = SpeedParam(vel=50, acc=500)
-SPEED_PARAM_DICT["drop_2nd_batter"] = SpeedParam(vel=50, acc=500)
-SPEED_PARAM_DICT["pour_1st_batter"] = SpeedParam(vel=100, acc=500)
-SPEED_PARAM_DICT["pour_2nt_batter"] = SpeedParam(vel=100, acc=500)
-SPEED_PARAM_DICT["grab_fork"] = SpeedParam(vel=100, acc=500)
-SPEED_PARAM_DICT["drop_fork"] = SpeedParam(vel=100, acc=500)
+SPEED_PARAM_DICT["spoon_peanuts_down"] = SpeedParam(vel=60, acc=200)
+SPEED_PARAM_DICT["spoon_peanuts_up"] = SpeedParam(vel=60, acc=200)
+# SPEED_PARAM_DICT["drop_peanuts"] = SpeedParam(vel=60, acc=450)
+# SPEED_PARAM_DICT["open_1st_lid"] = SpeedParam(vel=100, acc=500)
+# SPEED_PARAM_DICT["open_2nd_lid"] = SpeedParam(vel=100, acc=500)
+# SPEED_PARAM_DICT["close_1st_lid"] = SpeedParam(vel=100, acc=500)
+# SPEED_PARAM_DICT["close_2nd_lid"] = SpeedParam(vel=100, acc=500)
+# SPEED_PARAM_DICT["grab_1st_batter"] = SpeedParam(vel=100, acc=500)
+# SPEED_PARAM_DICT["grab_2nd_batter"] = SpeedParam(vel=100, acc=500)
+SPEED_PARAM_DICT["drop_1st_batter"] = SpeedParam(vel=40, acc=250)
+# SPEED_PARAM_DICT["drop_2nd_batter"] = SpeedParam(vel=50, acc=500)
+# SPEED_PARAM_DICT["pour_1st_batter"] = SpeedParam(vel=100, acc=500)
+# SPEED_PARAM_DICT["pour_2nt_batter"] = SpeedParam(vel=100, acc=500)
+# SPEED_PARAM_DICT["grab_fork"] = SpeedParam(vel=100, acc=500)
+# SPEED_PARAM_DICT["drop_fork"] = SpeedParam(vel=100, acc=500)
 SPEED_PARAM_DICT["get_1st_waffle"] = SpeedParam(vel=50, acc=500, blend=80)
 SPEED_PARAM_DICT["get_2nd_waffle"] = SpeedParam(
-    vel=35, acc=500, blend=80
+    vel=40, acc=500, blend=80
 )  # why different than 1st?
-SPEED_PARAM_DICT["close_1st_lid"] = SpeedParam(vel=100, acc=500)
-SPEED_PARAM_DICT["close_2nd_lid"] = SpeedParam(vel=100, acc=500)
+# SPEED_PARAM_DICT["close_1st_lid"] = SpeedParam(vel=100, acc=500)
+# SPEED_PARAM_DICT["close_2nd_lid"] = SpeedParam(vel=100, acc=500)
 SPEED_PARAM_DICT["get_2nd_waffle_top_lid"] = SpeedParam(
     vel=35, acc=500, blend=100
 )  # what is this?
-SPEED_PARAM_DICT["drop_waffle"] = SpeedParam(vel=40, acc=500)
-SPEED_PARAM_DICT["go_to_default"] = SpeedParam(vel=100, acc=500)
+# SPEED_PARAM_DICT["drop_waffle"] = SpeedParam(vel=40, acc=500)
+# SPEED_PARAM_DICT["go_to_default"] = SpeedParam(vel=100, acc=500)
 
 
 def run_trajectory(
@@ -223,7 +225,7 @@ def run_trajectory(
             )
         elif node.mode == Mode.CLOSE:
             movements.append(
-                SingleRobotMove(type="gripper", grip_type="close", wait_time=0.9)
+                SingleRobotMove(type="gripper", grip_type="close", wait_time=0.5)
             )
         elif node.mode == Mode.HALF_OPEN:
             movements.append(
@@ -240,8 +242,8 @@ def run_trajectory(
                     SingleRobotMove(
                         type="single_pose_joint_rad",
                         single_pose_joint_rad_goal=node.joints_values[0],
-                        vel=40,
-                        acc=20,
+                        vel=60,
+                        acc=300,
                         blend=100,
                     )
                 )

@@ -101,7 +101,7 @@ def get_cuboid_list(move: SingleRobotMove, obstacles: dict[str, Any]) -> list[Cu
         list[Cuboid]: List of cuRobo Cuboid obstacles.
     """
     cuboids = []
-    cuboids.append(Cuboid(name="table", pose=[0, 0, -1.97, 1, 0, 0, 0], dims=[4, 4, 4]))
+    cuboids.append(Cuboid(name="table", pose=[0, 0, -1.97, 1, 0, 0, 0], dims=[2, 2, 4]))
     for i, obstacle_name in enumerate(obstacles):
         if obstacle_name not in move.ignore_obstacles:
             middle_point = np.mean(
@@ -536,6 +536,9 @@ class IsaacSimController:
                             f"Can't accept {goals} as sequence_joint_rad_goals."
                         )
                     if graspgen_move.no_curobo:
+                        graspgen_move.sequence_joint_rad_goals.insert(
+                            0, self.last_joint_states
+                        )
                         processed_moves.append(graspgen_move)
                         self.last_joint_states = graspgen_move.sequence_joint_rad_goals[
                             -1
