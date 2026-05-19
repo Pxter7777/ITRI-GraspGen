@@ -98,7 +98,6 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
 
     Raises:
         TypeError: If args[0] is neither a list nor a string.
-        ValueError: If the pour axis norm is near zero.
     """
     obstacles = scene_data.obstacle_infos
     moves: list[SingleRobotMove] = []
@@ -162,7 +161,8 @@ def grab_and_pour_and_place_back_curobo_by_rotation(
         pour_angle = np.deg2rad(160)
     else:  # Counter-clockwise
         pour_angle = -np.deg2rad(160)
-    # apply pour_angle on ready_pour_rotation using vector[mass_center[0], mass_center[1], 0] as axis:
+    # apply pour_angle on ready_pour_rotation using
+    # vector[mass_center[0], mass_center[1], 0] as axis:
     local_rotation_axis = [0, 0, 1]
 
     q_pour = trimesh.transformations.quaternion_about_axis(

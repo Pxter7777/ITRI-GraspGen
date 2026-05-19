@@ -7,9 +7,11 @@
 import argparse
 import logging
 import sys
+import threading
 import time
 from collections import deque
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import rclpy
@@ -132,16 +134,12 @@ class TMRobotController(Node):  # type: ignore[reportUntypedBaseClass]
         self.real2sim = real2sim
         self.real2sim_response_time: float = 0.0
 
-    def _real2sim(self, commands_to_sim):
+    def _real2sim(self, commands_to_sim: list[list[float]]):
         start = time.time()
         try:
             send_traj(commands_to_sim)
         except OSError as e:  # maybe, when the isaac-sim display pc is not reachable
             logger.error(f"OSError, send_traj failed, not connected: {e}")
-        except (
-            TimeoutError
-        ) as e:  # maybe when the isaac-sim display pc is not listening
-            logger.error(f"TimeoutError, send_traj failed, not listening: {e}")
         self.real2sim_response_time = time.time() - start
 
     def _capture_command(self) -> None:
@@ -151,7 +149,9 @@ class TMRobotController(Node):  # type: ignore[reportUntypedBaseClass]
         if isaacsim_data is None:
             return
         logger.warning("---new command from isaacsim---")
-        data_dict = isaacsim_data
+        if not isinstance(isaacsim_data, dict):
+            raise TypeError(f"Expected dict from isaacsim, got {type(isaacsim_data)}")
+        data_dict: dict[str, Any] = isaacsim_data  # voodoo
         move = SingleRobotMove(**data_dict)
         logger.info("received new data")
         self.num_response_to_send_back += 1
@@ -167,6 +167,8 @@ class TMRobotController(Node):  # type: ignore[reportUntypedBaseClass]
         commands_to_sim = []
         commands_to_sim_upscaled = []
         if move.type == "sequence_joint_rad":
+            if move.sequence_joint_rad_goals is None:
+                raise ValueError("sequence_joint_rad move requires goals")
             self.goal_joints = move.sequence_joint_rad_goals[-1]
             joints_values_degree = [
                 np.rad2deg(joints) for joints in move.sequence_joint_rad_goals
@@ -194,31 +196,32 @@ class TMRobotController(Node):  # type: ignore[reportUntypedBaseClass]
             accepted_joints.append(goal_degree)
             commands_to_sim.append(list(goal_degree) + self.current_IO_states)
             if len(commands_to_sim) > 1:
-                # 1. 將外層迴圈變數改為 idx，避免與內層衝突
+                # 1. 將外層迴圈變數改為 idx, 避免與內層衝突
                 for idx in range(1, len(commands_to_sim)):
                     prev_joints = commands_to_sim[idx - 1][:6]
                     current_joints = commands_to_sim[idx][:6]
-                    
+
                     joints_diff = [
                         c - p for c, p in zip(current_joints, prev_joints, strict=False)
                     ]
-                    
+
                     # 2. 計算兩點之間最大的關節角度落差
                     max_diff = max([abs(d) for d in joints_diff])
-                    
+
                     # 3. 動態決定切割份數 (強制每步不超過 2 度)
                     max_degree_step = 3.5
                     if max_diff > max_degree_step:
-                        # 無條件進位，確保切得夠細
+                        # 無條件進位, 確保切得夠細
                         import math
+
                         interpolate_iter = math.ceil(max_diff / max_degree_step)
                     else:
-                        interpolate_iter = 1  # 差距很小，切 1 份(等於直接移動)
+                        interpolate_iter = 1  # 差距很小, 切 1 份(等於直接移動)
 
                     # 保留你原本針對只有兩個點的特殊邏輯
                     if len(commands_to_sim) == 2 and interpolate_iter < 12:
                         interpolate_iter = 12
-                        
+
                     # 4. 內層迴圈變數改為 step
                     for step in range(interpolate_iter):
                         commands_to_sim_upscaled.append(
@@ -246,7 +249,7 @@ class TMRobotController(Node):  # type: ignore[reportUntypedBaseClass]
             else:
                 raise ValueError(f"Unknown grip type: {move}")
             commands_to_sim = [self.current_joints_states + self.goal_gripper]
-            if self.real2sim:
+            if self.real2sim:  # voodoo
                 threading.Thread(
                     target=self._real2sim, args=(commands_to_sim,), daemon=True
                 ).start()
@@ -255,7 +258,6 @@ class TMRobotController(Node):  # type: ignore[reportUntypedBaseClass]
             self.reached_time = time.time()
         else:
             raise ValueError(f"Unknown move type: {move.type}")
-
 
     def setup_services(self) -> None:
         """Initialize ROS2 service clients and subscribe to feedback states."""

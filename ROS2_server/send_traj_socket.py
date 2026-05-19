@@ -57,6 +57,7 @@ def send_traj(rows: list[list[float]]) -> None:
     print(f"Time taken: {end - start:.3f} seconds")
     time.sleep(0.3)
 
+
 if __name__ == "__main__":
     print(f"Prepared rows: {len(TEST_ROWS)}")
     print("Press '1' to send trajectory. Press 'q' or ESC to quit.")

@@ -137,7 +137,8 @@ class SpeedParam:
     blend: int = 100
 
 
-# A defaultdict automatically returns SpeedParam() (the defaults: 40, 20, 100) if a key is missing!
+# A defaultdict automatically returns SpeedParam()
+# (the defaults: 40, 20, 100) if a key is missing!
 SPEED_PARAM_DICT = defaultdict(SpeedParam)
 # Specific overrides
 SPEED_PARAM_DICT["spoon_peanuts_down"] = SpeedParam(vel=60, acc=200)
