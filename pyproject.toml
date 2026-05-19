@@ -68,6 +68,7 @@ override-dependencies = [
     "numpy>=2.3.4",
     "pickle5; python_version < '3.8'", # Do not install pickle 5 unless python version < 3.8, which isn't actually possible.
     "spconv-cu120; python_version < '3.8'", # Use spconv-cu121 instead
+    "xformers==0.0.28.post3",
 ]
 
 [tool.uv.sources]
@@ -78,6 +79,9 @@ torchaudio = [
     { index = "pytorch-cu121", marker = "sys_platform == 'linux'" },
 ]
 torchvision = [
+    { index = "pytorch-cu121", marker = "sys_platform == 'linux'" },
+]
+xformers = [
     { index = "pytorch-cu121", marker = "sys_platform == 'linux'" },
 ]
 sam-2 = { path = "./third_party/sam2", editable = false }
