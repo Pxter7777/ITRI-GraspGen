@@ -621,7 +621,10 @@ class MotionPlanController:
                     processed_moves.append(graspgen_move)
                     self.last_joint_states = positions[-1]
                 else:
-                    print("This plan failed.")
+                    print(
+                        f"This plan failed. status={result.status},"
+                        f" valid_query={result.valid_query}"
+                    )
                     self.last_joint_states = before_move_joints
                     break
             else:
@@ -754,7 +757,10 @@ class MotionPlanController:
             x, y, z, qx, qy, qz, qw = obstacle.pose_meter_quat
             obstacle_meshes.append(
                 Mesh(
-                    name=obstacle.instance_id,
+                    # Unique per task: curobo caches mesh geometry by name for
+                    # the process lifetime, so reused names across tasks would
+                    # resurrect the first task's geometry.
+                    name=f"{task_class}/{task_name}/{obstacle.instance_id}",
                     file_path=str(mesh_file),
                     pose=[x, y, z, qw, qx, qy, qz],
                     scale=[obstacle.scale] * 3,
@@ -786,7 +792,11 @@ class MotionPlanController:
             )
             succ = result.success.item()
             if not succ:
-                logger.warning("This plan failed.")
+                logger.warning(
+                    "This plan failed. status=%s, valid_query=%s",
+                    result.status,
+                    result.valid_query,
+                )
                 grasp.curobo_success = "Fail"
                 grasp.motion_plan_time = time.time() - plan_start_time
                 continue
@@ -818,7 +828,11 @@ class MotionPlanController:
             )
             succ = result.success.item()
             if not succ:
-                logger.warning("This plan failed.")
+                logger.warning(
+                    "This plan failed. status=%s, valid_query=%s",
+                    result.status,
+                    result.valid_query,
+                )
                 grasp.curobo_success = "Fail"
                 grasp.motion_plan_time = time.time() - plan_start_time
                 continue
