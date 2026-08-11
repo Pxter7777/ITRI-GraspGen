@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.model_selection import LeaveOneGroupOut, cross_val_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils.class_weight import compute_class_weight
 from xgboost import XGBClassifier
@@ -46,7 +46,7 @@ def load_all_data() -> list[dict[str, object]]:
     """
     records = []
     for scenario in SCENARIOS:
-        for i in range(1, 6):
+        for i in range(1, 11):
             path = DATA_ROOT / scenario / "result_data" / f"{i}.json"
             with open(path) as f:
                 data = json.load(f)
@@ -180,6 +180,11 @@ def train_and_evaluate(
 ) -> tuple[LogisticRegression, StandardScaler, XGBClassifier]:
     """Train logistic regression and XGBoost, evaluate with cross-validation.
 
+    ROC-AUC is evaluated with leave-one-scene-out CV (each fold holds out all
+    200 grasps of one scene), so the model is always scored on a scene it has
+    never seen — matching how topk_table evaluates. A fold whose held-out scene
+    has no successful grasp yields an undefined AUC and is skipped (NaN).
+
     Args:
         records (list[dict[str, object]]): Grasp records with features and labels.
 
@@ -189,6 +194,7 @@ def train_and_evaluate(
     """
     X = np.array([[r[f] for f in FEATURE_NAMES] for r in records])  # noqa: N806
     y = np.array([r["success"] for r in records])
+    groups = np.array([f"{r['scenario']}/{r['file']}" for r in records])
 
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)  # noqa: N806
@@ -207,26 +213,54 @@ def train_and_evaluate(
         verbosity=0,
     )
 
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    cv = LeaveOneGroupOut()
 
-    lr_auc = cross_val_score(lr, X_scaled, y, cv=cv, scoring="roc_auc")
-    xgb_auc = cross_val_score(xgb, X, y, cv=cv, scoring="roc_auc")
+    lr_auc = cross_val_score(
+        lr, X_scaled, y, cv=cv, groups=groups, scoring="roc_auc", error_score=np.nan
+    )
+    xgb_auc = cross_val_score(
+        xgb, X, y, cv=cv, groups=groups, scoring="roc_auc", error_score=np.nan
+    )
+    lr_ap = cross_val_score(
+        lr,
+        X_scaled,
+        y,
+        cv=cv,
+        groups=groups,
+        scoring="average_precision",
+        error_score=np.nan,
+    )
+    xgb_ap = cross_val_score(
+        xgb, X, y, cv=cv, groups=groups, scoring="average_precision", error_score=np.nan
+    )
+    n_valid = np.count_nonzero(~np.isnan(lr_auc))
+    if n_valid < len(lr_auc):
+        print(
+            f"\nNote: {len(lr_auc) - n_valid} of {len(lr_auc)} held-out scenes "
+            "have no successful grasp; their folds are excluded from the AUC."
+        )
 
-    from sklearn.metrics import roc_auc_score
+    from sklearn.metrics import average_precision_score, roc_auc_score
 
-    disc_auc = roc_auc_score(y, X[:, FEATURE_NAMES.index("discriminator_score")])
+    disc_scores = X[:, FEATURE_NAMES.index("discriminator_score")]
+    disc_auc = roc_auc_score(y, disc_scores)
+    disc_ap = average_precision_score(y, disc_scores)
+    print(f"\nNo-skill PR-AUC baseline (positive rate): {y.mean():.3f}")
     print("\nDiscriminator Score (no model)")
     print(f"  ROC-AUC: {disc_auc:.3f}")
+    print(f"  PR-AUC : {disc_ap:.3f}")
 
-    print("\nLogistic Regression (5-fold CV)")
-    print(f"  ROC-AUC: {lr_auc.mean():.3f} ± {lr_auc.std():.3f}")
+    print("\nLogistic Regression (leave-one-scene-out CV)")
+    print(f"  ROC-AUC: {np.nanmean(lr_auc):.3f} ± {np.nanstd(lr_auc):.3f}")
+    print(f"  PR-AUC : {np.nanmean(lr_ap):.3f} ± {np.nanstd(lr_ap):.3f}")
     lr.fit(X_scaled, y)
     print("  Feature coefficients:")
     for name, coef in zip(FEATURE_NAMES, lr.coef_[0], strict=True):
         print(f"    {FEATURE_LABELS[name]:35s}: {coef:+.3f}")
 
-    print("\nXGBoost (5-fold CV)")
-    print(f"  ROC-AUC: {xgb_auc.mean():.3f} ± {xgb_auc.std():.3f}")
+    print("\nXGBoost (leave-one-scene-out CV)")
+    print(f"  ROC-AUC: {np.nanmean(xgb_auc):.3f} ± {np.nanstd(xgb_auc):.3f}")
+    print(f"  PR-AUC : {np.nanmean(xgb_ap):.3f} ± {np.nanstd(xgb_ap):.3f}")
     xgb.fit(X, y)
     print("  Feature importances:")
     for name, imp in zip(FEATURE_NAMES, xgb.feature_importances_, strict=True):
@@ -241,11 +275,13 @@ def topk_table(
     scaler: StandardScaler,
     xgb: XGBClassifier,
 ) -> None:
-    """Rank grasps by model score and report top-k success rates.
+    """Rank grasps per strategy and report top-k success rates.
 
-    For each scene, rank grasps by model score vs random.
+    Strategies: random ordering (averaged over N_RANDOM shuffles per scene),
+    discriminator score, a collision-free-first heuristic (ties broken by
+    discriminator score), and the two learned models.
     Report: % of scenes with at least one success in top-k, for k = 1,3,5,10,20.
-    Also report mean attempts to first success.
+    Also report mean attempts and mean time to first success.
 
     Args:
         records (list[dict[str, object]]): Grasp records with features and labels.
@@ -261,9 +297,19 @@ def topk_table(
     scene_keys = list(scenes.keys())
 
     K_VALUES = [1, 3, 5, 10, 20]  # noqa: N806
-    results = {k: {"disc": [], "lr": [], "xgb": []} for k in K_VALUES}
-    disc_attempts, lr_attempts, xgb_attempts = [], [], []
-    disc_times, lr_times, xgb_times = [], [], []
+    STRATEGIES = ["rand", "disc", "cfd", "lr", "xgb"]  # noqa: N806
+    STRATEGY_LABELS = {  # noqa: N806
+        "rand": "Random",
+        "disc": "Discriminator",
+        "cfd": "CollFree+Disc",
+        "lr": "Logistic Reg.",
+        "xgb": "XGBoost",
+    }
+    N_RANDOM = 1000  # noqa: N806
+    rng = np.random.default_rng(42)
+    results = {k: {s: [] for s in STRATEGIES} for k in K_VALUES}
+    attempts = {s: [] for s in STRATEGIES}
+    times = {s: [] for s in STRATEGIES}
 
     def first_success(gs: list[dict[str, object]]) -> int:
         for i, g in enumerate(gs):
@@ -279,7 +325,7 @@ def topk_table(
                 return total
         return total
 
-    # Leave-one-scene-out: train on 14 scenes, evaluate on held-out scene
+    # Leave-one-scene-out: train on all other scenes, evaluate on held-out scene
     for held_out_key in scene_keys:
         train_records = [
             r for r in records if (r["scenario"], r["file"]) != held_out_key
@@ -315,51 +361,65 @@ def topk_table(
         xgb_scores = clf_xgb.predict_proba(X_test)[:, 1]
 
         grasps = test_grasps
-        grasps_disc = sorted(grasps, key=lambda g: -g["discriminator_score"])
-        grasps_lr = [
-            g
-            for _, g in sorted(zip(lr_scores, grasps, strict=True), key=lambda x: -x[0])
-        ]
-        grasps_xgb = [
-            g
-            for _, g in sorted(
-                zip(xgb_scores, grasps, strict=True), key=lambda x: -x[0]
-            )
-        ]
+        orders = {
+            "disc": sorted(grasps, key=lambda g: -g["discriminator_score"]),
+            "cfd": sorted(
+                grasps,
+                key=lambda g: (-g["collision_free"], -g["discriminator_score"]),
+            ),
+            "lr": [
+                g
+                for _, g in sorted(
+                    zip(lr_scores, grasps, strict=True), key=lambda x: -x[0]
+                )
+            ],
+            "xgb": [
+                g
+                for _, g in sorted(
+                    zip(xgb_scores, grasps, strict=True), key=lambda x: -x[0]
+                )
+            ],
+        }
 
+        for name, ordered in orders.items():
+            for k in K_VALUES:
+                results[k][name].append(int(any(g["success"] for g in ordered[:k])))
+            attempts[name].append(first_success(ordered))
+            times[name].append(time_to_first_success(ordered))
+
+        # Random baseline: expectation over N_RANDOM shuffles of this scene
+        rand_hits = dict.fromkeys(K_VALUES, 0)
+        rand_attempts, rand_times = [], []
+        shuffled = list(grasps)
+        for _ in range(N_RANDOM):
+            rng.shuffle(shuffled)
+            for k in K_VALUES:
+                rand_hits[k] += any(g["success"] for g in shuffled[:k])
+            rand_attempts.append(first_success(shuffled))
+            rand_times.append(time_to_first_success(shuffled))
         for k in K_VALUES:
-            results[k]["disc"].append(int(any(g["success"] for g in grasps_disc[:k])))
-            results[k]["lr"].append(int(any(g["success"] for g in grasps_lr[:k])))
-            results[k]["xgb"].append(int(any(g["success"] for g in grasps_xgb[:k])))
-
-        disc_attempts.append(first_success(grasps_disc))
-        lr_attempts.append(first_success(grasps_lr))
-        xgb_attempts.append(first_success(grasps_xgb))
-        disc_times.append(time_to_first_success(grasps_disc))
-        lr_times.append(time_to_first_success(grasps_lr))
-        xgb_times.append(time_to_first_success(grasps_xgb))
+            results[k]["rand"].append(rand_hits[k] / N_RANDOM)
+        attempts["rand"].append(float(np.mean(rand_attempts)))
+        times["rand"].append(float(np.mean(rand_times)))
 
     COLORS = {"disc": "#2196F3", "lr": "#FF9800", "xgb": "#4CAF50"}  # noqa: N806
     LABELS = {"disc": "Discriminator", "lr": "Logistic Reg.", "xgb": "XGBoost"}  # noqa: N806
 
     print("\n--- Top-K Success Rate Table ---")
-    print(f"{'k':<6} {'Discriminator':>15} {'Logistic Reg.':>15} {'XGBoost':>10}")
-    print("-" * 48)
+    header = "".join(f"{STRATEGY_LABELS[s]:>16}" for s in STRATEGIES)
+    print(f"{'k':<6}{header}")
+    print("-" * (6 + 16 * len(STRATEGIES)))
     for k in K_VALUES:
-        d = 100 * np.mean(results[k]["disc"])
-        logestic_regression = 100 * np.mean(results[k]["lr"])
-        x = 100 * np.mean(results[k]["xgb"])
-        print(f"{k:<6} {d:>14.1f}% {logestic_regression:>14.1f}% {x:>9.1f}%")
+        row = "".join(f"{100 * np.mean(results[k][s]):>15.1f}%" for s in STRATEGIES)
+        print(f"{k:<6}{row}")
 
     print("\nMean attempts to first success:")
-    print(f"  Discriminator : {np.mean(disc_attempts):.1f}")
-    print(f"  Logistic Reg. : {np.mean(lr_attempts):.1f}")
-    print(f"  XGBoost       : {np.mean(xgb_attempts):.1f}")
+    for s in STRATEGIES:
+        print(f"  {STRATEGY_LABELS[s]:14s}: {np.mean(attempts[s]):.1f}")
 
     print("\nMean time to first success (s):")
-    print(f"  Discriminator : {np.mean(disc_times):.2f}")
-    print(f"  Logistic Reg. : {np.mean(lr_times):.2f}")
-    print(f"  XGBoost       : {np.mean(xgb_times):.2f}")
+    for s in STRATEGIES:
+        print(f"  {STRATEGY_LABELS[s]:14s}: {np.mean(times[s]):.2f}")
 
     # Plot
     fig, axes = plt.subplots(1, 3, figsize=(20, 5))
@@ -393,11 +453,7 @@ def topk_table(
 
     # Subplot 2: Mean attempts to first success
     ax2 = axes[1]
-    attempt_means = [
-        np.mean(disc_attempts),
-        np.mean(lr_attempts),
-        np.mean(xgb_attempts),
-    ]
+    attempt_means = [np.mean(attempts[s]) for s in ["disc", "lr", "xgb"]]
     bars2 = ax2.bar(
         list(LABELS.values()),
         attempt_means,
@@ -418,7 +474,7 @@ def topk_table(
 
     # Subplot 3: Mean time to first success
     ax3 = axes[2]
-    time_means = [np.mean(disc_times), np.mean(lr_times), np.mean(xgb_times)]
+    time_means = [np.mean(times[s]) for s in ["disc", "lr", "xgb"]]
     bars3 = ax3.bar(
         list(LABELS.values()),
         time_means,
