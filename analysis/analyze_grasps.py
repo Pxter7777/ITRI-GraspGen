@@ -267,6 +267,11 @@ def train_and_evaluate(
     for name, imp in zip(FEATURE_NAMES, xgb.feature_importances_, strict=True):
         print(f"    {FEATURE_LABELS[name]:35s}: {imp:.3f}")
 
+    # Persist the deployment checkpoint (loaded by GraspGeneratorUI)
+    checkpoint_path = Path(__file__).resolve().parents[1] / "models" / "reranker_xgb.json"
+    xgb.save_model(checkpoint_path)
+    print(f"\nSaved re-ranker checkpoint: {checkpoint_path}")
+
     return lr, scaler, xgb
 
 

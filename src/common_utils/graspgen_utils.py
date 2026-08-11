@@ -23,9 +23,11 @@ from grasp_gen.utils.meshcat_utils import (
 )
 from grasp_gen.utils.point_cloud_utils import filter_colliding_grasps
 
+from xgboost import XGBClassifier
+
 from common_utils.actions_format_checker import MoveItem
-from common_utils.common_utils import log_stage_time
-from common_utils.qualification import is_qualified
+from common_utils.common_utils import PROJECT_ROOT_DIR, log_stage_time
+from common_utils.qualification import get_left_up_and_front, is_qualified
 from common_utils.scene_data import SceneData
 
 logger = logging.getLogger(__name__)
@@ -506,6 +508,20 @@ class GraspGeneratorUI:
         self.num_grasps: int = num_grasps
         self.topk_num_grasps: int = topk_num_grasps
         self.need_GUI: bool = need_GUI
+        # Learned re-ranker (thesis): orders candidates by predicted motion
+        # planning success. Falls back to angle-offset ordering if missing.
+        self.reranker: XGBClassifier | None = None
+        reranker_path = PROJECT_ROOT_DIR / "models" / "reranker_xgb.json"
+        if reranker_path.exists():
+            self.reranker = XGBClassifier()
+            self.reranker.load_model(reranker_path)
+            logger.info(f"Loaded re-ranker checkpoint: {reranker_path}")
+        else:
+            logger.warning(
+                f"No re-ranker checkpoint at {reranker_path}; falling back to"
+                " angle-offset ordering. Run analysis/analyze_grasps.py to"
+                " create it."
+            )
         ## Main init starts here
         if self.need_GUI:
             start_meshcat_server()
@@ -514,12 +530,13 @@ class GraspGeneratorUI:
 
     def _generate_grasps(
         self,
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Run one batch of grasp inference and return masks for filtering.
 
         Returns:
-            tuple[np.ndarray, np.ndarray, np.ndarray]: The generated grasps,
-                custom filter mask, and collision-free mask.
+            tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]: The
+                generated grasps, their discriminator scores, custom filter
+                mask, and collision-free mask.
 
         Raises:
             ValueError: If target_name or qualifier is None.
@@ -534,16 +551,18 @@ class GraspGeneratorUI:
         # mass_center = np.mean(obj_pc, axis=0)
         # std = np.std(obj_pc, axis=0)
         t_stage = time.perf_counter()
-        grasps, _grasp_conf = GraspGenSampler.run_inference(
+        # Same sampling configuration as the re-ranker's training data
+        # (scripts/grasp_data_gen.py): threshold 0.7, 200 grasps.
+        grasps, grasp_conf = GraspGenSampler.run_inference(
             obj_pc,
             self.grasp_sampler,
-            grasp_threshold=0.8,
-            num_grasps=200,
-            # topk_num_grasps=5,
-            min_grasps=80,
-            max_tries=20,
+            grasp_threshold=self.grasp_threshold,
+            num_grasps=self.num_grasps,
+            min_grasps=self.num_grasps,
+            max_tries=100,
         )
         log_stage_time("graspgen_inference", time.perf_counter() - t_stage)
+        grasp_conf = grasp_conf.cpu().numpy()
         grasps = grasps.cpu().numpy()
         grasps[:, 3, 3] = 1
         grasps = flip_upside_down_grasps(grasps)
@@ -599,28 +618,78 @@ class GraspGeneratorUI:
             collision_threshold=0.03,
         )
         log_stage_time("graspgen_collision_filter", time.perf_counter() - t_stage)
-        return grasps, custom_filter_mask, collision_free_mask
+        return grasps, grasp_conf, custom_filter_mask, collision_free_mask
+
+    def _rerank_order(
+        self, grasps: list[np.ndarray], confs: list[float]
+    ) -> np.ndarray:
+        """Order grasp indices by predicted motion planning success.
+
+        Features must match the re-ranker's training data
+        (scripts/grasp_data_gen.py): discriminator score, distance from base,
+        horizontal approach-angle difference, approach-vector Z, and the
+        collision-free flag (always 1 here --- colliding grasps are filtered
+        out before ranking).
+
+        Args:
+            grasps (list[np.ndarray]): 4x4 grasp matrices in the robot frame.
+            confs (list[float]): Discriminator scores for each grasp.
+
+        Returns:
+            np.ndarray: Indices of grasps, best candidate first.
+        """
+        if self.reranker is None:
+            raise ValueError("re-ranker checkpoint is not loaded")
+        features = np.empty((len(grasps), 5))
+        for i, (grasp, conf) in enumerate(zip(grasps, confs, strict=True)):
+            position = grasp[:3, 3]
+            _left, _up, front = get_left_up_and_front(grasp)
+            offset_position = position + front * 0.20
+            angle_diff = np.abs(
+                np.arctan2(front[1], front[0])
+                - np.arctan2(offset_position[1], offset_position[0])
+            )
+            if angle_diff > np.pi:
+                angle_diff = 2 * np.pi - angle_diff
+            features[i] = [
+                conf,
+                np.linalg.norm(position),
+                angle_diff,
+                front[2],
+                1.0,
+            ]
+        success_proba = self.reranker.predict_proba(features)[:, 1]
+        return np.argsort(-success_proba)
 
     def _generate_grasp_silent(self) -> list[np.ndarray]:
         """Return qualified grasps without GUI interaction.
+
+        Qualified grasps are ordered by the learned re-ranker (predicted
+        motion planning success) when a checkpoint is available, otherwise
+        by angle offset.
 
         Returns:
             list[np.ndarray]: A list of shape(4, 4) grasp matrices.
         """
         num_try = 0
         qualified_grasps: list[np.ndarray] = []
+        qualified_confs: list[float] = []
         while True:
             num_try += 1
             logger.info(f"try #{num_try}")
-            all_grasps, custom_filter_mask, collision_free_mask = (
+            all_grasps, grasp_conf, custom_filter_mask, collision_free_mask = (
                 self._generate_grasps()
             )
-            qualified_grasps.extend(
-                list(all_grasps[custom_filter_mask & collision_free_mask])
-            )
+            keep_mask = custom_filter_mask & collision_free_mask
+            qualified_grasps.extend(list(all_grasps[keep_mask]))
+            qualified_confs.extend(list(grasp_conf[keep_mask]))
             if len(qualified_grasps) > 0:
-                qualified_grasps = sorted(qualified_grasps, key=angle_offset_rad)
-                return qualified_grasps
+                if self.reranker is not None:
+                    t_stage = time.perf_counter()
+                    order = self._rerank_order(qualified_grasps, qualified_confs)
+                    log_stage_time("reranker", time.perf_counter() - t_stage)
+                    return [qualified_grasps[i] for i in order]
+                return sorted(qualified_grasps, key=angle_offset_rad)
 
     def generate_grasp(self, scene_data: SceneData, move: MoveItem) -> list[np.ndarray]:
         """Generate grasps for the given scene and move, with or without GUI.
@@ -667,7 +736,7 @@ class GraspGeneratorUI:
         num_try = 0
         while True:
             num_try += 1
-            all_grasps, custom_filter_mask, collision_free_mask = (
+            all_grasps, _grasp_conf, custom_filter_mask, collision_free_mask = (
                 self._generate_grasps()
             )
             # send to panel
