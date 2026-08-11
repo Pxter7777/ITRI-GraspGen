@@ -24,6 +24,7 @@ from grasp_gen.utils.meshcat_utils import (
 from grasp_gen.utils.point_cloud_utils import filter_colliding_grasps
 
 from common_utils.actions_format_checker import MoveItem
+from common_utils.common_utils import log_stage_time
 from common_utils.qualification import is_qualified
 from common_utils.scene_data import SceneData
 
@@ -532,6 +533,7 @@ class GraspGeneratorUI:
             raise ValueError("qualifier must not be None")
         # mass_center = np.mean(obj_pc, axis=0)
         # std = np.std(obj_pc, axis=0)
+        t_stage = time.perf_counter()
         grasps, _grasp_conf = GraspGenSampler.run_inference(
             obj_pc,
             self.grasp_sampler,
@@ -541,6 +543,7 @@ class GraspGeneratorUI:
             min_grasps=80,
             max_tries=20,
         )
+        log_stage_time("graspgen_inference", time.perf_counter() - t_stage)
         grasps = grasps.cpu().numpy()
         grasps[:, 3, 3] = 1
         grasps = flip_upside_down_grasps(grasps)
@@ -588,12 +591,14 @@ class GraspGeneratorUI:
                 f"Scene point cloud has {len(xyz_scene)}"
                 " points (no downsampling needed)"
             )
+        t_stage = time.perf_counter()
         collision_free_mask = filter_colliding_grasps(
             scene_pc=xyz_scene_downsampled,
             grasp_poses=grasps,
             gripper_collision_mesh=gripper_collision_mesh,
             collision_threshold=0.03,
         )
+        log_stage_time("graspgen_collision_filter", time.perf_counter() - t_stage)
         return grasps, custom_filter_mask, collision_free_mask
 
     def _generate_grasp_silent(self) -> list[np.ndarray]:
@@ -632,10 +637,13 @@ class GraspGeneratorUI:
         self.move = move
 
         if self.need_GUI:
-            # create control panel and use GUI mode
+            # create control panel and use GUI mode (not timed: includes user input)
             return self._generate_grasp_with_gui()
         else:
-            return self._generate_grasp_silent()
+            t_stage = time.perf_counter()
+            result = self._generate_grasp_silent()
+            log_stage_time("grasp_generation_total", time.perf_counter() - t_stage)
+            return result
 
     def _generate_grasp_with_gui(self) -> list[np.ndarray]:
         """Let the user select a grasp via the tkinter panel.

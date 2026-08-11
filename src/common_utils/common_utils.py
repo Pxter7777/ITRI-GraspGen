@@ -17,6 +17,24 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT_DIR = Path(__file__).resolve().parents[2]
 
 
+def log_stage_time(stage: str, seconds: float) -> None:
+    """Log a pipeline stage duration and append it to data/timing_log.jsonl.
+
+    Args:
+        stage (str): Name of the pipeline stage.
+        seconds (float): Elapsed wall-clock time in seconds.
+    """
+    logger.info(f"[timing] {stage}: {seconds:.3f}s")
+    filepath = PROJECT_ROOT_DIR / "data" / "timing_log.jsonl"
+    entry = {
+        "timestamp": datetime.datetime.now().isoformat(timespec="seconds"),
+        "stage": stage,
+        "seconds": round(seconds, 4),
+    }
+    with open(filepath, "a") as f:
+        f.write(json.dumps(entry) + "\n")
+
+
 def save_json(dir: str, prefix: str, data: object) -> None:
     """Save data as a timestamped JSON file for debugging.
 

@@ -6,6 +6,7 @@
 """
 
 import json
+import time
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -269,6 +270,50 @@ def train_and_evaluate(
     return lr, scaler, xgb
 
 
+def benchmark_reranker(
+    lr: LogisticRegression, scaler: StandardScaler, xgb: XGBClassifier
+) -> None:
+    """Measure the re-ranking overhead for one scene of 200 candidates.
+
+    Times the full re-ranking step: extracting the three geometric features
+    from 4x4 grasp poses, assembling the feature matrix, scaling (LR only),
+    model inference, and the final argsort. Synthetic poses are used --- the
+    arithmetic cost does not depend on the values.
+    """
+    rng = np.random.default_rng(0)
+    poses = np.tile(np.eye(4), (200, 1, 1))
+    q, _ = np.linalg.qr(rng.normal(size=(200, 3, 3)))
+    poses[:, :3, :3] = q
+    poses[:, :3, 3] = rng.normal(size=(200, 3))
+    disc = rng.uniform(0.7, 1.0, size=200)
+    coll_free = rng.integers(0, 2, size=200).astype(float)
+
+    def rerank(model: LogisticRegression | XGBClassifier, scale: bool) -> np.ndarray:
+        front = poses[:, :3, 2]
+        pos = poses[:, :3, 3]
+        offset_pos = pos + 0.2 * front
+        distance = np.linalg.norm(pos, axis=1)
+        angle = np.abs(
+            np.arctan2(front[:, 1], front[:, 0])
+            - np.arctan2(offset_pos[:, 1], offset_pos[:, 0])
+        )
+        angle = np.minimum(angle, 2 * np.pi - angle)
+        X = np.column_stack([disc, distance, angle, front[:, 2], coll_free])  # noqa: N806
+        proba = model.predict_proba(scaler.transform(X) if scale else X)[:, 1]
+        return np.argsort(-proba)
+
+    n_rep = 100
+    print("\n--- Re-ranking overhead (200 candidates, mean of "
+          f"{n_rep} runs) ---")
+    for name, model, scale in (("Logistic Reg.", lr, True), ("XGBoost", xgb, False)):
+        rerank(model, scale)  # warm-up, untimed
+        t0 = time.perf_counter()
+        for _ in range(n_rep):
+            rerank(model, scale)
+        ms = (time.perf_counter() - t0) / n_rep * 1000
+        print(f"  {name:14s}: {ms:.2f} ms")
+
+
 def topk_table(
     records: list[dict[str, object]],
     lr: LogisticRegression,
@@ -524,6 +569,9 @@ def main() -> None:
 
     print("\nTraining models...")
     lr, scaler, xgb = train_and_evaluate(records)
+
+    print("\nBenchmarking re-ranking overhead...")
+    benchmark_reranker(lr, scaler, xgb)
 
     print("\nGenerating top-k table...")
     topk_table(records, lr, scaler, xgb)

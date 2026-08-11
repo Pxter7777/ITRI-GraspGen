@@ -3,6 +3,7 @@
 import argparse
 import logging
 import sys
+import time
 
 import cv2
 import numpy as np
@@ -12,6 +13,7 @@ import torch
 from sam2.sam2_image_predictor import SAM2ImagePredictor
 
 # from pointcloud_generation.yolo_inference import YOLOv5Detector
+from common_utils.common_utils import log_stage_time
 from common_utils.scene_data import SceneData
 from pointcloud_generation import (
     sam_utils,
@@ -129,11 +131,13 @@ class PointCloudGenerator:
             target_boxes[target] = None
 
         # Capture image
+        t_stage = time.perf_counter()
         try:
             _zed_status, left_image, right_image = self.zed.capture_images()
         except Exception as e:
             logger.exception(f"error{e}")
             raise RuntimeError from e
+        log_stage_time("capture_image", time.perf_counter() - t_stage)
 
         color_np = left_image[:, :, :3]  # Drop alpha channel
         color_np_org = color_np.copy()
@@ -148,9 +152,11 @@ class PointCloudGenerator:
                 -1,
             )
         # GroundingDINO detection
+        t_stage = time.perf_counter()
         boxes = self.groundingdino_predictor.predict_boxes(
             color_np_for_GroundingDINO, prompt
         )
+        log_stage_time("groundingdino", time.perf_counter() - t_stage)
         for box in boxes:
             if box.phrase not in target_boxes:
                 logger.error(
@@ -177,6 +183,7 @@ class PointCloudGenerator:
         boxes = [target_boxes[target_name] for target_name in target_names]
 
         # SAM2 inference
+        t_stage = time.perf_counter()
         named_masks = []
         for box in boxes:
             color_np_rgb = cv2.cvtColor(color_np, cv2.COLOR_BGR2RGB)
@@ -187,13 +194,16 @@ class PointCloudGenerator:
                 iterations=self.erosion_iterations,
             )
             named_masks.append(NamedMask(name=box.phrase, mask=mask))
+        log_stage_time("sam2", time.perf_counter() - t_stage)
 
         # stereo inference
+        t_stage = time.perf_counter()
         left_gray = cv2.cvtColor(left_image, cv2.COLOR_BGRA2GRAY)
         right_gray = cv2.cvtColor(right_image, cv2.COLOR_BGRA2GRAY)
         depth, (_H_scaled, _W_scaled) = self.stereo_model.run_inference(  # noqa: N806
             left_gray, right_gray, self.zed.K_left, self.zed.baseline
         )
+        log_stage_time("foundationstereo", time.perf_counter() - t_stage)
 
         # GroundingDINO detection
 
@@ -225,6 +235,7 @@ class PointCloudGenerator:
                     raise ValueError("Not satisfied with the generated result.")
 
         # gen pointcloud
+        t_stage = time.perf_counter()
         gen_pc = PointCloudGenerator._generate_pointcloud_multiple_obj_with_name_dict
         result_scene_data = gen_pc(
             depth,
@@ -234,6 +245,7 @@ class PointCloudGenerator:
             self.scale,
             self.max_depth,
         )
+        log_stage_time("pointcloud_generation", time.perf_counter() - t_stage)
         return result_scene_data
 
     def interactive_gui_mode(self) -> SceneData | None:
